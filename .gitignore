@@ -1,0 +1,7 @@
+.*.swp
+*.o
+*.debug
+*.full
+.depend
+orch
+ktrace.out
