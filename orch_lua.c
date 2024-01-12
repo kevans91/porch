@@ -24,30 +24,11 @@
 #define	ORCHLUA_MATCHKEY	"matches"
 #define	ORCHLUA_MINBUFSZKEY	"minbufsz"
 
-struct orch_interp_cfg orchlua_cfg;
+#define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
+
+static struct orch_interp_cfg orchlua_cfg;
 
 static int orch_termctl = -1;
-
-static int
-orchlua_release(lua_State *L)
-{
-	ssize_t wsz;
-	int buf = 0, err;
-
-	if ((wsz = write(orchlua_cfg.cmdsock, &buf, sizeof(buf))) != sizeof(buf)) {
-		err = errno;
-		luaL_pushfail(L);
-		if (wsz < 0)
-			lua_pushstring(L, strerror(err));
-		else
-			lua_pushstring(L, "cmd socket closed");
-		return (2);
-	}
-
-	orchlua_cfg.released = true;
-	lua_pushboolean(L, 1);
-	return (1);
-}
 
 /*
  * Not exported
@@ -91,7 +72,7 @@ orchlua_open(lua_State *L)
 	luaL_setmetatable(L, LUA_FILEHANDLE);
 
 	if (fd == -1)
-		fd = openat(orchlua_cfg.dirfd, filename, O_RDONLY);
+		fd = openat(orchlua_cfg.dirfd, filename, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return (luaL_fileresult(L, 0, filename));
 
@@ -102,25 +83,91 @@ orchlua_open(lua_State *L)
 	return (1);
 }
 
+static int
+orchlua_exit(lua_State *L)
+{
+
+	exit(lua_toboolean(L, 1) ? 0 : 1);
+}
+
+static int
+orchlua_time(lua_State *L)
+{
+	time_t t;
+
+	t = time(NULL);
+	lua_pushnumber(L, t);
+	return (1);
+}
+
+static int
+orchlua_spawn(lua_State *L)
+{
+	struct orch_process *proc;
+	const char **argv;
+	int argc;
+
+	if (lua_gettop(L) == 0) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "No command specified to spawn");
+		return (2);
+	}
+
+	/*
+	 * The script can table.unpack its args, so we'll expect all strings even if
+	 * they choose to build it up via table.
+	 */
+	argc = lua_gettop(L);
+	argv = calloc(argc + 1, sizeof(*argv));
+
+	for (int i = 0; i < argc; i++) {
+		argv[i] = lua_tostring(L, i + 1);
+		if (argv[i] == NULL) {
+			free(argv);
+			luaL_pushfail(L);
+			lua_pushfstring(L, "Argument at index %d not a string", i + 1);
+			return (2);
+		}
+	}
+
+	proc = lua_newuserdata(L, sizeof(*proc));
+	proc->eof = proc->released = false;
+
+	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
+	orch_spawn(argc, argv, proc);
+	return (1);
+}
+
+#define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
+static const struct luaL_Reg orchlib[] = {
+	REG_SIMPLE(open),
+	REG_SIMPLE(exit),
+	REG_SIMPLE(time),
+	REG_SIMPLE(spawn),
+	{ NULL, NULL },
+};
+
 /*
  * read(callback[, timeout]) -- returns true if we finished, false if we
  * hit EOF, or a fail, error pair otherwise.
  */
 static int
-orchlua_read(lua_State *L)
+orchlua_process_read(lua_State *L)
 {
 	char buf[LINE_MAX];
 	fd_set rfd;
+	struct orch_process *self;
 	struct timeval tv, *tvp;
 	time_t start, now;
 	ssize_t readsz;
 	int fd, ret;
 	lua_Number timeout;
 
-	luaL_checktype(L, 1, LUA_TFUNCTION);
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	luaL_checktype(L, 2, LUA_TFUNCTION);
 
-	if (lua_gettop(L) > 1) {
-		timeout = luaL_checknumber(L, 2);
+	if (lua_gettop(L) > 2) {
+		timeout = luaL_checknumber(L, 3);
 		if (timeout < 0) {
 			luaL_pushfail(L);
 			lua_pushstring(L, "Invalid timeout");
@@ -137,8 +184,7 @@ orchlua_read(lua_State *L)
 		tvp = NULL;
 	}
 
-	fd = orchlua_cfg.termctl;
-
+	fd = self->termctl;
 	FD_ZERO(&rfd);
 
 	/* Crude */
@@ -184,8 +230,8 @@ orchlua_read(lua_State *L)
 			/*
 			 * Duplicate the function value, it'll get popped by the call.
 			 */
-			lua_settop(L, 2);
-			lua_copy(L, 1, 2);
+			lua_settop(L, 3);
+			lua_copy(L, -2, -1);
 
 			/* callback([data]) -- nil data == EOF */
 			if (readsz > 0) {
@@ -199,11 +245,13 @@ orchlua_read(lua_State *L)
 			lua_call(L, nargs, 1);
 
 			if (readsz == 0) {
+				self->eof = true;
+
 				/* Don't care about the return value if we hit EOF. */
 				lua_pushboolean(L, 0);
 
-				close(orchlua_cfg.termctl);
-				orchlua_cfg.termctl = -1;
+				close(self->termctl);
+				self->termctl = -1;
 				return (1);
 			}
 
@@ -217,15 +265,17 @@ orchlua_read(lua_State *L)
 }
 
 static int
-orchlua_write(lua_State *L)
+orchlua_process_write(lua_State *L)
 {
+	struct orch_process *self;
 	const char *buf;
 	size_t bufsz, totalsz;
 	ssize_t writesz;
 	int fd;
 
-	buf = luaL_checklstring(L, 1, &bufsz);
-	fd = orchlua_cfg.termctl;
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	buf = luaL_checklstring(L, 2, &bufsz);
+	fd = self->termctl;
 	totalsz = 0;
 	while (totalsz < bufsz) {
 		writesz = write(fd, &buf[totalsz], bufsz - totalsz);
@@ -246,52 +296,89 @@ orchlua_write(lua_State *L)
 	return (1);
 }
 
-/* Only true if we have read up to the eof, of course. */
-static int
-orchlua_eof(lua_State *L)
-{
 
-	lua_pushboolean(L, orchlua_cfg.termctl == -1);
+static int
+orchlua_process_release(lua_State *L)
+{
+	struct orch_process *self;
+	ssize_t wsz;
+	int buf = 0, err;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if ((wsz = write(self->cmdsock, &buf, sizeof(buf))) != sizeof(buf)) {
+		err = errno;
+		luaL_pushfail(L);
+		if (wsz < 0)
+			lua_pushstring(L, strerror(err));
+		else
+			lua_pushstring(L, "cmd socket closed");
+		return (2);
+	}
+
+	self->released = true;
+
+	lua_pushboolean(L, 1);
 	return (1);
 }
 
 static int
-orchlua_released(lua_State *L)
+orchlua_process_released(lua_State *L)
 {
+	struct orch_process *self;
 
-	lua_pushboolean(L, orchlua_cfg.released);
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	lua_pushboolean(L, self->released);
 	return (1);
 }
 
 static int
-orchlua_exit(lua_State *L)
+orchlua_process_eof(lua_State *L)
 {
+	struct orch_process *self;
 
-	exit(lua_toboolean(L, 1) ? 0 : 1);
-}
-
-static int
-orchlua_time(lua_State *L)
-{
-	time_t t;
-
-	t = time(NULL);
-	lua_pushnumber(L, t);
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	lua_pushboolean(L, self->eof);
 	return (1);
 }
 
-#define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
-static const struct luaL_Reg orchlib[] = {
-	REG_SIMPLE(release),
-	REG_SIMPLE(released),
-	REG_SIMPLE(open),
-	REG_SIMPLE(read),
-	REG_SIMPLE(write),
-	REG_SIMPLE(eof),
-	REG_SIMPLE(exit),
-	REG_SIMPLE(time),
+static int
+orchlua_process_gc(lua_State *L)
+{
+
+	/* XXX reap child */
+	fprintf(stderr, "GC Called\n");
+	return (0);
+}
+
+#define	PROCESS_SIMPLE(n)	{ #n, orchlua_process_ ## n }
+static const luaL_Reg orchlua_process[] = {
+	PROCESS_SIMPLE(read),
+	PROCESS_SIMPLE(write),
+	PROCESS_SIMPLE(release),
+	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(eof),
 	{ NULL, NULL },
 };
+
+static const luaL_Reg orchlua_process_meta[] = {
+	{ "__index", NULL },	/* Set during registration */
+	{ "__gc", orchlua_process_gc },
+	{ "__close", orchlua_process_gc },
+	{ NULL, NULL },
+};
+
+static void
+register_process_metatable(lua_State *L)
+{
+	luaL_newmetatable(L, ORCHLUA_PROCESSHANDLE);
+	luaL_setfuncs(L, orchlua_process_meta, 0);
+
+	luaL_newlibtable(L, orchlua_process);
+	luaL_setfuncs(L, orchlua_process, 0);
+	lua_setfield(L, -2, "__index");
+
+	lua_pop(L, 1);
+}
 
 void
 orchlua_configure(struct orch_interp_cfg *cfg)
@@ -299,7 +386,6 @@ orchlua_configure(struct orch_interp_cfg *cfg)
 
 	orchlua_cfg = *cfg;
 	orchlua_cfg.dirfd = -1;
-	orchlua_cfg.released = false;
 }
 
 /*
@@ -336,7 +422,7 @@ luaopen_orch(lua_State *L)
 			script = fpath;
 		}
 
-		dirfd = open(scriptroot, O_DIRECTORY | O_PATH);
+		dirfd = open(scriptroot, O_DIRECTORY | O_PATH | O_CLOEXEC);
 		if (dirfd == -1)
 			err(1, "%s", fpath);
 
@@ -349,6 +435,15 @@ luaopen_orch(lua_State *L)
 
 	lua_pushstring(L, script);
 	lua_setfield(L, -2, "script");
+
+	lua_createtable(L, orchlua_cfg.argc, 0);
+	for (int i = 0; i < orchlua_cfg.argc; i++) {
+		lua_pushstring(L, orchlua_cfg.argv[i]);
+		lua_rawseti(L, -2, i + 1);
+	}
+	lua_setglobal(L, "arg");
+
+	register_process_metatable(L);
 
 	return (1);
 }

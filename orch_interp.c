@@ -16,7 +16,7 @@
 #endif
 
 int
-orch_interp(const char *scriptf, int cmdsock, int termctl)
+orch_interp(const char *scriptf, int argc, const char *argv[])
 {
 	lua_State *L;
 
@@ -26,8 +26,8 @@ orch_interp(const char *scriptf, int cmdsock, int termctl)
 
 	orchlua_configure(&(struct orch_interp_cfg) {
 	    .scriptf = scriptf,
-	    .cmdsock = cmdsock,
-	    .termctl = termctl,
+		.argc = argc,
+		.argv = argv,
 	});
 
 	/* Open lua's standard library */

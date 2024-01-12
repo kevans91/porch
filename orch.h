@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <sys/types.h>
+
 #include <stdbool.h>
 
 #include <lua.h>
@@ -14,14 +16,24 @@
 
 struct orch_interp_cfg {
 	const char		*scriptf;
-	int			 cmdsock;
-	int			 termctl;
 	int			 dirfd;
-	bool			 released;
+	int			 argc;
+	const char		**argv;
 };
 
+struct orch_process {
+	int			 cmdsock;
+	pid_t			 pid;
+	int			 termctl;
+	bool			 released;
+	bool			 eof;
+};
+
+/* orch.c */
+int orch_spawn(int, const char *[], struct orch_process *);
+
 /* orch_interp.c */
-int orch_interp(const char *, int, int);
+int orch_interp(const char *, int argc, const char *argv[]);
 
 /* orch_lua.c */
 void orchlua_configure(struct orch_interp_cfg *);

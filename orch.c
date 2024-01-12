@@ -16,7 +16,7 @@
 
 #include "orch.h"
 
-static void orch_exec(int argc, char *argv[], int cmdsock);
+static void orch_exec(int argc, const char *argv[], int cmdsock);
 static int orch_newpt(void);
 static pid_t orch_newsess(void);
 static void orch_usept(pid_t sess, int termctl);
@@ -40,9 +40,7 @@ usage(int error)
 int
 main(int argc, char *argv[])
 {
-	int ch, termctl;
-	pid_t pid, sess;
-	int cmdsock[2];
+	int ch;
 
 	while ((ch = getopt(argc, argv, "h")) != -1) {
 		switch (ch) {
@@ -59,10 +57,19 @@ main(int argc, char *argv[])
 	if (argc == 0)
 		usage(1);
 
+	return (orch_interp("-", argc, argv));
+}
+
+int
+orch_spawn(int argc, const char *argv[], struct orch_process *p)
+{
+	int cmdsock[2];
+	pid_t pid, sess;
+
 	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, &cmdsock[0]) == -1)
 		err(1, "socketpair");
 
-	termctl = orch_newpt();
+	p->termctl = orch_newpt();
 
 	pid = fork();
 	if (pid == -1) {
@@ -72,12 +79,16 @@ main(int argc, char *argv[])
 		close(cmdsock[0]);
 		sess = orch_newsess();
 
-		orch_usept(sess, termctl);
-		close(termctl);
-		termctl = -1;
+		orch_usept(sess, p->termctl);
+		close(p->termctl);
+		p->termctl = -1;
 
 		orch_exec(argc, argv, cmdsock[1]);
 	}
+
+	p->released = false;
+	p->pid = pid;
+	p->cmdsock = cmdsock[0];
 
 	/* Parent */
 	close(cmdsock[1]);
@@ -86,9 +97,9 @@ main(int argc, char *argv[])
 	 * Stalls until the tty is configured, completely side step races from
 	 * script writing to the tty before, e.g., echo is disabled.
 	 */
-	orch_wait(cmdsock[0]);
-
-	return (orch_interp("-", cmdsock[0], termctl));
+	/* XXX Don't fail? */
+	orch_wait(p->cmdsock);
+	return (0);
 }
 
 static void
@@ -113,7 +124,7 @@ orch_release(int cmdsock)
 }
 
 static void
-orch_exec(int argc, char *argv[], int cmdsock)
+orch_exec(int argc, const char *argv[], int cmdsock)
 {
 
 	/* Let the script commence. */
@@ -130,7 +141,7 @@ orch_exec(int argc, char *argv[], int cmdsock)
 	 */
 	orch_wait(cmdsock);
 
-	execvp(argv[0], argv);
+	execvp(argv[0], (char * const *)argv);
 	_exit(1);
 }
 

@@ -7,6 +7,7 @@
 local impl = require("orch_impl")
 
 local execute, match_ctx_stack
+local process
 
 -- Sometimes a queue, sometimes a stack.  Oh well.
 local Queue = {}
@@ -111,8 +112,8 @@ end
 function MatchBuffer:refill(action, timeout)
 	assert(not self.eof)
 
-	if not impl.released() then
-		impl.release()
+	if not process:released() then
+		process:release()
 	end
 	local function refill(input)
 		if not input then
@@ -132,9 +133,9 @@ function MatchBuffer:refill(action, timeout)
 
 	-- XXX action.timeout
 	if timeout then
-		impl.read(refill, timeout)
+		process:read(refill, timeout)
 	else
-		impl.read(refill)
+		process:read(refill)
 	end
 end
 function MatchBuffer:match(action)
@@ -281,13 +282,18 @@ local function include_file(file)
 end
 
 local function do_write(action)
-	assert(impl.write(action.data))
+	assert(process:write(action.data))
 	return true
 end
 
 local function do_one(obj)
 	match_ctx_stack:push(obj.match_ctx)
 	return false
+end
+
+function do_release()
+	process:release()
+	return true
 end
 
 -- Setup the various bits of orch_env
@@ -318,7 +324,7 @@ function orch_env.write(str)
 end
 
 function orch_env.release()
-	local action_obj = MatchAction:new("release", impl.release)
+	local action_obj = MatchAction:new("release", do_release)
 	match_ctx:push(action_obj)
 	return true
 end
@@ -378,6 +384,10 @@ local function run_script()
 
 	return true
 end
+
+-- Should be guaranteed down in the C layer
+assert(#arg > 0)
+process = assert(impl.spawn(table.unpack(arg)))
 
 include_file(impl.script)
 --match_ctx_stack:dump()
