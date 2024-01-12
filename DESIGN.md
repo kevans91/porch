@@ -15,11 +15,11 @@ have some configuration, including an optional callback.
 
 ```
 -- match() returns a closure of orchlua_matchcfg
-orch.match "pattern" {
+match "pattern" {
 	<config>
 }
 
-orch.match "pattern-two"
+match "pattern-two"
 
 -- one() will be enqueued; when the queue gets to it,
 -- it will execute the callback in a new protected
@@ -27,9 +27,9 @@ orch.match "pattern-two"
 --
 -- In a `one` context, we'll only ever take the first match
 -- we can satisfy.  The rest are discarded.
-orch.one(function()
-	orch.match "foo"
-	orch.match "bar"
+one(function()
+	match "foo"
+	match "bar"
 end)
 ```
 ## Execution

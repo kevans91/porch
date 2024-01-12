@@ -9,11 +9,14 @@
 #include "orch.h"
 
 #include <lauxlib.h>
+#include <lualib.h>
 
-static int orch_loop(lua_State *, int);
+#ifndef LIBEXEC_PATH
+#define	LIBEXEC_PATH ""
+#endif
 
 int
-orch_interp(const char *scriptf, int termctl)
+orch_interp(const char *scriptf, int cmdsock, int termctl)
 {
 	lua_State *L;
 
@@ -21,10 +24,20 @@ orch_interp(const char *scriptf, int termctl)
 	if (L == NULL)
 		errx(1, "luaL_newstate: out of memory");
 
-	luaL_openlibs(L);
-	luaopen_orch(L, termctl);
+	orchlua_configure(&(struct orch_interp_cfg) {
+	    .scriptf = scriptf,
+	    .cmdsock = cmdsock,
+	    .termctl = termctl,
+	});
 
-	if (luaL_dofile(L, scriptf) != LUA_OK) {
+	/* Open lua's standard library */
+	luaL_openlibs(L);
+
+	/* As well as our internal library */
+	luaL_requiref(L, ORCHLUA_MODNAME, luaopen_orch, 0);
+	lua_pop(L, 1);
+
+	if (luaL_dofile(L, LIBEXEC_PATH "orch.lua") != LUA_OK) {
 		const char *err;
 
 		err = lua_tostring(L, -1);
@@ -34,12 +47,6 @@ orch_interp(const char *scriptf, int termctl)
 		errx(1, "%s", err);
 	}
 
-	return (orch_loop(L, termctl));
-}
-
-static int
-orch_loop(lua_State *L, int termctl)
-{
-
-	return (0);
+	/* Should not be reachable... we go through impl.exit. */
+	return (1);
 }

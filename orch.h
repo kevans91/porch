@@ -8,9 +8,19 @@
 
 #include <lua.h>
 
+#define	ORCHLUA_MODNAME	"orch_impl"
+
+struct orch_interp_cfg {
+	const char		*scriptf;
+	int				 cmdsock;
+	int				 termctl;
+	int				 dirfd;
+	int				 kqfd;
+};
+
 /* orch_interp.c */
-int orch_interp(const char *, int);
+int orch_interp(const char *, int, int);
 
 /* orch_lua.c */
-void luaopen_orch(lua_State *, int);
-size_t orch_minbufsize(lua_State *);
+void orchlua_configure(struct orch_interp_cfg *);
+int luaopen_orch(lua_State *);
