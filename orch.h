@@ -6,16 +6,18 @@
 
 #pragma once
 
+#include <stdbool.h>
+
 #include <lua.h>
 
 #define	ORCHLUA_MODNAME	"orch_impl"
 
 struct orch_interp_cfg {
 	const char		*scriptf;
-	int				 cmdsock;
-	int				 termctl;
-	int				 dirfd;
-	int				 kqfd;
+	int			 cmdsock;
+	int			 termctl;
+	int			 dirfd;
+	bool			 released;
 };
 
 /* orch_interp.c */

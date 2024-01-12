@@ -111,6 +111,9 @@ end
 function MatchBuffer:refill(action, timeout)
 	assert(not self.eof)
 
+	if not impl.released() then
+		impl.release()
+	end
 	local function refill(input)
 		if not input then
 			self.eof = true

@@ -83,7 +83,8 @@ main(int argc, char *argv[])
 	close(cmdsock[1]);
 
 	/*
-	 * Stalls until the tty is configured.
+	 * Stalls until the tty is configured, completely side step races from
+	 * script writing to the tty before, e.g., echo is disabled.
 	 */
 	orch_wait(cmdsock[0]);
 

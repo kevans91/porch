@@ -44,6 +44,7 @@ orchlua_release(lua_State *L)
 		return (2);
 	}
 
+	orchlua_cfg.released = true;
 	lua_pushboolean(L, 1);
 	return (1);
 }
@@ -255,6 +256,14 @@ orchlua_eof(lua_State *L)
 }
 
 static int
+orchlua_released(lua_State *L)
+{
+
+	lua_pushboolean(L, orchlua_cfg.released);
+	return (1);
+}
+
+static int
 orchlua_exit(lua_State *L)
 {
 
@@ -274,6 +283,7 @@ orchlua_time(lua_State *L)
 #define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
 static const struct luaL_Reg orchlib[] = {
 	REG_SIMPLE(release),
+	REG_SIMPLE(released),
 	REG_SIMPLE(open),
 	REG_SIMPLE(read),
 	REG_SIMPLE(write),
@@ -289,6 +299,7 @@ orchlua_configure(struct orch_interp_cfg *cfg)
 
 	orchlua_cfg = *cfg;
 	orchlua_cfg.dirfd = -1;
+	orchlua_cfg.released = false;
 }
 
 /*

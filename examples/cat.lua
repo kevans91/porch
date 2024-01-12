@@ -1,5 +1,7 @@
 -- Executed like `cat cat.lua | ./orch cat`
-release()
+
+-- We get released on first match anyways
+-- release()
 
 write "Send One\r"
 one(function()
