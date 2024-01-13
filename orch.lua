@@ -168,7 +168,7 @@ end
 function MatchContext:error()
 	return self.errors
 end
-function MatchContext:process(buffer)
+function MatchContext:process()
 	local latest = self.last_processed
 	local actions = self:items()
 
@@ -185,6 +185,10 @@ function MatchContext:process(buffer)
 				error("Script did not spawn process prior to matching")
 			end
 
+			-- Another action in this context could have swapped out the process
+			-- from underneath us, so pull the buffer at the last possible
+			-- minute.
+			local buffer = process:buffer()
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
 				if fail then
@@ -210,7 +214,7 @@ function MatchContext:process(buffer)
 
 	return self.last_processed == #actions
 end
-function MatchContext:process_one(buffer)
+function MatchContext:process_one()
 	local actions = self:items()
 	local elapsed = 0
 
@@ -237,6 +241,11 @@ function MatchContext:process_one(buffer)
 		end
 		return low
 	end
+
+	-- The process can't be swapped out by an immediate descendant of a one()
+	-- block, but it could be swapped out by a later block.  We don't care,
+	-- though, because we won't need the buffer anymore.
+	local buffer = process:buffer()
 
 	local start = impl.time()
 	local matched
@@ -323,6 +332,7 @@ end
 
 local function internal_spawn(cmd)
 	local new_process = assert(impl.spawn(table.unpack(cmd)))
+	assert(new_process:buffer(MatchBuffer:new()))
 	return new_process
 end
 
@@ -488,14 +498,12 @@ end
 local function run_script()
 	local done
 
-	local buffer = MatchBuffer:new()
-
 	-- To run the script, we'll grab the back of the context stack and process
 	-- that.
 	while not done do
 		local ctx = match_ctx_stack:back()
 
-		if ctx:process(buffer) then
+		if ctx:process() then
 			match_ctx_stack:remove(ctx)
 			done = match_ctx_stack:empty()
 		elseif ctx:error() then

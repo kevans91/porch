@@ -28,6 +28,7 @@ struct orch_process {
 	bool			 raw;
 	bool			 released;
 	bool			 eof;
+	bool			 buffered;
 };
 
 /* orch.c */

@@ -151,6 +151,33 @@ static const struct luaL_Reg orchlib[] = {
 };
 
 /*
+ * buffer([new buffer]) -- we stash the buffer table in the userdata, it cannot
+ * be swapped out.  Calling it with no arguments returns the buffer attached.
+ */
+static int
+orchlua_process_buffer(lua_State *L)
+{
+	struct orch_process *self;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+
+	if (lua_gettop(L) > 1 && !lua_isnil(L, 2)) {
+		if (self->buffered) {
+			luaL_pushfail(L);
+			lua_pushstring(L, "Buffer already attached");
+			return (2);
+		}
+
+		lua_setuservalue(L, 1);
+		lua_pushboolean(L, 1);
+		return (1);
+	}
+
+	lua_getuservalue(L, 1);
+	return (1);
+}
+
+/*
  * read(callback[, timeout]) -- returns true if we finished, false if we
  * hit EOF, or a fail, error pair otherwise.
  */
@@ -436,6 +463,7 @@ orchlua_process_gc(lua_State *L __unused)
 
 #define	PROCESS_SIMPLE(n)	{ #n, orchlua_process_ ## n }
 static const luaL_Reg orchlua_process[] = {
+	PROCESS_SIMPLE(buffer),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),
 	PROCESS_SIMPLE(raw),
