@@ -301,7 +301,7 @@ end
 
 local function include_file(file)
 	local f = assert(impl.open(file))
-	local chunk = assert(f:read("a"))
+	local chunk = assert(f:read("*a"))	-- * for compatibility with Lua 5.2...
 	local func = assert(load(chunk, file, "t", orch_env))
 
 	return execute(func, true)

@@ -21,6 +21,13 @@
 
 #include <lauxlib.h>
 
+/* We only support Lua 5.2+ */
+
+/* Introduced in Lua 5.4 */
+#ifndef luaL_pushfail
+#define	luaL_pushfail(L)	lua_pushnil(L)
+#endif
+
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
 
 static struct orch_interp_cfg orchlua_cfg;
