@@ -40,10 +40,14 @@ usage(int error)
 int
 main(int argc, char *argv[])
 {
+	const char *scriptf = "-";	/* stdin */
 	int ch;
 
-	while ((ch = getopt(argc, argv, "h")) != -1) {
+	while ((ch = getopt(argc, argv, "f:h")) != -1) {
 		switch (ch) {
+		case 'f':
+			scriptf = optarg;
+			break;
 		case 'h':
 			usage(0);
 		default:
@@ -57,7 +61,7 @@ main(int argc, char *argv[])
 	if (argc == 0)
 		usage(1);
 
-	return (orch_interp("-", argc, argv));
+	return (orch_interp(scriptf, argc, (const char **)argv));
 }
 
 int
