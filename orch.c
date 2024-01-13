@@ -63,7 +63,7 @@ main(int argc, char *argv[])
 	 * simplify things.  If we didn't, then the script just needs to make sure
 	 * that it spawns something before a match/one block.
 	 */
-	return (orch_interp(scriptf, argc, (const char **)argv));
+	return (orch_interp(scriptf, argc, (const char * const *)argv));
 }
 
 int
@@ -130,7 +130,7 @@ orch_release(int cmdsock)
 }
 
 static void
-orch_exec(int argc, const char *argv[], int cmdsock)
+orch_exec(int argc __unused, const char *argv[], int cmdsock)
 {
 
 	/* Let the script commence. */
@@ -147,7 +147,7 @@ orch_exec(int argc, const char *argv[], int cmdsock)
 	 */
 	orch_wait(cmdsock);
 
-	execvp(argv[0], (char * const *)argv);
+	execvp(argv[0], (char * const *)(const void *)argv);
 	_exit(1);
 }
 

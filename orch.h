@@ -18,7 +18,7 @@ struct orch_interp_cfg {
 	const char		*scriptf;
 	int			 dirfd;
 	int			 argc;
-	const char		**argv;
+	const char *const	*argv;
 };
 
 struct orch_process {
@@ -33,7 +33,7 @@ struct orch_process {
 int orch_spawn(int, const char *[], struct orch_process *);
 
 /* orch_interp.c */
-int orch_interp(const char *, int argc, const char *argv[]);
+int orch_interp(const char *, int, const char * const []);
 
 /* orch_lua.c */
 void orchlua_configure(struct orch_interp_cfg *);

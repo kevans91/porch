@@ -21,14 +21,9 @@
 
 #include <lauxlib.h>
 
-#define	ORCHLUA_MATCHKEY	"matches"
-#define	ORCHLUA_MINBUFSZKEY	"minbufsz"
-
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
 
 static struct orch_interp_cfg orchlua_cfg;
-
-static int orch_termctl = -1;
 
 /*
  * Not exported
@@ -343,7 +338,7 @@ orchlua_process_eof(lua_State *L)
 }
 
 static int
-orchlua_process_gc(lua_State *L)
+orchlua_process_gc(lua_State *L __unused)
 {
 
 	/* XXX reap child */
@@ -395,7 +390,7 @@ orchlua_configure(struct orch_interp_cfg *cfg)
 int
 luaopen_orch(lua_State *L)
 {
-	char *script;
+	const char *script;
 	int dirfd;
 
 	luaL_newlib(L, orchlib);

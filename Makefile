@@ -1,4 +1,5 @@
 PROG=	orch
+WARNS?=	6
 
 SRCS=	orch.c	\
 		orch_interp.c \

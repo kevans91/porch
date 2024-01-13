@@ -16,7 +16,7 @@
 #endif
 
 int
-orch_interp(const char *scriptf, int argc, const char *argv[])
+orch_interp(const char *scriptf, int argc, const char * const argv[])
 {
 	lua_State *L;
 
