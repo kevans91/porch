@@ -321,6 +321,12 @@ local function include_file(file)
 	return execute(func, true)
 end
 
+local function internal_spawn(cmd)
+	local new_process = assert(impl.spawn(table.unpack(cmd)))
+	return new_process
+end
+
+
 -- Bits available to the sandbox; orch_env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
@@ -357,7 +363,7 @@ local function do_spawn(obj)
 	if process then
 		error("Tried to spawn '" .. obj.cmd[1] .. "', but process already spawned.")
 	end
-	process = assert(impl.spawn(table.unpack(obj.cmd)))
+	process = internal_spawn(obj.cmd)
 	return true
 end
 
@@ -501,7 +507,7 @@ local function run_script()
 end
 
 if #arg > 0 then
-	process = assert(impl.spawn(table.unpack(arg)))
+	process = internal_spawn(arg)
 end
 
 include_file(impl.script)
