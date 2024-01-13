@@ -307,15 +307,9 @@ local function include_file(file)
 	return execute(func, true)
 end
 
-local function do_write(action)
-	if not process then
-		error("Script did not spawn process prior to writing")
-	end
-
-	assert(process:write(action.data))
-	return true
-end
-
+-- Bits available to the sandbox; orch_env functions are directly exposed, the
+-- below do_*() implementations are the callbacks we use when the main loop goes
+-- to process them.
 local function do_one(obj)
 	match_ctx_stack:push(obj.match_ctx)
 	return false
@@ -337,7 +331,19 @@ local function do_spawn(obj)
 	return true
 end
 
--- Setup the various bits of orch_env
+local function do_write(action)
+	if not process then
+		error("Script did not spawn process prior to writing")
+	end
+
+	assert(process:write(action.data))
+	return true
+end
+
+function orch_env.debug(str)
+	io.stderr:write("DEBUG: " .. str .. "\n")
+end
+
 function orch_env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
@@ -356,26 +362,6 @@ function orch_env.match(pattern)
 
 	match_ctx:push(match_action)
 	return set_cfg
-end
-
-function orch_env.write(str)
-	local action_obj = MatchAction:new("write", do_write)
-	action_obj.data = str
-	match_ctx:push(action_obj)
-	return true
-end
-
-function orch_env.release()
-	local action_obj = MatchAction:new("release", do_release)
-	match_ctx:push(action_obj)
-	return true
-end
-
-function orch_env.spawn(...)
-	local action_obj = MatchAction:new("spawn", do_spawn)
-	action_obj.cmd = { ... }
-	match_ctx:push(action_obj)
-	return true
 end
 
 function orch_env.one(func)
@@ -407,8 +393,17 @@ function orch_env.one(func)
 	return true
 end
 
-function orch_env.debug(str)
-	print(str)
+function orch_env.release()
+	local action_obj = MatchAction:new("release", do_release)
+	match_ctx:push(action_obj)
+	return true
+end
+
+function orch_env.spawn(...)
+	local action_obj = MatchAction:new("spawn", do_spawn)
+	action_obj.cmd = { ... }
+	match_ctx:push(action_obj)
+	return true
 end
 
 function orch_env.timeout(val)
@@ -416,6 +411,13 @@ function orch_env.timeout(val)
 		error("Timeout must be >= 0")
 	end
 	current_timeout = val
+end
+
+function orch_env.write(str)
+	local action_obj = MatchAction:new("write", do_write)
+	action_obj.data = str
+	match_ctx:push(action_obj)
+	return true
 end
 
 local function run_script()
