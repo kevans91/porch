@@ -177,6 +177,10 @@ function MatchContext:process(buffer)
 		if action.type == "match" then
 			local ctx_cnt = match_ctx_stack:count()
 
+			if not process then
+				error("Script did not spawn process prior to matching")
+			end
+
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
 				self.errors = true
@@ -200,6 +204,10 @@ end
 function MatchContext:process_one(buffer)
 	local actions = self:items()
 	local elapsed = 0
+
+	if not process then
+		error("Script did not spawn process prior to matching")
+	end
 
 	-- Return low, high timeout of current batch
 	local function get_timeout()
@@ -300,6 +308,10 @@ local function include_file(file)
 end
 
 local function do_write(action)
+	if not process then
+		error("Script did not spawn process prior to writing")
+	end
+
 	assert(process:write(action.data))
 	return true
 end
@@ -310,7 +322,18 @@ local function do_one(obj)
 end
 
 function do_release()
+	if not process then
+		error("release() called before process spawned.")
+	end
 	process:release()
+	return true
+end
+
+local function do_spawn(obj)
+	if process then
+		error("Tried to spawn '" .. obj.cmd[1] .. "', but process already spawned.")
+	end
+	process = assert(impl.spawn(table.unpack(obj.cmd)))
 	return true
 end
 
@@ -344,6 +367,13 @@ end
 
 function orch_env.release()
 	local action_obj = MatchAction:new("release", do_release)
+	match_ctx:push(action_obj)
+	return true
+end
+
+function orch_env.spawn(...)
+	local action_obj = MatchAction:new("spawn", do_spawn)
+	action_obj.cmd = { ... }
 	match_ctx:push(action_obj)
 	return true
 end
@@ -409,9 +439,9 @@ local function run_script()
 	return true
 end
 
--- Should be guaranteed down in the C layer
-assert(#arg > 0)
-process = assert(impl.spawn(table.unpack(arg)))
+if #arg > 0 then
+	process = assert(impl.spawn(table.unpack(arg)))
+end
 
 include_file(impl.script)
 --match_ctx_stack:dump()

@@ -58,9 +58,11 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (argc == 0)
-		usage(1);
-
+	/*
+	 * If we have a command supplied, we'll spawn() it for the script just to
+	 * simplify things.  If we didn't, then the script just needs to make sure
+	 * that it spawns something before a match/one block.
+	 */
 	return (orch_interp(scriptf, argc, (const char **)argv));
 }
 
