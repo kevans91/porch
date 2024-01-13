@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 12, 2024
+.Dd January 13, 2024
 .Dt ORCH 1
 .Os
 .Sh NAME
@@ -140,6 +140,10 @@ The
 function is not available as a direct child of a
 .Fn one
 block.
+.It Fn raw "boolean"
+Changes the raw
+.Fn write
+state on the process.
 .It Fn release
 Releases a spawned process for execution.
 This is done implicitly when a
@@ -172,6 +176,29 @@ This directive is processed immediately.
 Write
 .Fa str
 to stdin of the spawned process.
+If the process is in
+.Fn raw
+mode, then
+.Fn write
+will write the entire
+.Fn str
+out as given.
+If the process is not in
+.Fn raw
+mode, which is the default, then escape sequences and control characters will be
+processed.
+Note that lua strings are naturally escape-processed in addition to any escaping
+done by
+.Nm .
+For example, if one wants to send a literal
+.Dq "^D"
+in non-raw mode, then
+.\" This isn't not ironic at all.
+.Dq "\\\\\\\\^D"
+is the correct sequence to do so.
+The first backslash escapes the second backslash, then
+.Nm
+sees just a single backslash preceding the circumflex.
 .Pp
 This directive is enqueued, not processed immediately.
 Execution does not continue to the next command until the

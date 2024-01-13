@@ -334,6 +334,14 @@ local function do_one(obj)
 	return false
 end
 
+local function do_raw(obj)
+	if not process then
+		error("raw() called before process spawned.")
+	end
+	process:raw(obj.value)
+	return true
+end
+
 local function do_release()
 	if not process then
 		error("release() called before process spawned.")
@@ -423,6 +431,13 @@ function orch_env.one(func)
 	-- action.
 	match_ctx = parent_ctx
 
+	return true
+end
+
+function orch_env.raw(val)
+	local action_obj = MatchAction:new("raw", do_raw)
+	action_obj.value = val
+	match_ctx:push(action_obj)
 	return true
 end
 

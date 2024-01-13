@@ -134,7 +134,7 @@ orchlua_spawn(lua_State *L)
 	}
 
 	proc = lua_newuserdata(L, sizeof(*proc));
-	proc->eof = proc->released = false;
+	proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 	orch_spawn(argc, argv, proc);
@@ -272,12 +272,77 @@ orchlua_process_write(lua_State *L)
 {
 	struct orch_process *self;
 	const char *buf;
-	size_t bufsz, totalsz;
+	char *processed;
+	size_t bufsz, procsz, totalsz;
 	ssize_t writesz;
 	int fd;
+	bool quoted;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	buf = luaL_checklstring(L, 2, &bufsz);
+	processed = NULL;
+	quoted = false;
+
+	if (self->raw)
+		goto sendit;
+
+	processed = malloc(bufsz);
+	if (processed == NULL) {
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(ENOMEM));
+		return (2);
+	}
+
+	procsz = 0;
+
+	/*
+	 * If we're not in raw mode, we process some sequences that would not
+	 * normally be processed.
+	 */
+	for (size_t i = 0; i < bufsz; i++) {
+		char c, esc;
+
+		c = buf[i];
+		if (quoted) {
+			quoted = false;
+			processed[procsz++] = c;
+			continue;
+		}
+
+		switch (c) {
+		case '^':
+			if (i == bufsz - 1) {
+				free(processed);
+				luaL_pushfail(L);
+				lua_pushstring(L, "Incomplete CNTRL character at end of buffer");
+				return (2);
+			}
+
+			esc = buf[i + 1];
+			if (esc < 0x40 /* @ */ || esc > 0x5f /* _ */) {
+				free(processed);
+				luaL_pushfail(L);
+				lua_pushfstring(L, "Invalid escape of '%c'", esc);
+				return (2);
+			}
+
+			processed[procsz++] = esc - 0x40;
+
+			/* Eat the next character. */
+			i++;
+			break;
+		case '\\':
+			quoted = true;
+			break;
+		default:
+			processed[procsz++] = c;
+			break;
+		}
+	}
+
+	buf = processed;
+	bufsz = procsz;
+sendit:
 	fd = self->termctl;
 	totalsz = 0;
 	while (totalsz < bufsz) {
@@ -289,16 +354,32 @@ orchlua_process_write(lua_State *L)
 
 			luaL_pushfail(L);
 			lua_pushstring(L, strerror(err));
+			free(processed);
 			return (2);
 		}
 
 		totalsz += writesz;
 	}
 
+	free(processed);
 	lua_pushnumber(L, totalsz);
 	return (1);
 }
 
+static int
+orchlua_process_raw(lua_State *L)
+{
+	struct orch_process *self;
+	bool wasraw;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	wasraw = self->raw;
+	if (lua_gettop(L) > 1)
+		self->raw = lua_toboolean(L, 2);
+
+	lua_pushboolean(L, wasraw);
+	return (1);
+}
 
 static int
 orchlua_process_release(lua_State *L)
@@ -357,6 +438,7 @@ orchlua_process_gc(lua_State *L __unused)
 static const luaL_Reg orchlua_process[] = {
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),
+	PROCESS_SIMPLE(raw),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
 	PROCESS_SIMPLE(eof),

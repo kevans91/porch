@@ -25,6 +25,7 @@ struct orch_process {
 	int			 cmdsock;
 	pid_t			 pid;
 	int			 termctl;
+	bool			 raw;
 	bool			 released;
 	bool			 eof;
 };
