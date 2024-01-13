@@ -1,5 +1,4 @@
 PROG=	orch
-MAN=
 
 SRCS=	orch.c	\
 		orch_interp.c \

@@ -2,6 +2,7 @@
 *.o
 *.debug
 *.full
+*.gz
 .depend
 orch
 ktrace.out

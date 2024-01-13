@@ -33,7 +33,7 @@ usage(int error)
 	else
 		f = stderr;
 
-	fprintf(f, "usage: %s [-h] command [argument ...]\n", getprogname());
+	fprintf(f, "usage: %s [-f file] [command [argument ...]]\n", getprogname());
 	exit(error);
 }
 

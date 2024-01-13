@@ -1,0 +1,354 @@
+.\"
+.\" Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.Dd January 12, 2024
+.Dt ORCH 1
+.Os
+.Sh NAME
+.Nm orch
+.Nd Utility to orchestrate command line tools
+.Sh SYNOPSIS
+.Nm
+.Op Fl f Ar scriptfile
+.Op Ar command Op Ar argument ..
+.Nm
+.Op Fl h
+.Sh DESCRIPTION
+The
+.Nm
+utility allows scripted interactions with other command line tools.
+.Pp
+All uses of
+.Nm
+follow a specific pattern: spawn a command, optionally write to its stdin, check
+for patterns in its stdout.
+The last two steps may be interleaved in interesting ways based on program
+behavior and interaction.
+When
+.Nm
+spawns a command, it sets up a new
+.Xr pts 4
+and disables input echo on it.
+The command is not executed immediately, but instead waits for a release from
+the user script before processing.
+This is done so that the
+.Ar scriptfile
+may queue up some input to the program before it begins execution.
+Releasing a process can be done either manually with the below-described
+.Fn release
+function, or it will happen implicitly when
+.Nm
+attempts to process the first
+.Fn match
+block.
+.Pp
+The following options are available:
+.Bl -tag -width indent
+.It Fl f Ar scriptfile
+Uses the named
+.Ar scriptfile
+as the script to execute.
+Specifying
+.Dq -
+directs
+.Nm
+to read the script from stdin, and is the default behavior.
+.It Fl h
+Show a usage statement.
+.El
+.Pp
+If a
+.Ar command
+is specified, then
+.Nm
+will spawn it before executing the specified
+.Ar scriptfile .
+Execution will still be stalled until released, as described above.
+.Ss Script Files
+.Nm
+script files are Lua with a limited environment available.
+Notably, absolutely none of the standard environment is included.
+.Nm
+scripts are built around constructing
+.Fn match
+blocks, sometimes in conjunction with multiplexing
+.Fn one
+blocks.
+.Pp
+.Fn match
+blocks in the same context are executed in the specified order.
+When a match is successful, the beginning of the program output buffer is
+trimmed up to the character just after the successful match.
+Future
+.Fn match
+blocks are left with the trimmed output buffer to match against.
+The default timeout for a match to succeed is 10 seconds, and may be changed
+by specifying a
+.Ar timeout
+parameter in the match configuration.
+The timeout may also be changed globally for future match blocks with the
+.Fn timeout
+function described below.
+.Fn match
+blocks may also have a
+.Ar callback
+specified, which itself may contain any number of
+.Fn match
+or
+.Fn one
+blocks.
+.Pp
+The following functions exist for usage within the
+.Ar scriptfile :
+.Bl -tag -width indent
+.It Fn debug "string"
+Writes
+.Fa string
+out to the stderr of
+.Nm ,
+with
+.Dq DEBUG:
+prepended and a newline appended to it.
+.Pp
+This directive is processed immediately.
+.It Fn release
+Releases a spawned process for execution.
+This is done implicitly when a
+.Fn match
+block is first encountered.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn spawn "..."
+Spawns a new process.
+The arguments to
+.Fn spawn
+are in the traditional argv style.
+They may either be specified directly as arguments to the function, or they may
+instead be constructed as a single table.
+If the process cannot be spawned, then
+.Nm
+will exit.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn timeout "val"
+Adjust the default timeout to
+.Fa val
+seconds for subsequent
+.Fn match
+blocks.
+The default timeout at script start is 10 seconds.
+.Pp
+This directive is processed immediately.
+.It Fn write "str"
+Write
+.Fa str
+to stdin of the spawned process.
+.Pp
+This directive is enqueued, not processed immediately.
+Execution does not continue to the next command until the
+.Fa str
+has been completely written.
+.El
+.Ss Match Blocks
+The
+.Dq match
+blocks are the core primitive of
+.Nm
+scripts.
+Setting them up sounds complicated, but some Lua-supplied sugar actually makes
+construction of
+.Fn match
+blocks relatively elegant.
+More on this will be demonstrated in the
+.Sx EXAMPLES
+section.
+.Pp
+The
+.Fn match
+function takes exactly one argument: a pattern to match against.
+These patterns are Lua patterns, used without modification to check the output
+buffer.
+The
+.Fn match
+returns an anonymous function that may be called again with a table to describe
+the properties of the
+.Fn match
+block.
+.Pp
+The following properties are available:
+.Bl -tag -width indent
+.It Va callback
+Specifies a function to call if the match succeeds.
+The
+.Va callback
+function may itself construct additional
+.Dq match /
+.Dq any
+blocks, that will then be used for output matching before proceeding after the
+successfully matched
+.Fn match
+block.
+.It Va timeout
+Overrides the current global timeout.
+The
+.Va timeout
+value is measured in seconds.
+.El
+.Ss One Blocks
+Constructing a
+Dq one
+block is as simple as calling
+.Fn one .
+The
+.Fn one
+function takes a callback as its argument, and this function should setup two or
+more
+.Fn match
+blocks to multiplex between.
+The first matching pattern, as specified in script order, will be used and the
+rest of the block discarded.
+The usual rules of
+.Fn match
+blocks apply at this point; the callback will be executed, and the callback may
+also do further matching.
+.Pp
+Note that
+.Va timeout
+likely does work in a
+.Fn one
+block as you might expect.
+.Nm
+will effectively wait the full length of the longest timeout for any of the
+.Fn match
+blocks that it contains.
+If some blocks have shorter timeouts than others, then
+.Nm
+will timeout after the shortest timeout it sees in the block at the time.
+If the shorter timeout block still doesn't match, it will be removed from
+consideration and we will wait up until the next shortest timeout would have
+expired.
+That is, a match will not be granted if the matching output comes in after the
+timeout would have elapsed, even if we are still waiting on input for other
+blocks.
+.Sh EXIT STATUS
+The
+.Nm
+utility exits 0 on success, and >0 if an error occurs.
+A
+.Fn match
+block failing is considered an error, unless it's within a
+.Fn one
+block.
+All blocks in a
+.Fn one
+block must fail to be considered an error.
+.Sh EXAMPLES
+This listing demonstrates the basic features:
+.Bd -literal -offset indent
+-- Literally spawns a new command: "Hello there", that we will be examining.
+spawn("echo", "Hello there")
+
+-- Sets a new default for subsequent match blocks
+timeout(3)
+
+-- Just matches the initial "Hello", output buffer now contains " there" to
+-- match against.
+match "Hello"
+
+-- You're also welcome to do this, if it feels more natural to you:
+match("t")
+
+-- This is effectively ignored since the only match block after it specifies an
+-- explicit timeout.  If we had another match block after that one, though, then
+-- it would use a one second timeout by default.
+timeout(1)
+
+-- This one will fail to match, but we've configured a higher timeout than the
+-- global timeout we configured above (one second).
+match "Friend" {
+	timeout = 5,
+}
+.Ed
+.Pp
+This block demonstrates bidirectional communication:
+.Bd -literal -offset indent
+spawn("cat")
+
+-- The tty we setup is in canonical mode by default, so the trailing \\r is
+-- necessary for the spawned process to read it (unless the process turns off
+-- canonical mode).
+write "Hello there\\r"
+
+match "Hello" {
+	callback = function()
+		debug("Hello matched")
+	end
+}
+.El
+.Pp
+This block demonstrates more complex nested match blocks:
+.Bd -literal -offset indent
+spawn("cat")
+
+write "Hello world\\r"
+
+match "Hello" {
+	callback = function()
+		-- This will match the world sent above...
+		match "world" {
+			callback = function()
+				-- ... and additionally write "FRIENDS" out
+				write "FRIENDS\\r"
+			end
+		}
+	end
+}
+
+match "FRIENDS" {
+	callback = function()
+		debug "FRIENDS seen!"
+	end
+}
+.Pp
+This block demonstrates one blocks:
+.Bd -literal -offset indent
+spawn("cat")
+
+write "One\\r"
+
+-- These might feel a little bit awkward
+one(function()
+	-- This match block will end up used because it's specified first.
+	match "ne" {
+		callback = function()
+			debug("This one will be called.")
+
+			-- Script execution continues after the one() block that contains
+			-- this match.
+
+			write "One\\r"
+		end
+	}
+
+	-- This match block will effectively be thrown away.
+	match "One" {
+		callback = function()
+			debug("This one will not be called")
+		end
+	}
+end)
+
+-- This one will match, because the "ne" block's callback wrote it out.
+match "One"
+.Ed
+.Sh SEE ALSO
+.Xr expect 1
+.Sh AUTHORS
+.Nm
+was written by
+.An Kyle Evans Aq Mt kevans@FreeBSD.org
+for the express purpose of testing
+.Xr tty 4
+behavior.

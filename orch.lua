@@ -402,6 +402,12 @@ end
 function orch_env.spawn(...)
 	local action_obj = MatchAction:new("spawn", do_spawn)
 	action_obj.cmd = { ... }
+	if type(action_obj.cmd[1]) == "table" then
+		if #action_obj.cmd > 1 then
+			error("spawn: bad mix of table and additional arguments")
+		end
+		action_obj.cmd = table.unpack(action_obj.cmd)
+	end
 	match_ctx:push(action_obj)
 	return true
 end
