@@ -460,6 +460,8 @@ function orch_env.spawn(...)
 	return true
 end
 
+orch_env.string = string
+
 function orch_env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")
