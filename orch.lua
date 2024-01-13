@@ -6,7 +6,7 @@
 
 local impl = require("orch_impl")
 
-local execute, match_ctx_stack
+local execute, match_ctx, match_ctx_stack
 local fail
 local process
 local current_timeout = 10
@@ -334,7 +334,7 @@ local function do_one(obj)
 	return false
 end
 
-function do_release()
+local function do_release()
 	if not process then
 		error("release() called before process spawned.")
 	end
