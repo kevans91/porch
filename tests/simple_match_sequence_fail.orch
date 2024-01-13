@@ -1,0 +1,6 @@
+timeout(1)
+write "Fish Dog\r"
+
+-- Dog fast forwards the buffer to the end of Dog, then Fish should fail.
+match "Dog"
+match "Fish"

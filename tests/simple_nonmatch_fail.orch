@@ -1,0 +1,5 @@
+-- This will timeout since Hello != Biscuits
+
+timeout(1)
+write "Hello\r"
+match "Biscuits"

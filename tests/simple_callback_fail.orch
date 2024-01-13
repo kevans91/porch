@@ -1,0 +1,10 @@
+timeout(1)
+
+write "Hello\r"
+match "Hello" {
+	callback = function()
+		write "Monkies!\r"
+	end
+}
+
+match "There"

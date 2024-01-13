@@ -1,0 +1,25 @@
+timeout(1)
+
+-- Demonstrate that only one of the matches will proceed.
+write "ZOO\r"
+one(function()
+	match "OO" {
+		callback = function()
+			-- First demonstrate that it works
+			write "Monkies\r"
+			match "Monkies"
+		end
+	}
+	match "ZOO"
+end)
+
+write "ZOO\r"
+one(function()
+	match "OO" {
+		callback = function()
+			-- Now do it again, but fail.
+			match "Monkies"
+		end
+	}
+	match "ZOO"
+end)
