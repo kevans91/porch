@@ -25,19 +25,8 @@ echo "1..$#"
 
 for f in $simple_tests $one_tests; do
 	testf="$scriptdir/$f.orch"
-	case "$f" in
-	*_fail)
-		expected=1
-		;;
-	*)
-		expected=0
-		;;
-	esac
 
-	"$orchbin" -f "$testf" -- cat
-	rc="$?"
-
-	if [ "$rc" -eq "$expected" ]; then
+	if "$orchbin" -f "$testf" -- cat; then
 		res="ok"
 	else
 		fails=$((fails + 1))

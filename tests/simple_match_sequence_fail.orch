@@ -3,4 +3,11 @@ write "Fish Dog\r"
 
 -- Dog fast forwards the buffer to the end of Dog, then Fish should fail.
 match "Dog"
+
+fail(function()
+	exit(0)
+end)
+
 match "Fish"
+
+exit(1)

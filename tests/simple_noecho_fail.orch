@@ -2,5 +2,11 @@
 -- unless the tty is configured to echo.  That would invalidate a good chunk of
 -- our tests.
 timeout(1)
+fail(function()
+	exit(0)
+end)
+
 write "Hello"
 match "Hello"
+
+exit(1)

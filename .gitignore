@@ -1,5 +1,6 @@
 .*.swp
 *.o
+*.core
 *.debug
 *.full
 *.gz

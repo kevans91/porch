@@ -17,9 +17,17 @@ write "ZOO\r"
 one(function()
 	match "OO" {
 		callback = function()
+			fail(function()
+				exit(0)
+			end)
+
 			-- Now do it again, but fail.
 			match "Monkies"
 		end
 	}
-	match "ZOO"
+	match "ZOO" {
+		callback = function()
+			exit(1)
+		end
+	}
 end)
