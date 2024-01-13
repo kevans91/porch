@@ -108,6 +108,9 @@ function MatchBuffer:_matches(action)
 
 	return true
 end
+function MatchBuffer:contents()
+	return self.buffer
+end
 function MatchBuffer:empty()
 	return #self.buffer == 0
 end
@@ -185,7 +188,7 @@ function MatchContext:process(buffer)
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
 				if fail then
-					fail()
+					fail(buffer:contents())
 					return true
 				else
 					self.errors = true
@@ -269,7 +272,7 @@ function MatchContext:process_one(buffer)
 
 	if not matched then
 		if fail then
-			fail()
+			fail(buffer:contents())
 			return true
 		else
 			self.errors = true
