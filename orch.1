@@ -118,7 +118,8 @@ Exit with the designed
 .Fa status
 code.
 .Pp
-This directive is enqueued, not processed immediately.
+This directive is enqueued, not processed immediately unless it's called from
+within a failure handler.
 .It Fn fail "function"
 Sets up a failure handler.
 Pass

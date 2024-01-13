@@ -7,9 +7,21 @@
 local impl = require("orch_impl")
 
 local execute, match_ctx, match_ctx_stack
-local fail
+local fail_callback, in_fail_ctx
 local process
 local current_timeout = 10
+
+local function fail(buffer)
+	if fail_callback then
+		in_fail_ctx = true
+		fail_callback(buffer)
+		in_fail_ctx = false
+
+		return true
+	end
+
+	return false
+end
 
 -- Sometimes a queue, sometimes a stack.  Oh well.
 local Queue = {}
@@ -191,8 +203,7 @@ function MatchContext:process()
 			local buffer = process:buffer()
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
-				if fail then
-					fail(buffer:contents())
+				if fail(buffer:contents()) then
 					return true
 				else
 					self.errors = true
@@ -280,8 +291,7 @@ function MatchContext:process_one()
 	end
 
 	if not matched then
-		if fail then
-			fail(buffer:contents())
+		if fail(buffer:contents()) then
 			return true
 		else
 			self.errors = true
@@ -345,7 +355,7 @@ local function do_exit(obj)
 end
 
 local function do_fail_handler(obj)
-	fail = obj.callback
+	fail_callback = obj.callback
 end
 
 local function do_one(obj)
@@ -391,6 +401,14 @@ function orch_env.debug(str)
 end
 
 function orch_env.exit(code)
+	-- Don't enqueue in a failure context, just exit immediately.  We don't want
+	-- to support, e.g., match blocks upon failure -- the supported way to do
+	-- that is for the script's fail handler to set a local variable in the
+	-- script environment, ignore the error (don't exit), then check it before
+	-- setting up any more match blocks.
+	if in_fail_ctx then
+		os.exit(code)
+	end
 	local exit_action = MatchAction:new("exit", do_exit)
 	exit_action.code = code
 	match_ctx:push(exit_action)
