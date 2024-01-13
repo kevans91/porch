@@ -7,6 +7,7 @@
 local impl = require("orch_impl")
 
 local execute, match_ctx_stack
+local fail
 local process
 local current_timeout = 10
 
@@ -183,8 +184,13 @@ function MatchContext:process(buffer)
 
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
-				self.errors = true
-				return false
+				if fail then
+					fail()
+					return true
+				else
+					self.errors = true
+					return false
+				end
 			end
 
 			-- Even if this is the last element, doesn't matter; we're finished
@@ -262,8 +268,13 @@ function MatchContext:process_one(buffer)
 	end
 
 	if not matched then
-		self.errors = true
-		return false
+		if fail then
+			fail()
+			return true
+		else
+			self.errors = true
+			return false
+		end
 	end
 
 	return true
@@ -310,6 +321,14 @@ end
 -- Bits available to the sandbox; orch_env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
+local function do_exit(obj)
+	os.exit(obj.code)
+end
+
+local function do_fail_handler(obj)
+	fail = obj.callback
+end
+
 local function do_one(obj)
 	match_ctx_stack:push(obj.match_ctx)
 	return false
@@ -342,6 +361,20 @@ end
 
 function orch_env.debug(str)
 	io.stderr:write("DEBUG: " .. str .. "\n")
+end
+
+function orch_env.exit(code)
+	local exit_action = MatchAction:new("exit", do_exit)
+	exit_action.code = code
+	match_ctx:push(exit_action)
+	return true
+end
+
+function orch_env.fail(func)
+	local fail_action = MatchAction:new("fail", do_fail_handler)
+	fail_action.callback = func
+	match_ctx:push(fail_action)
+	return true
 end
 
 function orch_env.match(pattern)

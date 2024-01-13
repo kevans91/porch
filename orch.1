@@ -113,6 +113,33 @@ with
 prepended and a newline appended to it.
 .Pp
 This directive is processed immediately.
+.It Fn exit "status"
+Exit with the designed
+.Fa status
+code.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn fail "function"
+Sets up a failure handler.
+Pass
+.Li nil
+to reset the failure handler.
+The
+.Fa function
+will receive no arguments.
+By default,
+.Nm
+will exit with a status of 1 when a match block fails.
+The failure handler prevents the default exit, but may itself call
+.Fn exit .
+The return value is ignored.
+.Pp
+This directive is enqueued, not processed immediately.
+The
+.Fn fail
+function is not available as a direct child of a
+.Fn one
+block.
 .It Fn release
 Releases a spawned process for execution.
 This is done implicitly when a

@@ -13,6 +13,7 @@ simple_tests="simple_noecho_fail simple_match simple_nonmatch_fail"
 simple_tests="$simple_tests simple_match_sequence simple_match_sequence_fail"
 simple_tests="$simple_tests simple_match_sequence_twice_fail"
 simple_tests="$simple_tests simple_callback simple_callback_fail"
+simple_tests="$simple_tests simple_fail_handler"
 
 timeout_tests="timeout_basic timeout_global timeout_test"
 
