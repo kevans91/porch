@@ -7,6 +7,7 @@
 #include <sys/param.h>
 #include <sys/select.h>
 #include <sys/queue.h>
+#include <sys/wait.h>
 
 #include <assert.h>
 #include <err.h>
@@ -134,6 +135,7 @@ orchlua_spawn(lua_State *L)
 	}
 
 	proc = lua_newuserdata(L, sizeof(*proc));
+	proc->status = 0;
 	proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
@@ -241,9 +243,9 @@ orchlua_process_read(lua_State *L)
 			lua_pushstring(L, strerror(err));
 			return (2);
 		} else if (ret == 0) {
-			luaL_pushfail(L);
-			lua_pushstring(L, "Timeout");
-			return (2);
+			/* Timeout -- not the end of the world. */
+			lua_pushboolean(L, 1);
+			return (1);
 		}
 
 		/* Read it */
@@ -277,11 +279,30 @@ orchlua_process_read(lua_State *L)
 			if (readsz == 0) {
 				self->eof = true;
 
-				/* Don't care about the return value if we hit EOF. */
-				lua_pushboolean(L, 0);
-
 				close(self->termctl);
 				self->termctl = -1;
+
+				/*
+				 * Collect the exit status, if it was signalled then we'll just
+				 * error out for now.
+				 */
+				if (waitpid(self->pid, &self->status, WNOHANG) == self->pid) {
+					if (WIFSIGNALED(self->status)) {
+						luaL_pushfail(L);
+						lua_pushfstring(L,
+						    "spawned process killed with signal '%d'",
+						    WTERMSIG(self->status));
+						return (2);
+					}
+				}
+
+				/*
+				 * We need to be able to distinguish between a disaster scenario
+				 * and possibly business as usual, so we'll return true if we
+				 * hit EOF.  This lets us assert() on the return value and catch
+				 * bad program exits.
+				 */
+				lua_pushboolean(L, 1);
 				return (1);
 			}
 

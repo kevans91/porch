@@ -24,6 +24,7 @@ struct orch_interp_cfg {
 struct orch_process {
 	int			 cmdsock;
 	pid_t			 pid;
+	int			 status;
 	int			 termctl;
 	bool			 raw;
 	bool			 released;

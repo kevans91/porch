@@ -137,9 +137,9 @@ function MatchBuffer:refill(action, timeout)
 	end
 
 	if timeout then
-		process:read(refill, timeout)
+		assert(process:read(refill, timeout))
 	else
-		process:read(refill)
+		assert(process:read(refill))
 	end
 end
 function MatchBuffer:match(action)
