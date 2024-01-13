@@ -413,7 +413,7 @@ luaopen_orch(lua_State *L)
 		const char *scriptroot;
 
 		if ((fpath = realpath(orchlua_cfg.scriptf, &spath[0])) == NULL)
-			err(1, "realpath");
+			err(1, "realpath: %s", orchlua_cfg.scriptf);
 
 		walker = strrchr(fpath, '/');
 		if (walker != NULL) {
@@ -427,7 +427,7 @@ luaopen_orch(lua_State *L)
 
 		dirfd = open(scriptroot, O_DIRECTORY | O_PATH | O_CLOEXEC);
 		if (dirfd == -1)
-			err(1, "%s", fpath);
+			err(1, "open: %s", fpath);
 
 		orchlua_cfg.dirfd = dirfd;
 		lua_pushstring(L, scriptroot);

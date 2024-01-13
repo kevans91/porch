@@ -193,7 +193,7 @@ orch_usept(pid_t sess, int termctl)
 
 	target = open(name, O_RDWR);
 	if (target == -1)
-		err(1, "%s", name);
+		err(1, "open: %s", name);
 
 	if (tcsetsid(target, sess) == -1)
 		err(1, "tcsetsid");
