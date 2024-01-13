@@ -8,6 +8,7 @@ local impl = require("orch_impl")
 
 local execute, match_ctx_stack
 local process
+local current_timeout = 10
 
 -- Sometimes a queue, sometimes a stack.  Oh well.
 local Queue = {}
@@ -131,7 +132,6 @@ function MatchBuffer:refill(action, timeout)
 		end
 	end
 
-	-- XXX action.timeout
 	if timeout then
 		process:read(refill, timeout)
 	else
@@ -140,7 +140,7 @@ function MatchBuffer:refill(action, timeout)
 end
 function MatchBuffer:match(action)
 	if not self:_matches(action) and not self.eof then
-		self:refill(action)
+		self:refill(action, action.timeout)
 	end
 
 	return action.completed
@@ -198,19 +198,36 @@ function MatchContext:process(buffer)
 	return self.last_processed == #actions
 end
 function MatchContext:process_one(buffer)
+	local actions = self:items()
 	local elapsed = 0
 
 	-- Return low, high timeout of current batch
 	local function get_timeout()
-		return 5, 5
+		local low
+
+		for _, action in ipairs(actions) do
+			if action.timeout <= elapsed then
+				goto skip
+			end
+			if low == nil then
+				low = action.timeout
+				goto skip
+			end
+
+			low = math.min(low, action.timeout)
+
+			::skip::
+		end
+		return low
 	end
 
-	local actions = self:items()
+	local start = impl.time()
 	local matched
 
 	local function match_any()
+		local elapsed_now = impl.time() - start
 		for _, action in ipairs(actions) do
-			if buffer:_matches(action) then
+			if action.timeout >= elapsed_now and buffer:_matches(action) then
 				matched = true
 				return true
 			end
@@ -219,20 +236,21 @@ function MatchContext:process_one(buffer)
 		return false
 	end
 
-	local tlo, thi
-	local start = impl.time()
+	local tlo
 
 	while not matched and not buffer.eof do
 		-- We recalculate every iteration to rule out any actions that have
-		-- timed out.
-		tlo, thi = get_timeout()
-
+		-- timed out.  Anything with a timeout lower than our current will be
+		-- ignored for matching.
 		elapsed = impl.time() - start
-		if elapsed >= thi then
+		tlo = get_timeout()
+
+		if tlo == nil then
 			break
 		end
 
-		buffer:refill(match_any, tlo)
+		assert(tlo > elapsed)
+		buffer:refill(match_any, tlo - elapsed)
 	end
 
 	if not matched then
@@ -300,6 +318,7 @@ end
 function orch_env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
+	match_action.timeout = current_timeout
 
 	local function set_cfg(cfg)
 		for k, v in pairs(cfg) do
@@ -349,8 +368,6 @@ function orch_env.one(func)
 		if action.type ~= "match" then
 			error("Type '" .. action.type .. "' not legal in a one() block")
 		end
-
-		-- XXX timeout should be illegal, must set before one() block.
 	end
 
 	-- Return to the parent context; that's the one we'll be acting on
@@ -362,6 +379,13 @@ end
 
 function orch_env.debug(str)
 	print(str)
+end
+
+function orch_env.timeout(val)
+	if val == nil or val < 0 then
+		error("Timeout must be >= 0")
+	end
+	current_timeout = val
 end
 
 local function run_script()

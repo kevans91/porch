@@ -93,10 +93,11 @@ orchlua_exit(lua_State *L)
 static int
 orchlua_time(lua_State *L)
 {
-	time_t t;
+	struct timespec tv;
 
-	t = time(NULL);
-	lua_pushnumber(L, t);
+	assert (clock_gettime(CLOCK_REALTIME_FAST, &tv) == 0);
+
+	lua_pushnumber(L, tv.tv_sec);
 	return (1);
 }
 
