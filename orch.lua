@@ -203,9 +203,7 @@ function MatchContext:process()
 			local buffer = process:buffer()
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
-				if fail(buffer:contents()) then
-					return true
-				else
+				if not fail(buffer:contents()) then
 					self.errors = true
 					return false
 				end
@@ -291,9 +289,7 @@ function MatchContext:process_one()
 	end
 
 	if not matched then
-		if fail(buffer:contents()) then
-			return true
-		else
+		if not fail(buffer:contents()) then
 			self.errors = true
 			return false
 		end
@@ -350,6 +346,22 @@ end
 -- Bits available to the sandbox; orch_env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
+local function do_eof(obj)
+	local buffer = process:buffer()
+	if buffer.eof then
+		return true
+	end
+
+	buffer:refill(nil, obj.timeout)
+	if not buffer.eof then
+		if not fail(buffer:contents()) then
+			return false
+		end
+	end
+
+	return true
+end
+
 local function do_exit(obj)
 	os.exit(obj.code)
 end
@@ -398,6 +410,13 @@ end
 
 function orch_env.debug(str)
 	io.stderr:write("DEBUG: " .. str .. "\n")
+end
+
+function orch_env.eof(timeout)
+	local eof_action = MatchAction:new("eof", do_eof)
+	eof_action.timeout = timeout or current_timeout
+	match_ctx:push(eof_action)
+	return true
 end
 
 function orch_env.exit(code)

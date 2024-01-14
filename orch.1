@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 13, 2024
+.Dd January 14, 2024
 .Dt ORCH 1
 .Os
 .Sh NAME
@@ -113,6 +113,16 @@ with
 prepended and a newline appended to it.
 .Pp
 This directive is processed immediately.
+.It Fn eof "timeout"
+Check for eof from the process.
+If the process has closed its side because it was killed by signal, then
+.Nm
+will crash with an assertion.
+If
+.Fa timeout
+is not specified, the default timeout will be used.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn exit "status"
 Exit with the designed
 .Fa status
