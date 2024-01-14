@@ -88,13 +88,6 @@ orchlua_open(lua_State *L)
 }
 
 static int
-orchlua_exit(lua_State *L)
-{
-
-	exit(lua_toboolean(L, 1) ? 0 : 1);
-}
-
-static int
 orchlua_time(lua_State *L)
 {
 	struct timespec tv;
@@ -148,7 +141,6 @@ orchlua_spawn(lua_State *L)
 #define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
 static const struct luaL_Reg orchlib[] = {
 	REG_SIMPLE(open),
-	REG_SIMPLE(exit),
 	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),
 	{ NULL, NULL },
@@ -551,15 +543,6 @@ orchlua_process_eof(lua_State *L)
 	return (1);
 }
 
-static int
-orchlua_process_gc(lua_State *L __unused)
-{
-
-	/* XXX reap child */
-	fprintf(stderr, "GC Called\n");
-	return (0);
-}
-
 #define	PROCESS_SIMPLE(n)	{ #n, orchlua_process_ ## n }
 static const luaL_Reg orchlua_process[] = {
 	PROCESS_SIMPLE(buffer),
@@ -575,8 +558,8 @@ static const luaL_Reg orchlua_process[] = {
 
 static const luaL_Reg orchlua_process_meta[] = {
 	{ "__index", NULL },	/* Set during registration */
-	{ "__gc", orchlua_process_gc },
-	{ "__close", orchlua_process_gc },
+	{ "__gc", orchlua_process_close },
+	{ "__close", orchlua_process_close },
 	{ NULL, NULL },
 };
 

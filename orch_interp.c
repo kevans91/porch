@@ -19,6 +19,7 @@ int
 orch_interp(const char *scriptf, int argc, const char * const argv[])
 {
 	lua_State *L;
+	int status;
 
 	L = luaL_newstate();
 	if (L == NULL)
@@ -44,9 +45,11 @@ orch_interp(const char *scriptf, int argc, const char * const argv[])
 		if (err == NULL)
 			err = "unknown";
 
-		errx(1, "%s", err);
+		status = 1;
+		fprintf(stderr, "%s\n", err);
+	} else {
+		status = lua_toboolean(L, -1) ? 0 : 1;
 	}
-
-	/* Should not be reachable... we go through impl.exit. */
-	return (1);
+	lua_close(L);
+	return (status);
 }

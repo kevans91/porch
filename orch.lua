@@ -558,4 +558,4 @@ end
 include_file(impl.script)
 --match_ctx_stack:dump()
 
-impl.exit(run_script())
+return run_script()
