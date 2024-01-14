@@ -131,10 +131,12 @@ orchlua_spawn(lua_State *L)
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->status = 0;
 	proc->pid = 0;
-	proc->eof = proc->raw = proc->released = false;
+	proc->buffered = proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 	orch_spawn(argc, argv, proc);
+	free(argv);
+
 	return (1);
 }
 
@@ -165,6 +167,8 @@ orchlua_process_buffer(lua_State *L)
 		}
 
 		lua_setuservalue(L, 1);
+		self->buffered = true;
+
 		lua_pushboolean(L, 1);
 		return (1);
 	}
