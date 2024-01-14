@@ -19,11 +19,13 @@ timeout_tests="timeout_basic timeout_global timeout_test"
 
 one_tests="one_basic one_callback_fail"
 
-tests="$simple_tests $timeout_tests $one_tests"
+spawn_tests="spawn_multi spawn_multi_match"
+
+tests="$simple_tests $timeout_tests $one_tests $spawn_tests"
 set -- $tests
 echo "1..$#"
 
-for f in $simple_tests $one_tests; do
+for f in $simple_tests $one_tests $spawn_tests; do
 	testf="$scriptdir/$f.orch"
 
 	if "$orchbin" -f "$testf" -- cat; then

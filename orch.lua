@@ -393,7 +393,7 @@ end
 
 local function do_spawn(obj)
 	if process then
-		error("Tried to spawn '" .. obj.cmd[1] .. "', but process already spawned.")
+		assert(process:close())
 	end
 	process = internal_spawn(obj.cmd)
 	return true

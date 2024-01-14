@@ -172,6 +172,9 @@ instead be constructed as a single table.
 If the process cannot be spawned, then
 .Nm
 will exit.
+Note that only one process at a time may be matched against.
+If a new process is spawned, then the previous process will be killed and
+subsequent matches will be against the new process.
 .Pp
 This directive is enqueued, not processed immediately.
 .It Fn timeout "val"

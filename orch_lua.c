@@ -13,6 +13,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -136,6 +137,7 @@ orchlua_spawn(lua_State *L)
 
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->status = 0;
+	proc->pid = 0;
 	proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
@@ -176,6 +178,84 @@ orchlua_process_buffer(lua_State *L)
 	}
 
 	lua_getuservalue(L, 1);
+	return (1);
+}
+
+static void
+orchlua_process_close_alarm(int signo __unused)
+{
+	/* XXX Ignored, just don't terminate us. */
+}
+
+static bool
+orchlua_process_killed(struct orch_process *self, int *signo)
+{
+
+	assert(self->pid != 0);
+	if (waitpid(self->pid, &self->status, WNOHANG) != self->pid)
+		return (false);
+
+	if (WIFSIGNALED(self->status))
+		*signo = WTERMSIG(self->status);
+	else
+		*signo = 0;
+	self->pid = 0;
+
+	return (true);
+}
+
+static int
+orchlua_process_close(lua_State *L)
+{
+	struct orch_process *self;
+	pid_t wret;
+	int sig;
+	bool failed;
+
+	failed = false;
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (self->pid != 0 && orchlua_process_killed(self, &sig)) {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "spawned process killed with signal '%d'", sig);
+		return (2);
+	}
+
+	if (self->pid != 0) {
+		signal(SIGALRM, orchlua_process_close_alarm);
+		/* XXX Configurable? */
+		alarm(5);
+		sig = SIGINT;
+again:
+		kill(self->pid, sig);
+		wret = waitpid(self->pid, &self->status, 0);
+		alarm(0);
+		if (wret != self->pid) {
+			failed = true;
+
+			/* If asking nicely didn't work, just kill it. */
+			if (sig != SIGKILL) {
+				sig = SIGKILL;
+				goto again;
+			}
+		}
+
+		signal(SIGALRM, SIG_DFL);
+		self->pid = 0;
+	}
+
+	close(self->cmdsock);
+	self->cmdsock = -1;
+
+	close(self->termctl);
+	self->termctl = -1;
+
+	if (failed) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "could not kill process with SIGINT");
+		return (2);
+	}
+
+	lua_pushboolean(L, 1);
 	return (1);
 }
 
@@ -277,23 +357,18 @@ orchlua_process_read(lua_State *L)
 			lua_call(L, nargs, 1);
 
 			if (readsz == 0) {
+				int signo;
+
 				self->eof = true;
 
 				close(self->termctl);
 				self->termctl = -1;
 
-				/*
-				 * Collect the exit status, if it was signalled then we'll just
-				 * error out for now.
-				 */
-				if (waitpid(self->pid, &self->status, WNOHANG) == self->pid) {
-					if (WIFSIGNALED(self->status)) {
-						luaL_pushfail(L);
-						lua_pushfstring(L,
-						    "spawned process killed with signal '%d'",
-						    WTERMSIG(self->status));
-						return (2);
-					}
+				if (orchlua_process_killed(self, &signo)) {
+					luaL_pushfail(L);
+					lua_pushfstring(L,
+						"spawned process killed with signal '%d'", signo);
+					return (2);
 				}
 
 				/*
@@ -437,7 +512,10 @@ orchlua_process_release(lua_State *L)
 	int buf = 0, err;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if ((wsz = write(self->cmdsock, &buf, sizeof(buf))) != sizeof(buf)) {
+	wsz = write(self->cmdsock, &buf, sizeof(buf));
+	close(self->cmdsock);
+	self->cmdsock = -1;
+	if (wsz != sizeof(buf)) {
 		err = errno;
 		luaL_pushfail(L);
 		if (wsz < 0)
@@ -485,6 +563,7 @@ orchlua_process_gc(lua_State *L __unused)
 #define	PROCESS_SIMPLE(n)	{ #n, orchlua_process_ ## n }
 static const luaL_Reg orchlua_process[] = {
 	PROCESS_SIMPLE(buffer),
+	PROCESS_SIMPLE(close),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),
 	PROCESS_SIMPLE(raw),
