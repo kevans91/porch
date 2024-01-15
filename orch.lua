@@ -113,6 +113,9 @@ function MatchAction:dump(level)
 		self.match_ctx:dump(level + 1)
 	end
 end
+function MatchAction:matches(buffer)
+	return buffer:find(self.pattern)
+end
 
 local MatchBuffer = {}
 function MatchBuffer:new()
@@ -123,7 +126,7 @@ function MatchBuffer:new()
 	return obj
 end
 function MatchBuffer:_matches(action)
-	local first, last = self.buffer:find(action.pattern)
+	local first, last = action:matches(self.buffer)
 
 	if not first then
 		return false
