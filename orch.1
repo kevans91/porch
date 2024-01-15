@@ -112,7 +112,8 @@ with
 .Dq DEBUG:
 prepended and a newline appended to it.
 .Pp
-This directive is processed immediately.
+This directive is enqueued, not processed immediately unless it's called from
+within a failure handler.
 .It Fn eof "timeout"
 Check for eof from the process.
 If the process has closed its side because it was killed by signal, then

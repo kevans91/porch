@@ -346,6 +346,11 @@ end
 -- Bits available to the sandbox; orch_env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
+local function do_debug(action)
+	io.stderr:write("DEBUG: " .. action.message .. "\n")
+	return true
+end
+
 local function do_eof(obj)
 	local buffer = process:buffer()
 	if buffer.eof then
@@ -409,7 +414,14 @@ local function do_write(action)
 end
 
 function orch_env.debug(str)
-	io.stderr:write("DEBUG: " .. str .. "\n")
+	local debug_action = MatchAction:new("debug", do_debug)
+	debug_action.message = str
+	if in_fail_ctx then
+		do_debug(debug_action)
+	else
+		match_ctx:push(debug_action)
+	end
+	return true
 end
 
 function orch_env.eof(timeout)
@@ -420,6 +432,9 @@ function orch_env.eof(timeout)
 end
 
 function orch_env.exit(code)
+	local exit_action = MatchAction:new("exit", do_exit)
+	exit_action.code = code
+
 	-- Don't enqueue in a failure context, just exit immediately.  We don't want
 	-- to support, e.g., match blocks upon failure -- the supported way to do
 	-- that is for the script's fail handler to set a local variable in the
@@ -428,8 +443,7 @@ function orch_env.exit(code)
 	if in_fail_ctx then
 		os.exit(code)
 	end
-	local exit_action = MatchAction:new("exit", do_exit)
-	exit_action.code = code
+
 	match_ctx:push(exit_action)
 	return true
 end
