@@ -16,7 +16,9 @@
 
 #include "orch.h"
 
-static void orch_exec(int argc, const char *argv[], int cmdsock);
+extern char **environ;
+
+static void orch_exec(int spawnfd, int argc, const char *argv[], int cmdsock);
 static int orch_newpt(void);
 static pid_t orch_newsess(void);
 static void orch_usept(pid_t sess, int termctl);
@@ -69,7 +71,7 @@ main(int argc, char *argv[])
 }
 
 int
-orch_spawn(int argc, const char *argv[], struct orch_process *p)
+orch_spawn(int spawnfd, int argc, const char *argv[], struct orch_process *p)
 {
 	int cmdsock[2];
 	pid_t pid, sess;
@@ -91,7 +93,7 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 		close(p->termctl);
 		p->termctl = -1;
 
-		orch_exec(argc, argv, cmdsock[1]);
+		orch_exec(spawnfd, argc, argv, cmdsock[1]);
 	}
 
 	p->released = false;
@@ -132,7 +134,7 @@ orch_release(int cmdsock)
 }
 
 static void
-orch_exec(int argc __unused, const char *argv[], int cmdsock)
+orch_exec(int spawnfd, int argc __unused, const char *argv[], int cmdsock)
 {
 
 	/* Let the script commence. */
@@ -149,7 +151,12 @@ orch_exec(int argc __unused, const char *argv[], int cmdsock)
 	 */
 	orch_wait(cmdsock);
 
-	execvp(argv[0], (char * const *)(const void *)argv);
+	if (spawnfd == -1) {
+		execvp(argv[0], (char * const *)(const void *)argv);
+	} else {
+		fexecve(spawnfd, (char * const *)(const void *)argv, environ);
+	}
+
 	_exit(1);
 }
 

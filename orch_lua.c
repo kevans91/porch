@@ -6,6 +6,7 @@
 
 #include <sys/param.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 #include <sys/queue.h>
 #include <sys/wait.h>
 
@@ -98,12 +99,44 @@ orchlua_time(lua_State *L)
 	return (1);
 }
 
+/*
+ * We'll transform argv[0] into a file based on our own rules.  Relative paths
+ * should be interpreted as relative to the script (dirfd) by default, and we'll
+ * fallback to letting the PATH search happen as usual.  Absolute paths are just
+ * used as-is.  If we didn't have a dirfd (e.g., script fed in via stdin), we'll
+ * just do the PATH search.
+ */
+static int
+orchlua_spawn_file(const char *argv0)
+{
+	struct stat sb;
+	int fd;
+
+	if (*argv0 == '/' || orchlua_cfg.dirfd == -1)
+		return (-1);
+
+	if ((fd = openat(orchlua_cfg.dirfd, argv0,
+	    O_EXEC | O_RESOLVE_BENEATH | O_CLOEXEC)) == -1)
+		return (-1);
+
+	/*
+	 * We'll only use this if it's definitely a file; O_EXEC alone doesn't
+	 * mean that we aren't a direcvtory, since O_SEARCH is an alias for it.
+	 */
+	if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+		close(fd);
+		return (-1);
+	}
+
+	return (fd);
+}
+
 static int
 orchlua_spawn(lua_State *L)
 {
 	struct orch_process *proc;
 	const char **argv;
-	int argc;
+	int argc, spawnfd;
 
 	if (lua_gettop(L) == 0) {
 		luaL_pushfail(L);
@@ -126,7 +159,10 @@ orchlua_spawn(lua_State *L)
 			lua_pushfstring(L, "Argument at index %d not a string", i + 1);
 			return (2);
 		}
+
 	}
+
+	spawnfd = orchlua_spawn_file(argv[0]);
 
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->status = 0;
@@ -134,8 +170,10 @@ orchlua_spawn(lua_State *L)
 	proc->buffered = proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
-	orch_spawn(argc, argv, proc);
+	orch_spawn(spawnfd, argc, argv, proc);
 	free(argv);
+	if (spawnfd >= 0)
+		close(spawnfd);
 
 	return (1);
 }

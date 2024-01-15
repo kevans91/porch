@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 14, 2024
+.Dd January 15, 2024
 .Dt ORCH 1
 .Os
 .Sh NAME
@@ -179,6 +179,19 @@ The arguments to
 are in the traditional argv style.
 They may either be specified directly as arguments to the function, or they may
 instead be constructed as a single table.
+If the command to be spawned is a relative path, then
+.Nm
+will search relative to the script's directory for an executable file of that
+name first.
+If it can find such a file, it will be executed.
+Otherwise,
+.Nm
+will fall back to a standard
+.Ev PATH
+search via
+.Xr execvp 3 .
+The spawned process will inherit the running environment.
+.Pp
 If the process cannot be spawned, then
 .Nm
 will exit.
