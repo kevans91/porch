@@ -84,6 +84,35 @@ function Queue:items()
 	return self.elements
 end
 
+local PatternMatcher = {}
+function PatternMatcher:new()
+	local obj = setmetatable({}, self)
+	self.__index = self
+	return obj
+end
+function PatternMatcher:match(buffer)
+	-- All matchers should return start, last of match
+	return false
+end
+
+local LuaMatcher = PatternMatcher:new()
+function LuaMatcher:match(pattern, buffer)
+	return buffer:find(pattern)
+end
+
+local PlainMatcher = PatternMatcher:new()
+function PlainMatcher:match(pattern, buffer)
+	return buffer:find(pattern, nil, true)
+end
+
+-- default_matcher will be configurable via `matcher()`
+local default_matcher = LuaMatcher
+local available_matchers = {
+	default = LuaMatcher,
+	lua = LuaMatcher,
+	plain = PlainMatcher,
+}
+
 local MatchAction = {}
 function MatchAction:new(action, func)
 	local obj = setmetatable({}, self)
@@ -93,6 +122,7 @@ function MatchAction:new(action, func)
 		obj.execute = assert(func, "Not implemented on type '" .. action .. "'")
 	end
 	obj.completed = false
+	obj.matcher = default_matcher
 	return obj
 end
 function MatchAction:dump(level)
@@ -114,7 +144,7 @@ function MatchAction:dump(level)
 	end
 end
 function MatchAction:matches(buffer)
-	return buffer:find(self.pattern)
+	return self.matcher:match(self.pattern, buffer)
 end
 
 local MatchBuffer = {}
@@ -538,6 +568,25 @@ function orch_env.match(pattern)
 
 	match_ctx:push(match_action)
 	return set_cfg
+end
+
+function orch_env.matcher(val)
+	local matcher_obj
+
+	for k, v in pairs(available_matchers) do
+		if k == val then
+			matcher_obj = v
+			break
+		end
+	end
+
+	if not matcher_obj then
+		error("Unknown matcher '" .. val .. "'")
+	end
+
+	default_matcher = matcher_obj
+
+	return true
 end
 
 function orch_env.one(func)

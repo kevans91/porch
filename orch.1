@@ -161,6 +161,31 @@ The
 function is not available as a direct child of a
 .Fn one
 block.
+.It Fn matcher "type"
+Changes the default matcher for subsequent match blocks to the type described
+by
+.Fa type .
+The default
+.Fa type
+is the
+.Dq lua
+matcher, which interprets match patterns as lua patterns and executes them
+accordingly.
+.Pp
+The following matcher options are available:
+.Bl -tag -width indent
+.It Dq lua
+Uses Lua pattern matching to match patterns.
+.It Dq plain
+Treats the pattern as a plain old string; no characters are special.
+Note that Lua string processing still applies and, e.g.,
+.Dq \\\\r
+will be interpreted as a carriage return.
+.It Dq default
+An alias for the
+.Dq lua
+matcher.
+.El
 .It Fn raw "boolean"
 Changes the raw
 .Fn write
