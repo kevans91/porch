@@ -36,7 +36,7 @@ struct orch_process {
 int orch_spawn(int, const char *[], struct orch_process *);
 
 /* orch_interp.c */
-int orch_interp(const char *, int, const char * const []);
+int orch_interp(const char *, const char *, int, const char * const []);
 
 /* orch_lua.c */
 void orchlua_configure(struct orch_interp_cfg *);

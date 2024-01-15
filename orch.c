@@ -40,6 +40,7 @@ usage(int error)
 int
 main(int argc, char *argv[])
 {
+	const char *invoke_path = argv[0];
 	const char *scriptf = "-";	/* stdin */
 	int ch;
 
@@ -63,7 +64,8 @@ main(int argc, char *argv[])
 	 * simplify things.  If we didn't, then the script just needs to make sure
 	 * that it spawns something before a match/one block.
 	 */
-	return (orch_interp(scriptf, argc, (const char * const *)argv));
+	return (orch_interp(scriptf, invoke_path, argc,
+	    (const char * const *)argv));
 }
 
 int

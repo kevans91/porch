@@ -4,9 +4,6 @@ scriptdir=$(dirname $(realpath "$0"))
 orchdir="$scriptdir/.."
 orchbin="$orchdir/orch"
 
-# XXX Caveat
-cd "$orchdir"
-
 fails=0
 testid=1
 
