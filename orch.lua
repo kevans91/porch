@@ -320,8 +320,8 @@ end
 
 match_ctx_stack = setmetatable({ elements = {} }, { __index = Queue })
 function match_ctx_stack:dump()
-	self:each(function(ctx)
-		ctx:dump()
+	self:each(function(dctx)
+		dctx:dump()
 	end)
 end
 
