@@ -584,6 +584,10 @@ end
 local function run_script()
 	local done
 
+	if match_ctx_stack:empty() then
+		error("script did not define any actions")
+	end
+
 	-- To run the script, we'll grab the back of the context stack and process
 	-- that.
 	while not done do
