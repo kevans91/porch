@@ -210,7 +210,7 @@ orchlua_process_close(lua_State *L)
 
 	failed = false;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if (self->pid != 0 && orchlua_process_killed(self, &sig)) {
+	if (self->pid != 0 && orchlua_process_killed(self, &sig) && sig != 0) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "spawned process killed with signal '%d'", sig);
 		return (2);
@@ -360,7 +360,7 @@ orchlua_process_read(lua_State *L)
 				close(self->termctl);
 				self->termctl = -1;
 
-				if (orchlua_process_killed(self, &signo)) {
+				if (orchlua_process_killed(self, &signo) && signo != 0) {
 					luaL_pushfail(L);
 					lua_pushfstring(L,
 						"spawned process killed with signal '%d'", signo);
