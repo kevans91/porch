@@ -14,6 +14,7 @@ simple_tests="$simple_tests simple_match_sequence simple_match_sequence_fail"
 simple_tests="$simple_tests simple_match_sequence_twice_fail"
 simple_tests="$simple_tests simple_callback simple_callback_fail"
 simple_tests="$simple_tests simple_fail_handler simple_raw simple_anchored"
+simple_tests="$simple_tests simple_enqueue"
 
 timeout_tests="timeout_basic timeout_global timeout_test"
 

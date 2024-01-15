@@ -8,6 +8,7 @@ local impl = require("orch_impl")
 
 local CTX_QUEUE = 1
 local CTX_FAIL = 2
+local CTX_CALLBACK = 3
 
 local orch_ctx = CTX_QUEUE
 local execute, match_ctx, match_ctx_stack
@@ -365,6 +366,13 @@ local function do_debug(action)
 	return true
 end
 
+local function do_enqueue(obj)
+	local restore_ctx = ctx(CTX_CALLBACK)
+	execute(obj.callback)
+	ctx(restore_ctx)
+	return true
+end
+
 local function do_eof(obj)
 	local buffer = process:buffer()
 	if buffer.eof then
@@ -430,11 +438,24 @@ end
 function orch_env.debug(str)
 	local debug_action = MatchAction:new("debug", do_debug)
 	debug_action.message = str
-	if ctx() == CTX_FAIL then
+	if ctx() ~= CTX_QUEUE then
 		do_debug(debug_action)
 	else
 		match_ctx:push(debug_action)
 	end
+	return true
+end
+
+function orch_env.enqueue(callback)
+	local enqueue_action = MatchAction:new("enqueue", do_enqueue)
+	enqueue_action.callback = callback
+
+	if ctx() ~= CTX_QUEUE then
+		do_enqueue(enqueue_action)
+	else
+		match_ctx:push(enqueue_action)
+	end
+
 	return true
 end
 
@@ -454,7 +475,7 @@ function orch_env.exit(code)
 	-- that is for the script's fail handler to set a local variable in the
 	-- script environment, ignore the error (don't exit), then check it before
 	-- setting up any more match blocks.
-	if ctx() == CTX_FAIL then
+	if ctx() ~= CTX_QUEUE then
 		do_exit(exit_action)
 	end
 

@@ -114,6 +114,15 @@ prepended and a newline appended to it.
 .Pp
 This directive is enqueued, not processed immediately unless it's called from
 within a failure handler.
+.It Fn enqueue "function"
+Add
+.Fa function
+to the queue to be executed in script order.
+If
+.Fn enqueue
+is used in a context that doesn't execute the queue, such as from another
+enqueued callback or from a failure context, then it will immediately call the
+function instead of enqueueing it.
 .It Fn eof "timeout"
 Check for eof from the process.
 If the process has closed its side because it was killed by signal, then
