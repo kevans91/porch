@@ -26,13 +26,18 @@ local function ctx(new_ctx)
 	return prev_ctx
 end
 
-local function fail(buffer)
+local function fail(action, buffer)
 	if fail_callback then
 		local restore_ctx = ctx(CTX_FAIL)
 		fail_callback(buffer)
 		ctx(restore_ctx)
 
 		return true
+	else
+		-- Print diagnostics if we can
+		if action.print_diagnostics then
+			action:print_diagnostics()
+		end
 	end
 
 	return false
@@ -218,7 +223,7 @@ function MatchContext:process()
 			local buffer = process:buffer()
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
-				if not fail(buffer:contents()) then
+				if not fail(action, buffer:contents()) then
 					self.errors = true
 					return false
 				end
@@ -304,7 +309,7 @@ function MatchContext:process_one()
 	end
 
 	if not matched then
-		if not fail(buffer:contents()) then
+		if not fail(self.action, buffer:contents()) then
 			self.errors = true
 			return false
 		end
@@ -346,7 +351,7 @@ end
 local function include_file(file)
 	local f = assert(impl.open(file))
 	local chunk = assert(f:read("*a"))	-- * for compatibility with Lua 5.2...
-	local func = assert(load(chunk, file, "t", orch_env))
+	local func = assert(load(chunk, "@" .. file, "t", orch_env))
 
 	return execute(func, true)
 end
@@ -357,6 +362,11 @@ local function internal_spawn(cmd)
 	return new_process
 end
 
+local function grab_caller(level)
+	local info = debug.getinfo(level + 1, "Sl")
+
+	return info.short_src, info.currentline
+end
 
 -- Bits available to the sandbox; orch_env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
@@ -384,7 +394,7 @@ local function do_eof(obj)
 
 	buffer:refill(discard, obj.timeout)
 	if not buffer.eof then
-		if not fail(buffer:contents()) then
+		if not fail(obj, buffer:contents()) then
 			return false
 		end
 	end
@@ -465,6 +475,14 @@ end
 function orch_env.eof(timeout)
 	local eof_action = MatchAction:new("eof", do_eof)
 	eof_action.timeout = timeout or current_timeout
+
+	local src, line = grab_caller(2)
+
+	function eof_action.print_diagnostics()
+		io.stderr:write(string.format("[%s]:%d: eof not observed\n",
+		    src, line))
+	end
+
 	match_ctx:push(eof_action)
 	return true
 end
@@ -498,6 +516,12 @@ function orch_env.match(pattern)
 	match_action.pattern = pattern
 	match_action.timeout = current_timeout
 
+	local src, line = grab_caller(2)
+	function match_action.print_diagnostics()
+		io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
+		    src, line, pattern))
+	end
+
 	local function set_cfg(cfg)
 		for k, v in pairs(cfg) do
 			-- XXX configurable
@@ -516,11 +540,17 @@ end
 function orch_env.one(func)
 	local action_obj = MatchAction:new("one", do_one)
 	local parent_ctx = match_ctx
+	local src, line = grab_caller(2)
+	function action_obj.print_diagnostics()
+		io.stderr:write(string.format("[%s]:%d: all matches failed\n",
+		    src, line))
+	end
 
 	parent_ctx:push(action_obj)
 
 	action_obj.match_ctx = MatchContext:new()
 	action_obj.match_ctx.process = match_ctx.process_one
+	action_obj.match_ctx.action = action_obj
 
 	-- Nest this one inside our action
 	match_ctx = action_obj.match_ctx
