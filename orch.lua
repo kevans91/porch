@@ -379,7 +379,10 @@ local function do_eof(obj)
 		return true
 	end
 
-	buffer:refill(nil, obj.timeout)
+	local function discard()
+	end
+
+	buffer:refill(discard, obj.timeout)
 	if not buffer.eof then
 		if not fail(buffer:contents()) then
 			return false
