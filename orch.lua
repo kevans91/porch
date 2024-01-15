@@ -6,16 +6,30 @@
 
 local impl = require("orch_impl")
 
+local CTX_QUEUE = 1
+local CTX_FAIL = 2
+
+local orch_ctx = CTX_QUEUE
 local execute, match_ctx, match_ctx_stack
-local fail_callback, in_fail_ctx
+local fail_callback
 local process
 local current_timeout = 10
 
+local function ctx(new_ctx)
+	local prev_ctx = orch_ctx
+
+	if new_ctx then
+		orch_ctx = new_ctx
+	end
+
+	return prev_ctx
+end
+
 local function fail(buffer)
 	if fail_callback then
-		in_fail_ctx = true
+		local restore_ctx = ctx(CTX_FAIL)
 		fail_callback(buffer)
-		in_fail_ctx = false
+		ctx(restore_ctx)
 
 		return true
 	end
@@ -416,7 +430,7 @@ end
 function orch_env.debug(str)
 	local debug_action = MatchAction:new("debug", do_debug)
 	debug_action.message = str
-	if in_fail_ctx then
+	if ctx() == CTX_FAIL then
 		do_debug(debug_action)
 	else
 		match_ctx:push(debug_action)
@@ -440,8 +454,8 @@ function orch_env.exit(code)
 	-- that is for the script's fail handler to set a local variable in the
 	-- script environment, ignore the error (don't exit), then check it before
 	-- setting up any more match blocks.
-	if in_fail_ctx then
-		os.exit(code)
+	if ctx() == CTX_FAIL then
+		do_exit(exit_action)
 	end
 
 	match_ctx:push(exit_action)
@@ -552,12 +566,12 @@ local function run_script()
 	-- To run the script, we'll grab the back of the context stack and process
 	-- that.
 	while not done do
-		local ctx = match_ctx_stack:back()
+		local run_ctx = match_ctx_stack:back()
 
-		if ctx:process() then
-			match_ctx_stack:remove(ctx)
+		if run_ctx:process() then
+			match_ctx_stack:remove(run_ctx)
 			done = match_ctx_stack:empty()
-		elseif ctx:error() then
+		elseif run_ctx:error() then
 			return false
 		end
 	end
