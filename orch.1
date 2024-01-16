@@ -171,6 +171,10 @@ is the
 .Dq lua
 matcher, which interprets match patterns as lua patterns and executes them
 accordingly.
+Note that Lua string processing still applies for every pattern matcher.
+e.g.,
+.Dq \\\\r
+will be interpreted as a carriage return for these non-default pattern matchers.
 .Pp
 The following matcher options are available:
 .Bl -tag -width indent
@@ -178,9 +182,11 @@ The following matcher options are available:
 Uses Lua pattern matching to match patterns.
 .It Dq plain
 Treats the pattern as a plain old string; no characters are special.
-Note that Lua string processing still applies and, e.g.,
-.Dq \\\\r
-will be interpreted as a carriage return.
+.It Dq posix
+Treats the pattern as a POSIX extended regular expression.
+See
+.Xr re_format 7
+for more details.
 .It Dq default
 An alias for the
 .Dq lua

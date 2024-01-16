@@ -105,12 +105,21 @@ function PlainMatcher:match(pattern, buffer)
 	return buffer:find(pattern, nil, true)
 end
 
+local PosixMatcher = PatternMatcher:new()
+function PosixMatcher:compile(pattern)
+	return assert(impl.regcomp(pattern))
+end
+function PosixMatcher:match(pattern, buffer)
+	return pattern:find(buffer)
+end
+
 -- default_matcher will be configurable via `matcher()`
 local default_matcher = LuaMatcher
 local available_matchers = {
 	default = LuaMatcher,
 	lua = LuaMatcher,
 	plain = PlainMatcher,
+	posix = PosixMatcher,
 }
 
 local MatchAction = {}
@@ -144,7 +153,9 @@ function MatchAction:dump(level)
 	end
 end
 function MatchAction:matches(buffer)
-	return self.matcher:match(self.pattern, buffer)
+	local matcher_arg = self.pattern_obj or self.pattern
+
+	return self.matcher:match(matcher_arg, buffer)
 end
 
 local MatchBuffer = {}
@@ -548,6 +559,10 @@ function orch_env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
 	match_action.timeout = current_timeout
+
+	if match_action.matcher.compile then
+		match_action.pattern_obj = match_action.matcher:compile(pattern)
+	end
 
 	local src, line = grab_caller(2)
 	function match_action.print_diagnostics()

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <regex.h>
 #include <unistd.h>
 
 #include "orch.h"
@@ -32,6 +33,7 @@
 #endif
 
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
+#define	ORCHLUA_REGEXHANDLE	"orchlua_regex_t"
 
 static struct orch_interp_cfg orchlua_cfg;
 
@@ -84,6 +86,34 @@ orchlua_open(lua_State *L)
 	p->f = fdopen(fd, "r");
 	if (p->f == NULL)
 		return (luaL_fileresult(L, 0, filename));
+
+	return (1);
+}
+
+static int
+orchlua_regcomp(lua_State *L)
+{
+	const char *pattern;
+	regex_t *regex;
+	int error;
+
+	pattern = luaL_checkstring(L, 1);
+
+	regex = lua_newuserdata(L, sizeof(*regex));
+	luaL_setmetatable(L, ORCHLUA_REGEXHANDLE);
+
+	if ((error = regcomp(regex, pattern, REG_EXTENDED)) != 0) {
+		char errbuf[64];
+
+		(void)regerror(error, regex, errbuf, sizeof(errbuf));
+
+		/* Pop the regex_t */
+		lua_pop(L, 1);
+
+		luaL_pushfail(L);
+		lua_pushstring(L, errbuf);
+		return (2);
+	}
 
 	return (1);
 }
@@ -181,6 +211,7 @@ orchlua_spawn(lua_State *L)
 #define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
 static const struct luaL_Reg orchlib[] = {
 	REG_SIMPLE(open),
+	REG_SIMPLE(regcomp),
 	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),
 	{ NULL, NULL },
@@ -618,6 +649,85 @@ register_process_metatable(lua_State *L)
 	lua_pop(L, 1);
 }
 
+static int
+orchlua_regex_error(lua_State *L, regex_t *self, int error)
+{
+	char errbuf[64];
+
+	(void)regerror(error, self, errbuf, sizeof(errbuf));
+
+	luaL_pushfail(L);
+	lua_pushstring(L, errbuf);
+	return (2);
+}
+
+static int
+orchlua_regex_find(lua_State *L)
+{
+	const char *subject;
+	regex_t *self;
+	regmatch_t match;
+	int error;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_REGEXHANDLE);
+	subject = luaL_checkstring(L, 2);
+
+	error = regexec(self, subject, 1, &match, 0);
+	if (error != 0) {
+		if (error == REG_NOMATCH) {
+			lua_pushnil(L);
+			return (1);
+		}
+
+		return (orchlua_regex_error(L, self, error));
+	}
+
+	/*
+	 * Lua's strings are one-indexed, so we bump rm_so by 1.  rm_eo is
+	 * actually the the character just *after* the match, so we'll just take
+	 * that as-is rather than - 1 + 1.
+	 */
+	lua_pushnumber(L, match.rm_so + 1);
+	lua_pushnumber(L, match.rm_eo);
+	return (2);
+}
+
+static int
+orchlua_regex_close(lua_State *L)
+{
+	regex_t *self;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_REGEXHANDLE);
+	regfree(self);
+	return (0);
+}
+
+#define	REGEX_SIMPLE(n)	{ #n, orchlua_regex_ ## n }
+static const luaL_Reg orchlua_regex[] = {
+	REGEX_SIMPLE(find),
+	{ NULL, NULL },
+};
+
+static const luaL_Reg orchlua_regex_meta[] = {
+	{ "__index", NULL },	/* Set during registration */
+	{ "__gc", orchlua_regex_close },
+	{ "__close", orchlua_regex_close },
+	{ NULL, NULL },
+};
+
+static void
+register_regex_metatable(lua_State *L)
+{
+	luaL_newmetatable(L, ORCHLUA_REGEXHANDLE);
+	luaL_setfuncs(L, orchlua_regex_meta, 0);
+
+	luaL_newlibtable(L, orchlua_regex);
+	luaL_setfuncs(L, orchlua_regex, 0);
+	lua_setfield(L, -2, "__index");
+
+	lua_pop(L, 1);
+}
+
 void
 orchlua_configure(struct orch_interp_cfg *cfg)
 {
@@ -682,6 +792,7 @@ luaopen_orch(lua_State *L)
 	lua_setglobal(L, "arg");
 
 	register_process_metatable(L);
+	register_regex_metatable(L);
 
 	return (1);
 }
