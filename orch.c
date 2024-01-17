@@ -115,13 +115,13 @@ orch_spawn(int spawnfd, int argc, const char *argv[], struct orch_process *p)
 static void
 orch_wait(int cmdsock)
 {
-	size_t nb;
+	ssize_t nb;
 	int buf;
 
 	nb = read(cmdsock, &buf, sizeof(buf));
 	if (nb < 0)
 		err(1, "read");
-	else if (nb < sizeof(buf) || buf != 0)
+	else if ((size_t)nb < sizeof(buf) || buf != 0)
 		errx(1, "protocol violation");
 }
 
