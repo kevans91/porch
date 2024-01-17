@@ -7,6 +7,9 @@ SRCS=	orch.c	\
 
 .if defined(ORCHLUA_PATH)
 CFLAGS+=	-DORCHLUA_PATH=\"${ORCHLUA_PATH}\"
+
+FILES=		orch.lua
+FILESDIR=	${ORCHLUA_PATH}
 .endif
 
 LUA_INCDIR?=	/usr/local/include/lua54
