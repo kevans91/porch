@@ -399,7 +399,11 @@ end
 
 local function include_file(file)
 	local f = assert(impl.open(file))
-	local chunk = assert(f:read("*l"))	-- * for compatibility with Lua 5.2...
+	local chunk = f:read("*l")	-- * for compatibility with Lua 5.2...
+
+	if not chunk then
+		error(file .. " appears to be empty!")
+	end
 
 	if chunk:match("^#!") then
 		chunk = ""
