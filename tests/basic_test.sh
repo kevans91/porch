@@ -28,6 +28,7 @@ for f in "$@" ;do
 	f=$(basename "$f" .orch)
 	testf="$scriptdir/$f.orch"
 	expected_rc=0
+	spawn="cat"
 
 	case "$f" in
 	timeout_*)
@@ -38,10 +39,17 @@ for f in "$@" ;do
 			continue
 		fi
 		;;
+	spawn_*)
+		spawn=""
+		;;
 	esac
 
 	start=$(date +"%s")
-	"$orchbin" -f "$testf" -- cat
+	if [ -x "$testf" ]; then
+		env PATH="$orchdir":"$PATH" "$testf"
+	else
+		"$orchbin" -f "$testf" -- $spawn
+	fi
 	rc="$?"
 	end=$(date +"%s")
 
