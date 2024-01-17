@@ -21,8 +21,6 @@
 #endif
 
 static const char orchlua_path[] = ORCHLUA_PATH;
-_Static_assert(orchlua_path[0] == '\0' || orchlua_path[0] == '/',
-    "ORCHLUA_PATH must be empty or absolute");
 
 static const char *
 orch_interp_script(const char *orch_invoke_path)

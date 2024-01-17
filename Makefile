@@ -5,8 +5,12 @@ SRCS=	orch.c	\
 	orch_interp.c \
 	orch_lua.c
 
-.if defined(ORCHLUA_PATH)
+.if !empty(ORCHLUA_PATH)
 CFLAGS+=	-DORCHLUA_PATH=\"${ORCHLUA_PATH}\"
+
+.if empty(ORCHLUA_PATH:M/*)
+.error "ORCHLUA_PATH must be empty or absolute"
+.endif
 
 FILES=		orch.lua
 FILESDIR=	${ORCHLUA_PATH}
