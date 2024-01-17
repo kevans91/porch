@@ -90,26 +90,26 @@ function PatternMatcher:new()
 	self.__index = self
 	return obj
 end
-function PatternMatcher:match(buffer)
+function PatternMatcher.match()
 	-- All matchers should return start, last of match
 	return false
 end
 
 local LuaMatcher = PatternMatcher:new()
-function LuaMatcher:match(pattern, buffer)
+function LuaMatcher.match(pattern, buffer)
 	return buffer:find(pattern)
 end
 
 local PlainMatcher = PatternMatcher:new()
-function PlainMatcher:match(pattern, buffer)
+function PlainMatcher.match(pattern, buffer)
 	return buffer:find(pattern, nil, true)
 end
 
 local PosixMatcher = PatternMatcher:new()
-function PosixMatcher:compile(pattern)
+function PosixMatcher.compile(pattern)
 	return assert(impl.regcomp(pattern))
 end
-function PosixMatcher:match(pattern, buffer)
+function PosixMatcher.match(pattern, buffer)
 	return pattern:find(buffer)
 end
 
@@ -155,7 +155,7 @@ end
 function MatchAction:matches(buffer)
 	local matcher_arg = self.pattern_obj or self.pattern
 
-	return self.matcher:match(matcher_arg, buffer)
+	return self.matcher.match(matcher_arg, buffer)
 end
 
 local MatchBuffer = {}
@@ -570,7 +570,7 @@ function orch_env.match(pattern)
 	match_action.timeout = current_timeout
 
 	if match_action.matcher.compile then
-		match_action.pattern_obj = match_action.matcher:compile(pattern)
+		match_action.pattern_obj = match_action.matcher.compile(pattern)
 	end
 
 	local src, line = grab_caller(2)
