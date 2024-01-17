@@ -7,7 +7,6 @@
 #include <sys/param.h>
 #include <sys/select.h>
 #include <sys/stat.h>
-#include <sys/queue.h>
 #include <sys/wait.h>
 
 #include <assert.h>
