@@ -394,7 +394,16 @@ end
 
 local function include_file(file)
 	local f = assert(impl.open(file))
-	local chunk = assert(f:read("*a"))	-- * for compatibility with Lua 5.2...
+	local chunk = assert(f:read("*l"))	-- * for compatibility with Lua 5.2...
+
+	if chunk:match("^#!") then
+		chunk = ""
+	else
+		-- line-based read will strip the newline
+		chunk = chunk .. "\n"
+	end
+
+	chunk = chunk .. assert(f:read("*a"))
 	local func = assert(load(chunk, "@" .. file, "t", orch_env))
 
 	return execute(func, true)
