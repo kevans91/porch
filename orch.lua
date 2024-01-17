@@ -16,6 +16,11 @@ local fail_callback
 local process
 local current_timeout = 10
 
+local match_valid_cfg = {
+	callback = true,
+	timeout = true,
+}
+
 local function ctx(new_ctx)
 	local prev_ctx = orch_ctx
 
@@ -581,9 +586,8 @@ function orch_env.match(pattern)
 
 	local function set_cfg(cfg)
 		for k, v in pairs(cfg) do
-			-- XXX configurable
-			if k == "pattern" or k == "type" or k == "execute" then
-				error("pattern is not a valid cfg field")
+			if not match_valid_cfg[k] then
+				error(k .. " is not a valid cfg field")
 			end
 
 			match_action[k] = v
