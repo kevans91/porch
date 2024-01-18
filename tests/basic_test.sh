@@ -1,8 +1,13 @@
 #!/bin/sh
 
 scriptdir=$(dirname $(realpath "$0"))
-orchdir="$scriptdir/.."
-orchbin="$orchdir/orch"
+orchbin="$(which orch)"
+if [ -n "$orchbin" ]; then
+	orchdir="$(dirname "$orchbin")"
+else
+	orchdir="$scriptdir/.."
+	orchbin="$orchdir/orch"
+fi
 
 fails=0
 testid=1
