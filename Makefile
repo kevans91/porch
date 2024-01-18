@@ -12,6 +12,7 @@ CFLAGS+=	-DORCHLUA_PATH=\"${ORCHLUA_PATH}\"
 .error "ORCHLUA_PATH must be empty or absolute"
 .endif
 
+FILESGROUPS+=	FILES
 FILES=		orch.lua
 FILESDIR=	${ORCHLUA_PATH}
 .endif
@@ -27,5 +28,7 @@ LDFLAGS+=	${LUA_LIB}
 .endif
 lint:
 	luacheck orch.lua
+
+.include "examples/Makefile.inc"
 
 .include <bsd.prog.mk>
