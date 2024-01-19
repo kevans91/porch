@@ -7,8 +7,5 @@ build_task:
     sudo pkg install -y lua54
   build_script:
     env ORCHLUA_PATH=/usr/local/share/orch make
-  install_script:
-    - mkdir -p /usr/local/share/orch
-    - cp orch.lua /usr/local/share/orch
   test_script:
-    sh tests/basic_test.sh
+    make check

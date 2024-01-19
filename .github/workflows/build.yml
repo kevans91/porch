@@ -60,6 +60,4 @@ jobs:
               LUA_LIB="${lua_lib}" bmake
       - name: Run self-tests
         run: |
-          sudo mkdir -p /usr/local/share/orch
-          sudo cp orch.lua /usr/local/share/orch
-          sh tests/basic_test.sh
+          bmake check

@@ -1,13 +1,18 @@
 #!/bin/sh
 
 scriptdir=$(dirname $(realpath "$0"))
-orchbin="$(which orch)"
-if [ -n "$orchbin" ]; then
-	orchdir="$(dirname "$orchbin")"
-else
-	orchdir="$scriptdir/.."
-	orchbin="$orchdir/orch"
+orchbin="$scriptdir/../orch"
+if [ ! -x "$orchbin" ]; then
+	orchbin="$(which orch)"
 fi
+if [ ! -x "$orchbin" ]; then
+	1>&2 echo "Failed to find a usable orch binary"
+	exit 1
+fi
+
+orchdir="$(dirname "$orchbin")"
+
+1>&2 echo "Using binary: $orchbin"
 
 fails=0
 testid=1
