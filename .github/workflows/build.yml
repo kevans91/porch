@@ -1,0 +1,31 @@
+name: Build orch
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, ubuntu-22.04]
+        include:
+          - os: ubuntu-20.04
+          - os: ubuntu-22.04
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install system packages
+        run: |
+          sudo apt-get update --quiet || true
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install bmake liblua5.2-dev
+      - name: linux build
+        run: |
+          env ORCHLUA_PATH=/usr/share/orch LUA_INCDIR=/usr/include/lua5.2 \
+              LUA_LIB=-llua5.2 bmake
