@@ -1,8 +1,8 @@
 /* See inline for copyright notices. */
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #ifdef __linux__
-#include <sys/ioctl.h>
 #include <asm/termbits.h>
 #endif
 
@@ -10,6 +10,7 @@
 
 #include "orch.h"
 
+#ifdef __linux__
 /*      $OpenBSD: strlcpy.c,v 1.12 2015/01/15 03:54:12 millert Exp $    */
 
 /*
@@ -95,7 +96,8 @@ strlcat(char * __restrict dst, const char * __restrict src, size_t dsize)
 
 	return(dlen + (src - osrc));    /* count does not include NUL */
 }
-
+#endif	/* __linux__ */
+#if defined(__linux__) || defined(__APPLE__)
 /* Not associated with the above... incredibly simple. */
 
 int
@@ -104,3 +106,4 @@ tcsetsid(int tty, int sess __unused)
 
 	return (ioctl(tty, TIOCSCTTY, NULL));
 }
+#endif

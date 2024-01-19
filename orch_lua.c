@@ -32,9 +32,16 @@
 #define	luaL_pushfail(L)	lua_pushnil(L)
 #endif
 
-#ifndef CLOCK_REALTIME_FAST
-/* Linux */
+#ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
+#endif
+#ifdef __APPLE__
+#define	CLOCK_REALTIME_FAST	CLOCK_REALTIME
+#endif
+
+/* Not a huge deal if it's missing... */
+#ifndef O_PATH
+#define	O_PATH	0
 #endif
 
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"

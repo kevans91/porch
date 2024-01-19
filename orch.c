@@ -76,8 +76,19 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 	int cmdsock[2];
 	pid_t pid, sess;
 
+#ifdef SOCK_CLOEXEC
 	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, &cmdsock[0]) == -1)
 		err(1, "socketpair");
+#else
+	if (socketpair(AF_UNIX, SOCK_STREAM, 0, &cmdsock[0]) == -1)
+		err(1, "socketpair");
+	if (fcntl(cmdsock[0], F_SETFD, fcntl(cmdsock[0], F_GETFD) |
+	    FD_CLOEXEC) == -1)
+		err(1, "fcntl");
+	if (fcntl(cmdsock[1], F_SETFD, fcntl(cmdsock[1], F_GETFD) |
+	    FD_CLOEXEC) == -1)
+		err(1, "fcntl");
+#endif
 
 	p->termctl = orch_newpt();
 

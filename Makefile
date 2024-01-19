@@ -7,7 +7,8 @@ SRCS=	orch.c	\
 
 .if ${.MAKE.OS} == "Linux"
 CFLAGS+=	-D_GNU_SOURCE
-
+.endif
+.if ${.MAKE.OS} == "Linux" || ${.MAKE.OS} == "Darwin"
 SRCS+=	orch_compat.c
 .endif
 
