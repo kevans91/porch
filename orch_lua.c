@@ -716,8 +716,7 @@ orchlua_add_execpath(const char *path)
 		return (setenv("PATH", path, 1) == 0 ? 0 : errno);
 
 	newpath = NULL;
-	(void)asprintf(&newpath, "%s:%s", path, curpath);
-	if (newpath == NULL)
+	if (asprintf(&newpath, "%s:%s", path, curpath) == -1)
 		return (ENOMEM);
 
 	if (setenv("PATH", newpath, 1) != 0)

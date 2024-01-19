@@ -128,9 +128,12 @@ orch_wait(int cmdsock)
 static void
 orch_release(int cmdsock)
 {
+	ssize_t wsz;
 	int buf = 0;
 
-	write(cmdsock, &buf, sizeof(buf));
+	/* XXX */
+	wsz = write(cmdsock, &buf, sizeof(buf));
+	(void)wsz;
 }
 
 static void
