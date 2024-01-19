@@ -51,6 +51,7 @@ int luaopen_orch(lua_State *);
 size_t strlcpy(char * __restrict dst, const char * __restrict src, size_t dsize);
 size_t strlcat(char * __restrict dst, const char * __restrict src, size_t dsize);
 #endif
-#if defined(__linux__) || defined(__APPLE__) || defined(__OpenBSD__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__OpenBSD__) || \
+    defined(__NetBSD__)
 int tcsetsid(int tty, int sess);
 #endif

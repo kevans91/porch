@@ -8,6 +8,9 @@ SRCS=	orch.c	\
 .if defined(.MAKE.OS) && ${.MAKE.OS} == "Linux"
 CFLAGS+=	-D_GNU_SOURCE
 .endif
+.if defined(.MAKE.OS) && ${.MAKE.OS} == "NetBSD"
+CWARNFLAGS+=	-Wno-conversion -Wno-maybe-uninitialized
+.endif
 
 SRCS+=	orch_compat.c
 

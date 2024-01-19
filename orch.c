@@ -22,6 +22,10 @@
 #define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY | O_CLOEXEC)
 #endif
 
+#ifndef __dead2
+#define	__dead2	__attribute__((noreturn))
+#endif
+
 extern char **environ;
 
 static void orch_exec(int argc, const char *argv[], int cmdsock);
@@ -31,7 +35,7 @@ static void orch_usept(pid_t sess, int termctl);
 static void orch_wait(int cmdsock);
 static void orch_release(int cmdsock);
 
-static void
+static void __dead2
 usage(const char *name, int error)
 {
 	FILE *f;

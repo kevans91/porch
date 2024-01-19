@@ -14,5 +14,6 @@ requests and Issues are open on GitHub.
 orch(1) strives to be portable.  Currently supported platforms:
  - FreeBSD
  - OpenBSD
+ - NetBSD
  - macOS
  - Linux (tested on Ubuntu only)
