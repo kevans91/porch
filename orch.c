@@ -26,7 +26,7 @@ static void orch_wait(int cmdsock);
 static void orch_release(int cmdsock);
 
 static void
-usage(int error)
+usage(const char *name, int error)
 {
 	FILE *f;
 
@@ -35,7 +35,7 @@ usage(int error)
 	else
 		f = stderr;
 
-	fprintf(f, "usage: %s [-f file] [command [argument ...]]\n", getprogname());
+	fprintf(f, "usage: %s [-f file] [command [argument ...]]\n", name);
 	exit(error);
 }
 
@@ -52,9 +52,9 @@ main(int argc, char *argv[])
 			scriptf = optarg;
 			break;
 		case 'h':
-			usage(0);
+			usage(invoke_path, 0);
 		default:
-			usage(1);
+			usage(invoke_path, 1);
 		}
 	}
 
