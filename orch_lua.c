@@ -355,8 +355,9 @@ orchlua_process_read(lua_State *L)
 		ret = select(fd + 1, &rfd, NULL, NULL, tvp);
 		if (ret == -1 && errno == EINTR) {
 			/*
-			 * Rearm the timeout and go again; we'll just let the loop terminate
-			 * with a negative tv.tv_sec if timeout seconds have elapsed.
+			 * Rearm the timeout and go again; we'll just let the loop
+			 * terminate with a negative tv.tv_sec if timeout seconds
+			 * have elapsed.
 			 */
 			if (tvp != NULL) {
 				now = time(NULL);
@@ -400,7 +401,8 @@ orchlua_process_read(lua_State *L)
 			}
 
 			/*
-			 * Callback should return true if it's done, false if it wants more.
+			 * Callback should return true if it's done, false if it
+			 * wants more.
 			 */
 			lua_call(L, nargs, 1);
 
@@ -420,10 +422,10 @@ orchlua_process_read(lua_State *L)
 				}
 
 				/*
-				 * We need to be able to distinguish between a disaster scenario
-				 * and possibly business as usual, so we'll return true if we
-				 * hit EOF.  This lets us assert() on the return value and catch
-				 * bad program exits.
+				 * We need to be able to distinguish between a disaster
+				 * scenario and possibly business as usual, so we'll
+				 * return true if we hit EOF.  This lets us assert()
+				 * on the return value and catch bad program exits.
 				 */
 				lua_pushboolean(L, 1);
 				return (1);
@@ -485,7 +487,8 @@ orchlua_process_write(lua_State *L)
 			if (i == bufsz - 1) {
 				free(processed);
 				luaL_pushfail(L);
-				lua_pushstring(L, "Incomplete CNTRL character at end of buffer");
+				lua_pushstring(L,
+				    "Incomplete CNTRL character at end of buffer");
 				return (2);
 			}
 

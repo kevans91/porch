@@ -80,7 +80,7 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 		errx(1, "luaL_newstate: out of memory");
 
 	orchlua_configure(&(struct orch_interp_cfg) {
-	    .scriptf = scriptf,
+		.scriptf = scriptf,
 		.argc = argc,
 		.argv = argv,
 	});
