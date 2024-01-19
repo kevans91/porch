@@ -29,8 +29,22 @@ orch_interp_script(const char *orch_invoke_path)
 
 	/* Populate buf first... we cache the script path */
 	if (buf[0] == '\0') {
-		/* If LIBEXEC_PATH is empty, it's in the same path as our binary. */
-		if (orchlua_path[0] == '\0') {
+		const char *path;
+
+		path = getenv("ORCHLUA_PATH");
+		if (path != NULL && (path[0] == '\0' || path[0] != '/')) {
+			fprintf(stderr,
+			    "Ignoring empty or relative ORCHLUA_PATH in the environment ('%s')\n",
+			    path);
+			path = NULL;
+		}
+
+		/* Fallback to what's built-in, if no env override. */
+		if (path == NULL)
+			path = orchlua_path;
+
+		/* If ORCHLUA_PATH is empty, it's in the same path as our binary. */
+		if (path[0] == '\0') {
 			char *slash;
 
 			if (realpath(orch_invoke_path, buf) == NULL)
@@ -45,7 +59,7 @@ orch_interp_script(const char *orch_invoke_path)
 			assert(*slash != '\0');
 			*slash = '\0';
 		} else {
-			strlcpy(buf, orchlua_path, sizeof(buf));
+			strlcpy(buf, path, sizeof(buf));
 		}
 
 		strlcat(buf, "/orch.lua", sizeof(buf));

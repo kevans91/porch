@@ -9,7 +9,7 @@ SRCS=	orch.c	\
 CFLAGS+=	-DORCHLUA_PATH=\"${ORCHLUA_PATH}\"
 
 .if empty(ORCHLUA_PATH:M/*)
-.error "ORCHLUA_PATH must be empty or absolute"
+.error "ORCHLUA_PATH must be an absolute path"
 .endif
 
 FILESGROUPS+=	FILES
@@ -28,6 +28,10 @@ LDFLAGS+=	${LUA_LIB}
 .endif
 lint:
 	luacheck orch.lua
+
+# Just pass this on for now.
+check:
+	env ORCHLUA_PATH=${.CURDIR} $(MAKE) -C tests check
 
 .include "examples/Makefile.inc"
 
