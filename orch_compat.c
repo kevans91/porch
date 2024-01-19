@@ -97,7 +97,7 @@ strlcat(char * __restrict dst, const char * __restrict src, size_t dsize)
 	return(dlen + (src - osrc));    /* count does not include NUL */
 }
 #endif	/* __linux__ */
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__OpenBSD__)
 /* Not associated with the above... incredibly simple. */
 
 int

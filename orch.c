@@ -16,6 +16,12 @@
 
 #include "orch.h"
 
+#ifdef __OpenBSD__
+#define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY)
+#else
+#define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY | O_CLOEXEC)
+#endif
+
 extern char **environ;
 
 static void orch_exec(int argc, const char *argv[], int cmdsock);
@@ -175,9 +181,13 @@ orch_newpt(void)
 {
 	int newpt;
 
-	newpt = posix_openpt(O_RDWR | O_NOCTTY | O_CLOEXEC);
+	newpt = posix_openpt(POSIX_OPENPT_FLAGS);
 	if (newpt == -1)
 		err(1, "posix_openpt");
+#if (POSIX_OPENPT_FLAGS & O_CLOEXEC) == 0
+	if (fcntl(newpt, F_SETFD, fcntl(newpt, F_GETFD) | FD_CLOEXEC) == -1)
+		err(1, "fcntl");
+#endif
 
 	if (grantpt(newpt) == -1)
 		err(1, "grantpt");

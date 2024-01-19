@@ -35,7 +35,9 @@
 #ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
 #endif
-#ifdef __APPLE__
+
+/* Fallback */
+#ifndef CLOCK_REALTIME_FAST
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME
 #endif
 
