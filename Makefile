@@ -5,6 +5,12 @@ SRCS=	orch.c	\
 	orch_interp.c \
 	orch_lua.c
 
+.if ${.MAKE.OS} == "Linux"
+CFLAGS+=	-D_GNU_SOURCE
+
+SRCS+=	orch_compat.c
+.endif
+
 .if !empty(ORCHLUA_PATH)
 CFLAGS+=	-DORCHLUA_PATH=\"${ORCHLUA_PATH}\"
 
@@ -21,7 +27,7 @@ LUA_INCDIR?=	/usr/local/include/lua54
 LUA_LIB?=	-L/usr/local/lib -llua-5.4
 
 CFLAGS+=	-I${LUA_INCDIR}
-LDFLAGS+=	${LUA_LIB}
+LDADD+=	${LUA_LIB}
 
 .if make(lint) && !exists(/usr/local/bin/luacheck)
 .error "linting requires devel/lua-luacheck"

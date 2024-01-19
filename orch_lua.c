@@ -7,6 +7,7 @@
 #include <sys/param.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 
 #include <assert.h>
@@ -29,6 +30,11 @@
 /* Introduced in Lua 5.4 */
 #ifndef luaL_pushfail
 #define	luaL_pushfail(L)	lua_pushnil(L)
+#endif
+
+#ifndef CLOCK_REALTIME_FAST
+/* Linux */
+#define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
 #endif
 
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"

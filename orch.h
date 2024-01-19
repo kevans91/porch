@@ -14,6 +14,10 @@
 
 #define	ORCHLUA_MODNAME	"orch_impl"
 
+#ifndef __unused
+#define	__unused	__attribute__((unused))
+#endif
+
 struct orch_interp_cfg {
 	const char		*scriptf;
 	int			 dirfd;
@@ -41,3 +45,11 @@ int orch_interp(const char *, const char *, int, const char * const []);
 /* orch_lua.c */
 void orchlua_configure(struct orch_interp_cfg *);
 int luaopen_orch(lua_State *);
+
+/* orch_compat.c */
+#ifdef __linux__
+size_t strlcpy(char * __restrict dst, const char * __restrict src, size_t dsize);
+size_t strlcat(char * __restrict dst, const char * __restrict src, size_t dsize);
+
+int tcsetsid(int tty, int sess);
+#endif
