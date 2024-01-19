@@ -10,3 +10,9 @@ The authoritative source for this software is located at
 https://git.kevans.dev/kevans/orch, but it's additionally mirrored to
 [GitHub](https://github.com/kevans91/orch) for user-facing interactions.  Pull
 requests and Issues are open on GitHub.
+
+orch(1) strives to be portable.  Currently supported platforms:
+ - FreeBSD
+ - OpenBSD
+ - macOS
+ - Linux (tested on Ubuntu only)
