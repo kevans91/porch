@@ -27,6 +27,7 @@ not_ok()
 
 	echo "not ok $testid - $f: $msg"
 	testid=$((testid + 1))
+	fails=$((fails + 1))
 }
 
 for f in "$@" ;do
