@@ -134,44 +134,12 @@ orchlua_time(lua_State *L)
 	return (1);
 }
 
-/*
- * We'll transform argv[0] into a file based on our own rules.  Relative paths
- * should be interpreted as relative to the script (dirfd) by default, and we'll
- * fallback to letting the PATH search happen as usual.  Absolute paths are just
- * used as-is.  If we didn't have a dirfd (e.g., script fed in via stdin), we'll
- * just do the PATH search.
- */
-static int
-orchlua_spawn_file(const char *argv0)
-{
-	struct stat sb;
-	int fd;
-
-	if (*argv0 == '/' || orchlua_cfg.dirfd == -1)
-		return (-1);
-
-	if ((fd = openat(orchlua_cfg.dirfd, argv0,
-	    O_EXEC | O_RESOLVE_BENEATH | O_CLOEXEC)) == -1)
-		return (-1);
-
-	/*
-	 * We'll only use this if it's definitely a file; O_EXEC alone doesn't
-	 * mean that we aren't a direcvtory, since O_SEARCH is an alias for it.
-	 */
-	if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
-		close(fd);
-		return (-1);
-	}
-
-	return (fd);
-}
-
 static int
 orchlua_spawn(lua_State *L)
 {
 	struct orch_process *proc;
 	const char **argv;
-	int argc, spawnfd;
+	int argc;
 
 	if (lua_gettop(L) == 0) {
 		luaL_pushfail(L);
@@ -197,18 +165,14 @@ orchlua_spawn(lua_State *L)
 
 	}
 
-	spawnfd = orchlua_spawn_file(argv[0]);
-
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->status = 0;
 	proc->pid = 0;
 	proc->buffered = proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
-	orch_spawn(spawnfd, argc, argv, proc);
+	orch_spawn(argc, argv, proc);
 	free(argv);
-	if (spawnfd >= 0)
-		close(spawnfd);
 
 	return (1);
 }
@@ -291,7 +255,12 @@ orchlua_process_close(lua_State *L)
 	}
 
 	if (self->pid != 0) {
-		signal(SIGALRM, orchlua_process_close_alarm);
+		struct sigaction sigalrm = {
+			.sa_handler = orchlua_process_close_alarm,
+		};
+
+		sigaction(SIGALRM, &sigalrm, NULL);
+
 		/* XXX Configurable? */
 		alarm(5);
 		sig = SIGINT;
@@ -733,6 +702,31 @@ register_regex_metatable(lua_State *L)
 	lua_pop(L, 1);
 }
 
+static int
+orchlua_add_execpath(const char *path)
+{
+	const char *curpath;
+	char *newpath;
+	int error;
+
+	error = 0;
+	curpath = getenv("PATH");
+	/* Odd, but nothing to do but just add it... */
+	if (curpath == NULL)
+		return (setenv("PATH", path, 1) == 0 ? 0 : errno);
+
+	newpath = NULL;
+	(void)asprintf(&newpath, "%s:%s", path, curpath);
+	if (newpath == NULL)
+		return (ENOMEM);
+
+	if (setenv("PATH", newpath, 1) != 0)
+		error = errno;
+
+	free(newpath);
+	return (error);
+}
+
 void
 orchlua_configure(struct orch_interp_cfg *cfg)
 {
@@ -774,6 +768,8 @@ luaopen_orch(lua_State *L)
 			scriptroot = ".";
 			script = fpath;
 		}
+
+		orchlua_add_execpath(scriptroot);
 
 		dirfd = open(scriptroot, O_DIRECTORY | O_PATH | O_CLOEXEC);
 		if (dirfd == -1)

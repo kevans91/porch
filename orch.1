@@ -210,17 +210,14 @@ The arguments to
 are in the traditional argv style.
 They may either be specified directly as arguments to the function, or they may
 instead be constructed as a single table.
-If the command to be spawned is a relative path, then
 .Nm
-will search relative to the script's directory for an executable file of that
-name first.
-If it can find such a file, it will be executed.
-Otherwise,
-.Nm
-will fall back to a standard
+will execute a standard
 .Ev PATH
 search via
 .Xr execvp 3 .
+Note that the script's directory is added to
+.Ev PATH
+before execution begins.
 The spawned process will inherit the running environment.
 .Pp
 If the process cannot be spawned, then
