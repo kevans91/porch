@@ -21,7 +21,7 @@ jobs:
           - os: ubuntu-22.04
           - os: macos-latest
             lua: 5.4
-            pkgs: bmake lua@5.4
+            pkgs: bmake coreutils lua@5.4
         exclude:
           - os: ubuntu-20.04
             lua: 5.4
@@ -45,7 +45,7 @@ jobs:
       - name: build orch(1) (Ubuntu)
         if: runner.os == 'Linux'
         run: |
-          env ORCHLUA_PATH=/usr/share/orch LUA_INCDIR=/usr/include/lua${{ matrix.lua }} \
+          env ORCHLUA_PATH=/usr/local/share/orch LUA_INCDIR=/usr/include/lua${{ matrix.lua }} \
               LUA_LIB=-llua${{ matrix.lua }} bmake
       - name: build orch(1)
         run: |
@@ -56,5 +56,10 @@ jobs:
             lua_incdir="/usr/local/Cellar/lua/5.4.6/include/lua"
             lua_lib="-L/usr/local/Cellar/lua/5.4.6/lib -llua5.4"
           fi
-          env ORCHLUA_PATH=/usr/share/orch LUA_INCDIR="${lua_incdir}" \
+          env ORCHLUA_PATH=/usr/local/share/orch LUA_INCDIR="${lua_incdir}" \
               LUA_LIB="${lua_lib}" bmake
+      - name: Run self-tests
+        run: |
+          sudo mkdir -p /usr/local/share/orch
+          sudo cp orch.lua /usr/local/share/orch
+          sh tests/basic_test.sh
