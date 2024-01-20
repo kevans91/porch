@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 22, 2024
+.Dd January 24, 2024
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -158,6 +158,58 @@ An alias for the
 .Dq lua
 matcher.
 .El
+.It Fn stty "field" "set" "unset"
+Change the specified
+.Fa field
+as described by
+.Fa set
+and
+.Fa unset .
+.Fa field
+should be one of
+.Dq cflag ,
+.Dq iflag ,
+.Dq lflag ,
+.Dq oflag ,
+or
+.Dq cc ,
+corresponding to the similarly named fields in
+.Xr termios 4 .
+For the flag fields, the bits in
+.Fa set
+will be set in the new mask, and the bits in
+.Fa unset
+will be unset in the new mask.
+Either may be 0 or nil to indicate no bits to be set or unset respectively.
+The masks for each field may be found in the
+.Dq tty
+table in the script's global environment.
+For instance, ICANON's mask may be referenced as
+.Dq tty.lflag.ICANON .
+.Pp
+For
+.Dq cc ,
+the
+.Fa unset
+argument is ignored, and
+.Fa set
+should be a table whose keys correspond to a defined
+.Dq V*
+constant, and whose values are either the empty string to indicate that the
+field should be disabled, an integer for VMIN and VTIME, or a string of the form
+.Dq ^X
+to indicate ctrl-X.
+.Pp
+Supported entries may be found in the
+.Dq tty
+table in the script's global environment.
+The
+.Dq tty.cc
+table's keys correspond to supported characters, e.g.,
+.Dq tty.cc.VEOF ,
+and the associated values are all truthy to indicate that they are supported.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn raw "boolean"
 Changes the raw
 .Fn write
@@ -436,4 +488,5 @@ More examples can be found in
 .Pa /usr/share/orch/examples .
 .Sh SEE ALSO
 .Xr orch 1 ,
-.Xr pts 4
+.Xr pts 4 ,
+.Xr termios 4

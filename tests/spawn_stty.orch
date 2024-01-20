@@ -1,0 +1,24 @@
+
+timeout(3)
+
+spawn("cat")
+-- Set -ICANON; this will timeout if canonicalization is on, since we haven't
+-- sent an EOF.
+stty("lflag", 0, tty.lflag.ICANON)
+
+write "Hello the"
+match "^Hello the$"
+
+-- We should be able to toggle it off then back on again, so the next will
+-- timeout.
+spawn("cat")
+
+stty("lflag", 0, tty.lflag.ICANON)
+write "Hello the"
+stty("lflag", tty.lflag.ICANON)
+
+fail(function()
+	exit(0)
+end)
+match "^Hello the$"
+exit(1)

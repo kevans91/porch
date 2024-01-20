@@ -44,9 +44,9 @@ static int orch_newpt(void);
 
 /* Child */
 static pid_t orch_newsess(void);
-static void orch_usept(pid_t, int);
+static void orch_usept(pid_t, int, struct termios *);
 static void orch_child_error(const char *, ...) __printflike(1, 2);
-static void orch_exec(int, const char *[]);
+static void orch_exec(int, const char *[], struct termios *t);
 
 /* Both */
 static int orch_wait(void);
@@ -83,17 +83,19 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 	if (pid == -1) {
 		err(1, "fork");
 	} else if (pid == 0) {
+		struct termios t;
+
 		/* Child */
 		close(cmdsock[0]);
 		orch_ipc_open(cmdsock[1]);
 
 		sess = orch_newsess();
 
-		orch_usept(sess, p->termctl);
+		orch_usept(sess, p->termctl, &t);
 		close(p->termctl);
 		p->termctl = -1;
 
-		orch_exec(argc, argv);
+		orch_exec(argc, argv, &t);
 	}
 
 	p->released = false;
@@ -182,10 +184,77 @@ out:
 	_exit(1);
 }
 
+static int
+orch_child_termios_inquiry(struct orch_ipc_msg *inmsg __unused, void *cookie)
+{
+	struct orch_ipc_msg *msg;
+	struct termios *child_termios = cookie, *parent_termios;
+	size_t msgsz;
+	int error, serr;
+
+	/* Send term attributes back over the wire. */
+	msgsz = sizeof(msg->hdr) + sizeof(*child_termios);
+	msg = malloc(msgsz);
+	if (msg == NULL) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	msg->hdr.tag = IPC_TERMIOS_SET;
+	msg->hdr.size = msgsz;
+	parent_termios = (void *)(msg + 1);
+	memcpy(parent_termios, child_termios, sizeof(*child_termios));
+
+	error = orch_ipc_send(msg);
+	serr = errno;
+
+	free(msg);
+	if (error != 0)
+		errno = serr;
+	return (error);
+}
+
+static int
+orch_child_termios_set(struct orch_ipc_msg *msg, void *cookie)
+{
+	struct termios *updated_termios;
+	struct termios *current_termios = cookie;
+	struct orch_ipc_msg ack = {
+		.hdr = { .size = sizeof(ack), .tag = IPC_TERMIOS_ACK }
+	};
+	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+
+	if (datasz != sizeof(*updated_termios)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	updated_termios = (void *)(msg + 1);
+
+	/*
+	 * We don't need to keep track of the updated state, but we do so
+	 * anyways.
+	 */
+	memcpy(current_termios, updated_termios, sizeof(*updated_termios));
+
+	if (tcsetattr(STDIN_FILENO, TCSANOW, current_termios) == -1)
+		orch_child_error("tcsetattr");
+
+	return (orch_ipc_send(&ack));
+}
+
 static void
-orch_exec(int argc __unused, const char *argv[])
+orch_exec(int argc __unused, const char *argv[], struct termios *t)
 {
 	int error;
+
+	/*
+	 * Register a couple of events that the script may want to use:
+	 * - IPC_TERMIOS_INQUIRY: sent our terminal attributes back over.
+	 * - IPC_TERMIOS_SET: update our terminal attributes
+	 */
+	orch_ipc_register(IPC_TERMIOS_INQUIRY, orch_child_termios_inquiry, t);
+	orch_ipc_register(IPC_TERMIOS_SET, orch_child_termios_set, t);
 
 	/* Let the script commence. */
 	if (orch_release() != 0)
@@ -245,9 +314,8 @@ orch_newsess(void)
 }
 
 static void
-orch_usept(pid_t sess, int termctl)
+orch_usept(pid_t sess, int termctl, struct termios *t)
 {
-	struct termios t;
 	const char *name;
 	int target;
 
@@ -262,13 +330,8 @@ orch_usept(pid_t sess, int termctl)
 	if (tcsetsid(target, sess) == -1)
 		orch_child_error("tcsetsid");
 
-	if (tcgetattr(target, &t) == -1)
+	if (tcgetattr(target, t) == -1)
 		orch_child_error("tcgetattr");
-
-	t.c_lflag &= ~ECHO;
-
-	if (tcsetattr(target, TCSANOW, &t) == -1)
-		orch_child_error("tcsetattr");
 
 	/* XXX Accept mask, buffering? */
 	dup2(target, STDIN_FILENO);

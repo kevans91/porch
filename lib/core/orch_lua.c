@@ -26,15 +26,6 @@
 #include "orch.h"
 #include "orch_lib.h"
 
-#include <lauxlib.h>
-
-/* We only support Lua 5.2+ */
-
-/* Introduced in Lua 5.4 */
-#ifndef luaL_pushfail
-#define	luaL_pushfail(L)	lua_pushnil(L)
-#endif
-
 #ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
 #endif
@@ -294,8 +285,16 @@ orchlua_spawn(lua_State *L)
 
 	}
 
+	/*
+	 * Note that the one uservalue allowed by Lua < 5.4 is already consumed
+	 * by the process buffer, so we can't allocate the orch_term for it up
+	 * front.  We'll just allocate it if the module requests it, and will
+	 * not attach it to the proc -- orch.lua will just have to manage its
+	 * lifetime appropriately.
+	 */
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->L = L;
+	proc->term = NULL;
 	proc->status = 0;
 	proc->pid = 0;
 	proc->buffered = proc->eof = proc->raw = proc->released = false;
@@ -725,6 +724,99 @@ orchlua_process_released(lua_State *L)
 }
 
 static int
+orchlua_process_term_set(struct orch_ipc_msg *msg, void *cookie)
+{
+	struct orch_term *term = cookie;
+	struct termios *parent_termios = &term->term;
+	struct termios *child_termios = (void *)(msg + 1);
+	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+
+	if (datasz != sizeof(*child_termios)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	memcpy(parent_termios, child_termios, sizeof(*child_termios));
+	term->initialized = true;
+
+	return (0);
+}
+
+static int
+orchlua_process_term(lua_State *L)
+{
+	struct orch_term sterm;
+	struct orch_ipc_msg *cmsg;
+	struct orch_process *self;
+	struct orch_ipc_msg msg = {
+		.hdr = { .size = sizeof(msg), .tag = IPC_TERMIOS_INQUIRY }
+	};
+	int error, retvals;
+
+	retvals = 0;
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (!orch_ipc_okay()) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "process already released");
+		return (2);
+	} else if (self->term != NULL) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "process term already generated");
+		return (2);
+	}
+
+	sterm.initialized = false;
+	orch_ipc_register(IPC_TERMIOS_SET, orchlua_process_term_set, &sterm);
+
+	/*
+	 * The client is only responding to our messages up until we release, so
+	 * there shouldn't be anything in the queue.  We'll just fire this off,
+	 * and wait for a response to become ready.
+	 */
+	if ((error = orch_ipc_send(&msg)) != 0) {
+		error = errno;
+		goto out;
+	}
+
+	if (orch_ipc_wait(NULL) == -1) {
+		error = errno;
+		goto out;
+	}
+
+	if (orch_ipc_recv(&cmsg) != 0) {
+		error = errno;
+		goto out;
+	}
+
+	if (cmsg != NULL) {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "unexpected message type '%d'",
+		    cmsg->hdr.tag);
+		retvals = 2;
+		goto out;
+	} else if (!sterm.initialized) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "unknown unexpected message received");
+		retvals = 2;
+		goto out;
+	}
+
+	retvals = orchlua_tty_alloc(L, &sterm, &self->term);
+
+out:
+	/* Deallocate the slot */
+	orch_ipc_register(IPC_TERMIOS_SET, NULL, NULL);
+	if (error != 0 && retvals == 0) {
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(error));
+
+		retvals = 2;
+	}
+
+	return (retvals);
+}
+
+static int
 orchlua_process_eof(lua_State *L)
 {
 	struct orch_process *self;
@@ -743,6 +835,7 @@ static const luaL_Reg orchlua_process[] = {
 	PROCESS_SIMPLE(raw),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(term),
 	PROCESS_SIMPLE(eof),
 	{ NULL, NULL },
 };
@@ -878,6 +971,8 @@ luaopen_orch_core(lua_State *L)
 {
 
 	luaL_newlib(L, orchlib);
+
+	orchlua_setup_tty(L);
 
 	register_process_metatable(L);
 	register_regex_metatable(L);

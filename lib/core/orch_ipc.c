@@ -299,6 +299,8 @@ retry:
 	return (0);
 }
 
+#include <stdio.h>
+
 int
 orch_ipc_wait(bool *eof_seen)
 {

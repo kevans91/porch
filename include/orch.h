@@ -13,9 +13,15 @@
 #include <lua.h>
 
 #define	ORCHLUA_MODNAME	"orch.core"
+#define	ORCHTTY_MODNAME	"orch.tty"
 
+/* sys/cdefs.h */
 #ifndef __unused
 #define	__unused	__attribute__((unused))
+#endif
+#ifndef __printflike
+#define __printflike(fmtarg, firstvararg) \
+	__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 #endif
 
 /* orch_compat.c */
@@ -30,3 +36,4 @@ int tcsetsid(int, int);
 
 /* orch_lua.c */
 int luaopen_orch_core(lua_State *);
+int luaopen_orch_tty(lua_State *);

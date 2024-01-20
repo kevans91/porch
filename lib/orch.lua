@@ -5,6 +5,7 @@
 --
 
 local impl = require("orch.core")
+local tty = impl.tty
 local orch = {env = {}}
 
 local CTX_QUEUE = 1
@@ -14,7 +15,7 @@ local CTX_CALLBACK = 3
 local orch_ctx = CTX_QUEUE
 local execute, match_ctx, match_ctx_stack
 local fail_callback
-local process
+local process, term
 local current_timeout = 10
 
 local match_valid_cfg = {
@@ -420,7 +421,16 @@ end
 local function internal_spawn(cmd)
 	local new_process = assert(impl.spawn(table.unpack(cmd)))
 	assert(new_process:buffer(MatchBuffer:new()))
-	return new_process
+
+	local new_term = assert(new_process:term())
+	local mask = new_term:fetch("lflag")
+
+	mask = mask & ~tty.lflag.ECHO
+	assert(new_term:update({
+		lflag = mask,
+	}))
+
+	return new_process, new_term
 end
 
 local function grab_caller(level)
@@ -501,7 +511,35 @@ local function do_spawn(obj)
 	if process then
 		assert(process:close())
 	end
-	process = internal_spawn(obj.cmd)
+	process, term = internal_spawn(obj.cmd)
+	-- XXX something with term
+
+	return true
+end
+
+local function do_stty(obj)
+	local field, set, unset = obj.field, obj.set, obj.unset
+
+	local value = term:fetch(field)
+	if type(value) == "table" then
+		set = set or {}
+
+		-- cc
+		for k, v in pairs(set) do
+			value[k] = v
+		end
+	else
+		set = set or 0
+		unset = unset or 0
+
+		-- *flag mask
+		value = (value | set) & ~unset
+	end
+
+	assert(term:update({
+		[field] = value
+	}))
+
 	return true
 end
 
@@ -697,6 +735,19 @@ function orch.env.spawn(...)
 	return true
 end
 
+function orch.env.stty(field, set, unset)
+	if not tty[field] then
+		error("stty: not a valid field to set: " .. field)
+	end
+
+	local action_obj = MatchAction:new("stty", do_stty)
+	action_obj.field = field
+	action_obj.set = set
+	action_obj.unset = unset
+	match_ctx:push(action_obj)
+	return true
+end
+
 function orch.env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")
@@ -759,6 +810,12 @@ end
 orch.env.assert = assert
 orch.env.string = string
 orch.env.table = table
+orch.env.tty = tty
 orch.env.type = type
+
+--for k, v in pairs(tty.lflags) do
+--	print(k, v)
+--end
+--print(tty.flags())
 
 return orch
