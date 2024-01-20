@@ -289,7 +289,16 @@ orchlua_spawn(lua_State *L)
 	proc->buffered = proc->eof = proc->raw = proc->released = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
-	orch_spawn(argc, argv, proc);
+	if (orch_spawn(argc, argv, proc) != 0) {
+		int serrno = errno;
+
+		free(argv);
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serrno));
+		return (2);
+	}
+
 	free(argv);
 
 	return (1);
@@ -401,8 +410,7 @@ again:
 		self->pid = 0;
 	}
 
-	close(self->cmdsock);
-	self->cmdsock = -1;
+	orch_ipc_close();
 
 	close(self->termctl);
 	self->termctl = -1;
@@ -669,20 +677,18 @@ static int
 orchlua_process_release(lua_State *L)
 {
 	struct orch_process *self;
-	ssize_t wsz;
-	int buf = 0, err;
+	int error;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	wsz = write(self->cmdsock, &buf, sizeof(buf));
-	close(self->cmdsock);
-	self->cmdsock = -1;
-	if (wsz != sizeof(buf)) {
-		err = errno;
+
+	error = orch_release();
+	orch_ipc_close();
+
+	if (error != 0) {
+		error = errno;
+
 		luaL_pushfail(L);
-		if (wsz < 0)
-			lua_pushstring(L, strerror(err));
-		else
-			lua_pushstring(L, "cmd socket closed");
+		lua_pushstring(L, strerror(error));
 		return (2);
 	}
 

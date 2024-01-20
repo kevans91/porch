@@ -8,9 +8,11 @@
 #include <sys/socket.h>
 
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -23,6 +25,17 @@
 #define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY | O_CLOEXEC)
 #endif
 
+/* A bit lazy, but meh. */
+#if defined(SOCK_CLOEXEC) && defined(SOCK_NONBLOCK)
+#define	SOCKPAIR_ATTRS	(SOCK_CLOEXEC | SOCK_NONBLOCK)
+#elif defined(SOCK_CLOEXEC)
+#define	SOCKPAIR_ATTRS	(SOCK_CLOEXEC)
+#elif defined(SOCK_NONBLOCK)
+#define	SOCKPAIR_ATTRS	(SOCK_NONBLOCK)
+#else
+#define	SOCKPAIR_ATTRS	(0)
+#endif
+
 extern char **environ;
 
 /* Parent */
@@ -31,11 +44,10 @@ static int orch_newpt(void);
 /* Child */
 static pid_t orch_newsess(void);
 static void orch_usept(pid_t, int);
-static void orch_exec(int, const char *[], int);
+static void orch_exec(int, const char *[]);
 
 /* Both */
-static void orch_release(int);
-static void orch_wait(int);
+static int orch_wait(void);
 
 int
 orch_spawn(int argc, const char *argv[], struct orch_process *p)
@@ -43,17 +55,23 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 	int cmdsock[2];
 	pid_t pid, sess;
 
-#ifdef SOCK_CLOEXEC
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, &cmdsock[0]) == -1)
+	if (socketpair(AF_UNIX, SOCK_STREAM | SOCKPAIR_ATTRS, 0,
+	    &cmdsock[0]) == -1)
 		err(1, "socketpair");
-#else
-	if (socketpair(AF_UNIX, SOCK_STREAM, 0, &cmdsock[0]) == -1)
-		err(1, "socketpair");
+#if (SOCKPAIR_ATTRS & SOCK_CLOEXEC) == 0
 	if (fcntl(cmdsock[0], F_SETFD, fcntl(cmdsock[0], F_GETFD) |
 	    FD_CLOEXEC) == -1)
 		err(1, "fcntl");
 	if (fcntl(cmdsock[1], F_SETFD, fcntl(cmdsock[1], F_GETFD) |
 	    FD_CLOEXEC) == -1)
+		err(1, "fcntl");
+#endif
+#if (SOCKPAIR_ATTRS & SOCK_NONBLOCK) == 0
+	if (fcntl(cmdsock[0], F_SETFL, fcntl(cmdsock[0], F_GETFL) |
+	    O_NONBLOCK) == -1)
+		err(1, "fcntl");
+	if (fcntl(cmdsock[1], F_SETFL, fcntl(cmdsock[1], F_GETFL) |
+	    O_NONBLOCK) == -1)
 		err(1, "fcntl");
 #endif
 
@@ -65,18 +83,20 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 	} else if (pid == 0) {
 		/* Child */
 		close(cmdsock[0]);
+		orch_ipc_open(cmdsock[1]);
+
 		sess = orch_newsess();
 
 		orch_usept(sess, p->termctl);
 		close(p->termctl);
 		p->termctl = -1;
 
-		orch_exec(argc, argv, cmdsock[1]);
+		orch_exec(argc, argv);
 	}
 
 	p->released = false;
 	p->pid = pid;
-	p->cmdsock = cmdsock[0];
+	orch_ipc_open(cmdsock[0]);
 
 	/* Parent */
 	close(cmdsock[1]);
@@ -85,41 +105,52 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 	 * Stalls until the tty is configured, completely side step races from
 	 * script writing to the tty before, e.g., echo is disabled.
 	 */
-	/* XXX Don't fail? */
-	orch_wait(p->cmdsock);
+	return (orch_wait());
+}
+
+static int
+orch_wait(void)
+{
+	struct orch_ipc_msg *msg;
+	bool stop = false;
+
+	while (!stop) {
+		if (orch_ipc_wait() == -1)
+			return (-1);
+
+		if (orch_ipc_recv(&msg) != 0)
+			return (-1);
+		if (msg == NULL)
+			continue;
+
+		stop = msg->hdr.tag == IPC_RELEASE;
+
+		free(msg);
+		msg = NULL;
+	}
+
 	return (0);
 }
 
-static void
-orch_wait(int cmdsock)
+int
+orch_release(void)
 {
-	ssize_t nb;
-	int buf;
+	struct orch_ipc_msg msg;
 
-	nb = read(cmdsock, &buf, sizeof(buf));
-	if (nb < 0)
-		err(1, "read");
-	else if ((size_t)nb < sizeof(buf) || buf != 0)
-		errx(1, "protocol violation");
+	msg.hdr.size = sizeof(msg.hdr);
+	msg.hdr.tag = IPC_RELEASE;
+
+	return (orch_ipc_send(&msg));
 }
 
 static void
-orch_release(int cmdsock)
+orch_exec(int argc __unused, const char *argv[])
 {
-	ssize_t wsz;
-	int buf = 0;
-
-	/* XXX */
-	wsz = write(cmdsock, &buf, sizeof(buf));
-	(void)wsz;
-}
-
-static void
-orch_exec(int argc __unused, const char *argv[], int cmdsock)
-{
+	int error;
 
 	/* Let the script commence. */
-	orch_release(cmdsock);
+	if (orch_release() != 0)
+		_exit(1);
 
 	/*
 	 * The child waits here for the script to release it.  It will typically be
@@ -130,7 +161,11 @@ orch_exec(int argc __unused, const char *argv[], int cmdsock)
 	 * For now this is just a simple int, in the future it may grow a more
 	 * extensive protocol so that the script can, e.g., reconfigure the tty.
 	 */
-	orch_wait(cmdsock);
+	error = orch_wait();
+	orch_ipc_close();
+
+	if (error != 0)
+		_exit(1);
 
 	execvp(argv[0], (char * const *)(const void *)argv);
 
