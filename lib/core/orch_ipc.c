@@ -20,15 +20,20 @@ struct orch_ipc_msgq {
 	struct orch_ipc_msgq	*next;
 };
 
+static struct orch_ipc_register {
+	orch_ipc_handler	*handler;
+	void			*cookie;
+} orch_ipc_registration[IPC_LAST - 1];
+
 static struct orch_ipc_msgq *head, *tail;
 static int sockfd = -1;
 
 static int orch_ipc_drain(void);
+static int orch_ipc_pop(struct orch_ipc_msg **);
 
 int
 orch_ipc_close(void)
 {
-	struct orch_ipc_msgq *msgq, *next;
 	int error;
 
 	error = 0;
@@ -39,22 +44,26 @@ orch_ipc_close(void)
 		 * orch_ipc_drain() should hit EOF then close the socket.
 		 */
 		while (sockfd != -1 && error == 0) {
-			orch_ipc_wait();
+			orch_ipc_wait(NULL);
 
 			error = orch_ipc_drain();
 		}
 	}
 
-	msgq = head;
-	while (msgq != NULL) {
-		next = msgq->next;
+	/*
+	 * We may have hit EOF at an inopportune time, just cope with it
+	 * and free the queue.
+	 */
+	error = orch_ipc_pop(NULL);
+	assert(head == NULL);
+	tail = NULL;
+	for (size_t i = 0; i < IPC_LAST; i++) {
+		struct orch_ipc_register *reg = &orch_ipc_registration[i];
 
-		free(msgq->msg);
-		free(msgq);
-		msgq = next;
+		reg->handler = NULL;
+		reg->cookie = NULL;
 	}
 
-	tail = NULL;
 	return (error);
 }
 
@@ -144,10 +153,12 @@ orch_ipc_drain(void)
 			resid -= readsz;
 		}
 
-		if (head == NULL)
+		if (head == NULL) {
 			head = tail = msgq;
-		else
-			tail = tail->next = msgq;
+		} else {
+			tail->next = msgq;
+			tail = msgq;
+		}
 
 		msg = NULL;
 		msgq = NULL;
@@ -161,29 +172,93 @@ eof:
 	return (0);
 }
 
+static int
+orch_ipc_pop(struct orch_ipc_msg **omsg)
+{
+	struct orch_ipc_register *reg;
+	struct orch_ipc_msgq *msgq;
+	struct orch_ipc_msg *msg;
+	int error;
+
+	error = 0;
+	while (head != NULL) {
+		/* Dequeue a msg */
+		msgq = head;
+		head = head->next;
+
+		/* Free the container */
+		msg = msgq->msg;
+
+		free(msgq);
+		msgq = NULL;
+
+		/* Do we have a handler for it? */
+		reg = &orch_ipc_registration[msg->hdr.tag - 1];
+		if (reg->handler != NULL) {
+			int serr;
+
+			error = (*reg->handler)(msg, reg->cookie);
+			if (error != 0)
+				serr = errno;
+
+			free(msg);
+			msg = NULL;
+
+			if (error != 0) {
+				errno = serr;
+				error = -1;
+				break;
+			}
+
+			/*
+			 * Try to dequeue another one... the handler is allowed
+			 * to shut down IPC, so let's be careful here.
+			 */
+			continue;
+		}
+
+		/*
+		 * No handler, potentially tap this one out.  If we don't have
+		 * an omsg, we're just draining so we'll free the msg here.
+		 */
+		if (omsg == NULL) {
+			free(msg);
+			msg = NULL;
+
+			continue;
+		}
+
+		*omsg = msg;
+		break;
+	}
+
+	return (error);
+}
+
 int
 orch_ipc_recv(struct orch_ipc_msg **omsg)
 {
-	struct orch_ipc_msgq *msgq;
-
-	*omsg = NULL;
+	struct orch_ipc_msg *rcvmsg;
+	int error;
 
 	if (orch_ipc_drain() != 0)
 		return (-1);
 
-	if (head == NULL)
-		return (0);
+	rcvmsg = NULL;
+	error = orch_ipc_pop(&rcvmsg);
+	if (error == 0)
+		*omsg = rcvmsg;
+	return (error);
+}
 
-	/* Dequeue a msg */
-	msgq = head;
-	head = head->next;
+int
+orch_ipc_register(enum orch_ipc_tag tag, orch_ipc_handler *handler,
+    void *cookie)
+{
+	struct orch_ipc_register *reg = &orch_ipc_registration[tag - 1];
 
-	/* Free the container */
-	*omsg = msgq->msg;
-
-	free(msgq);
-	msgq = NULL;
-
+	reg->handler = handler;
+	reg->cookie = cookie;
 	return (0);
 }
 
@@ -225,16 +300,27 @@ retry:
 }
 
 int
-orch_ipc_wait(void)
+orch_ipc_wait(bool *eof_seen)
 {
 	fd_set rfd;
 	int error;
 
+	if (eof_seen != NULL)
+		*eof_seen = false;
+
+	/*
+	 * If we have any messages in the queue, don't bother polling; recv
+	 * will return something.
+	 */
+	if (head != NULL)
+		return (0);
+
 	FD_ZERO(&rfd);
 	do {
 		if (sockfd == -1) {
-			errno = ECONNRESET;
-			return (-1);
+			if (eof_seen != NULL)
+				*eof_seen = true;
+			return (0);
 		}
 
 		FD_SET(sockfd, &rfd);

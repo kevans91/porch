@@ -10,6 +10,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +45,7 @@ static int orch_newpt(void);
 /* Child */
 static pid_t orch_newsess(void);
 static void orch_usept(pid_t, int);
+static void orch_child_error(const char *, ...) __printflike(1, 2);
 static void orch_exec(int, const char *[]);
 
 /* Both */
@@ -115,8 +117,10 @@ orch_wait(void)
 	bool stop = false;
 
 	while (!stop) {
-		if (orch_ipc_wait() == -1)
+		if (orch_ipc_wait(&stop) == -1)
 			return (-1);
+		else if (stop)
+			break;
 
 		if (orch_ipc_recv(&msg) != 0)
 			return (-1);
@@ -141,6 +145,41 @@ orch_release(void)
 	msg.hdr.tag = IPC_RELEASE;
 
 	return (orch_ipc_send(&msg));
+}
+
+static void
+orch_child_error(const char *fmt, ...)
+{
+	struct orch_ipc_msg *errmsg;
+	char *str, *msgstr;
+	va_list ap;
+	int sz;
+
+	errmsg = NULL;
+	va_start(ap, fmt);
+	if ((sz = vasprintf(&str, fmt, ap)) == -1)
+		goto out;
+	va_end(ap);
+
+	errmsg = malloc(sizeof(errmsg->hdr) + sz + 1);
+	if (errmsg == NULL)
+		goto out;
+
+	errmsg->hdr.tag = IPC_ERROR;
+	errmsg->hdr.size = sizeof(errmsg->hdr) + sz + 1;
+	msgstr = (void *)(errmsg + 1);
+	strlcpy(msgstr, str, sz + 1);
+
+	free(str);
+	str = NULL;
+
+	orch_ipc_send(errmsg);
+
+out:
+	free(errmsg);
+	free(str);
+	orch_ipc_close();
+	_exit(1);
 }
 
 static void
@@ -200,7 +239,7 @@ orch_newsess(void)
 
 	sess = setsid();
 	if (sess == -1)
-		err(1, "sess");
+		orch_child_error("setsid");
 
 	return (sess);
 }
@@ -214,22 +253,22 @@ orch_usept(pid_t sess, int termctl)
 
 	name = ptsname(termctl);
 	if (name == NULL)
-		err(1, "ptsname");
+		orch_child_error("ptsname: %s", strerror(errno));
 
 	target = open(name, O_RDWR);
 	if (target == -1)
-		err(1, "open: %s", name);
+		orch_child_error("open %s: %s", name, strerror(errno));
 
 	if (tcsetsid(target, sess) == -1)
-		err(1, "tcsetsid");
+		orch_child_error("tcsetsid");
 
 	if (tcgetattr(target, &t) == -1)
-		err(1, "tcgetattr");
+		orch_child_error("tcgetattr");
 
 	t.c_lflag &= ~ECHO;
 
 	if (tcsetattr(target, TCSANOW, &t) == -1)
-		err(1, "tcsetattr");
+		orch_child_error("tcsetattr");
 
 	/* XXX Accept mask, buffering? */
 	dup2(target, STDIN_FILENO);

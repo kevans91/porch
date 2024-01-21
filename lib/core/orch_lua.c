@@ -253,6 +253,17 @@ orchlua_time(lua_State *L)
 }
 
 static int
+orchlua_child_error(struct orch_ipc_msg *msg, void *cookie)
+{
+	struct orch_process *proc = cookie;
+
+	fprintf(stderr, "CHILD ERROR: %.*s\n",
+	    (int)(msg->hdr.size - sizeof(msg->hdr)), msg->data);
+	proc->error = true;
+	return (0);
+}
+
+static int
 orchlua_spawn(lua_State *L)
 {
 	struct orch_process *proc;
@@ -284,11 +295,16 @@ orchlua_spawn(lua_State *L)
 	}
 
 	proc = lua_newuserdata(L, sizeof(*proc));
+	proc->L = L;
 	proc->status = 0;
 	proc->pid = 0;
 	proc->buffered = proc->eof = proc->raw = proc->released = false;
+	proc->error = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
+
+	orch_ipc_register(IPC_ERROR, &orchlua_child_error, proc);
+
 	if (orch_spawn(argc, argv, proc) != 0) {
 		int serrno = errno;
 
@@ -468,7 +484,7 @@ orchlua_process_read(lua_State *L)
 	/* Crude */
 	if (tvp != NULL)
 			start = now = time(NULL);
-	while (tvp == NULL || now - start < timeout) {
+	while ((tvp == NULL || now - start < timeout) && !self->error) {
 		FD_SET(fd, &rfd);
 		ret = select(fd + 1, &rfd, NULL, NULL, tvp);
 		if (ret == -1 && errno == EINTR) {
