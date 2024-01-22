@@ -50,7 +50,9 @@
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
 #define	ORCHLUA_REGEXHANDLE	"orchlua_regex_t"
 
-static struct orch_interp_cfg orchlua_cfg;
+static struct orch_interp_cfg orchlua_cfg = {
+	.dirfd = -1,
+};
 
 static int orchlua_add_execpath(const char *);
 
@@ -799,14 +801,6 @@ orchlua_add_execpath(const char *path)
 	return (error);
 }
 
-void
-orchlua_configure(struct orch_interp_cfg *cfg)
-{
-
-	orchlua_cfg = *cfg;
-	orchlua_cfg.dirfd = -1;
-}
-
 /*
  * Available: functions above, orch_impl.script, orch_impl.script_root
  */
@@ -815,13 +809,6 @@ luaopen_orch(lua_State *L)
 {
 
 	luaL_newlib(L, orchlib);
-
-	lua_createtable(L, orchlua_cfg.argc, 0);
-	for (int i = 0; i < orchlua_cfg.argc; i++) {
-		lua_pushstring(L, orchlua_cfg.argv[i]);
-		lua_rawseti(L, -2, i + 1);
-	}
-	lua_setglobal(L, "arg");
 
 	register_process_metatable(L);
 	register_regex_metatable(L);

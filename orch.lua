@@ -713,11 +713,15 @@ function orch_env.write(str)
 	return true
 end
 
-function orch.run_script(scriptfile)
+function orch.run_script(scriptfile, config)
 	local done
 
 	include_file(scriptfile)
 	--match_ctx_stack:dump()
+
+	if config and config.command then
+		process = internal_spawn(config.command)
+	end
 
 	if match_ctx_stack:empty() then
 		error("script did not define any actions")
@@ -744,9 +748,5 @@ orch_env.assert = assert
 orch_env.string = string
 orch_env.table = table
 orch_env.type = type
-
-if #arg > 0 then
-	process = internal_spawn(arg)
-end
 
 return orch

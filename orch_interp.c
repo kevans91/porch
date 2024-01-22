@@ -68,6 +68,19 @@ orch_interp_script(const char *orch_invoke_path)
 	return (&buf[0]);
 }
 
+static int
+orch_interp_error(lua_State *L)
+{
+	const char *err;
+
+	err = lua_tostring(L, -1);
+	if (err == NULL)
+		err = "unknown";
+
+	fprintf(stderr, "%s\n", err);
+	return (1);
+}
+
 int
 orch_interp(const char *scriptf, const char *orch_invoke_path,
     int argc, const char * const argv[])
@@ -79,11 +92,6 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 	if (L == NULL)
 		errx(1, "luaL_newstate: out of memory");
 
-	orchlua_configure(&(struct orch_interp_cfg) {
-		.argc = argc,
-		.argv = argv,
-	});
-
 	/* Open lua's standard library */
 	luaL_openlibs(L);
 
@@ -92,23 +100,35 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 	lua_pop(L, 1);
 
 	if (luaL_dofile(L, orch_interp_script(orch_invoke_path)) != LUA_OK) {
-		const char *err;
-
-		err = lua_tostring(L, -1);
-		if (err == NULL)
-			err = "unknown";
-
-		status = 1;
-		fprintf(stderr, "%s\n", err);
+		status = orch_interp_error(L);
 	} else {
+		int nargs = 1;
+
 		/*
 		 * orch table is now at the top of stack, fetch run_script()
-		 * and call it.
+		 * and call it.  run_script(scriptf[, config])
 		 */
 		lua_getfield(L, -1, "run_script");
 		lua_pushstring(L, scriptf);
-		lua_call(L, 1, 1);
-		status = lua_toboolean(L, -1) ? 0 : 1;
+		if (argc > 0) {
+			/* config */
+			lua_createtable(L, 0, 1);
+			nargs++;
+
+			/* config.command */
+			lua_createtable(L, argc, 0);
+			for (int i = 0; i < argc; i++) {
+				lua_pushstring(L, argv[i]);
+				lua_rawseti(L, -2, i + 1);
+			}
+
+			lua_setfield(L, -2, "command");
+		}
+
+		if (lua_pcall(L, nargs, 1, 0) == LUA_OK)
+			status = lua_toboolean(L, -1) ? 0 : 1;
+		else
+			status = orch_interp_error(L);
 	}
 
 	lua_close(L);
