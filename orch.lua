@@ -398,7 +398,7 @@ execute = function(func, freshctx)
 	end
 end
 
-local function include_file(file, alter_path)
+local function include_file(file, alter_path, env)
 	local f = assert(impl.open(file, alter_path))
 	local chunk = f:read("*l")	-- * for compatibility with Lua 5.2...
 
@@ -414,7 +414,7 @@ local function include_file(file, alter_path)
 	end
 
 	chunk = chunk .. assert(f:read("*a"))
-	local func = assert(load(chunk, "@" .. file, "t", orch_env))
+	local func = assert(load(chunk, "@" .. file, "t", env))
 
 	return execute(func, true)
 end
@@ -719,9 +719,18 @@ end
 function orch.run_script(scriptfile, config)
 	local done
 
+	-- Make a copy of orch_env at the time of script execution.  The
+	-- environment is effectively immutable from the driver's perspective
+	-- after execution starts, and we want to avoid a script from corrupting
+	-- future executions when we eventually support that.
+	local current_env = {}
+	for k, v in pairs(orch_env) do
+		current_env[k] = v
+	end
+
 	-- Note that the orch(1) driver will setup alter_path == true; scripts
 	-- importing orch.lua are expected to be more explicit.
-	include_file(scriptfile, config and config.alter_path)
+	include_file(scriptfile, config and config.alter_path, current_env)
 	--match_ctx_stack:dump()
 
 	if config and config.command then
