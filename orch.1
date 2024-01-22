@@ -100,6 +100,19 @@ or
 .Fn one
 blocks.
 .Pp
+.Nm
+imports only some parts of the Lua standard library for use in the
+.Ar scriptfile ,
+to minimize the chance of being able to conduct actions that are inherently
+incompatible with the queueing model that scripts are executed with.
+Currently, only the
+.Fn assert
+and
+.Fn type
+functions, and the
+.Dq string
+module are exposed.
+.Pp
 The following functions exist for usage within the
 .Ar scriptfile :
 .Bl -tag -width indent
