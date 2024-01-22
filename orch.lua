@@ -738,6 +738,7 @@ end
 -- Inherited from our environment
 orch_env.assert = assert
 orch_env.string = string
+orch_env.table = table
 orch_env.type = type
 
 if #arg > 0 then
