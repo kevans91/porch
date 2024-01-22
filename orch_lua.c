@@ -14,6 +14,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -133,6 +134,37 @@ orchlua_regcomp(lua_State *L)
 }
 
 static int
+orchlua_sleep(lua_State *L)
+{
+	lua_Number duration;
+	struct timespec rtp;
+	int ret;
+
+	duration = luaL_checknumber(L, 1);
+	rtp.tv_sec = floor(duration);
+	rtp.tv_nsec = 1000000000 * (duration - rtp.tv_sec);
+
+	/*
+	 * We aren't guaranteeing anything about actual time delayed, just that
+	 * we'll sleep at least the amount specified.  Let the timer run out.
+	 */
+	while ((ret = nanosleep(&rtp, &rtp)) == -1 && errno == EINTR) {
+		continue;
+	}
+
+	if (ret == -1) {
+		int serr = errno;
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serr));
+		return (2);
+	}
+
+	lua_pushboolean(L, 1);
+	return (1);
+}
+
+static int
 orchlua_time(lua_State *L)
 {
 	struct timespec tv;
@@ -190,6 +222,7 @@ orchlua_spawn(lua_State *L)
 static const struct luaL_Reg orchlib[] = {
 	REG_SIMPLE(open),
 	REG_SIMPLE(regcomp),
+	REG_SIMPLE(sleep),
 	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),
 	{ NULL, NULL },

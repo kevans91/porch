@@ -493,6 +493,11 @@ local function do_release()
 	return true
 end
 
+local function do_sleep(obj)
+	assert(impl.sleep(obj.duration))
+	return true
+end
+
 local function do_spawn(obj)
 	if process then
 		assert(process:close())
@@ -666,6 +671,17 @@ end
 function orch_env.release()
 	local action_obj = MatchAction:new("release", do_release)
 	match_ctx:push(action_obj)
+	return true
+end
+
+function orch_env.sleep(duration)
+	local action_obj = MatchAction:new("sleep", do_sleep)
+	action_obj.duration = duration
+	if ctx() ~= CTX_QUEUE then
+		do_sleep(action_obj)
+	else
+		match_ctx:push(action_obj)
+	end
 	return true
 end
 

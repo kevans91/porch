@@ -30,7 +30,7 @@ LUA_INCDIR?=	/usr/local/include/lua54
 LUA_LIB?=	-L/usr/local/lib -llua-5.4
 
 CFLAGS+=	-I${LUA_INCDIR}
-LDADD+=	${LUA_LIB}
+LDADD+=	${LUA_LIB} -lm
 
 .if make(lint) && !exists(/usr/local/bin/luacheck)
 .error "linting requires devel/lua-luacheck"

@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 17, 2024
+.Dd January 21, 2024
 .Dt ORCH 1
 .Os
 .Sh NAME
@@ -216,6 +216,19 @@ This is done implicitly when a
 block is first encountered.
 .Pp
 This directive is enqueued, not processed immediately.
+.It Fn sleep "duration"
+Sleeps for at least the specified
+.Fa duration ,
+in seconds.
+Fractional seconds are supported.
+As implemented,
+.Nm
+may delay execution for a little longer than the specified
+.Fa duration ,
+but not for any less time.
+.Pp
+This directive is enqueued, not processed immediately unless it's called from
+within a failure handler.
 .It Fn spawn "..."
 Spawns a new process.
 The arguments to
