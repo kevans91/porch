@@ -52,6 +52,8 @@
 
 static struct orch_interp_cfg orchlua_cfg;
 
+static int orchlua_add_execpath(const char *);
+
 /*
  * Not exported
  */
@@ -70,20 +72,46 @@ static int
 orchlua_open(lua_State *L)
 {
 	luaL_Stream *p;
-	const char *filename;
+	const char *filename, *script;
 	int fd;
 
 	filename = luaL_checkstring(L, 1);
 
-	fd = -1;
-	if (orchlua_cfg.dirfd == -1) {
-		if (strcmp(filename, "-") != 0) {
-			luaL_pushfail(L);
-			lua_pushstring(L,
-			    "No sandbox granted (script opened from stdin)");
-			return (2);
+	/* First open() sets up the sandbox state. */
+	assert(orchlua_cfg.dirfd == -1);
+
+	/* stdin */
+	if (strcmp(filename, "-") == 0) {
+		script = filename;
+	} else {
+		char spath[PATH_MAX];
+		char *fpath, *walker;
+		const char *scriptroot;
+
+		if ((fpath = realpath(filename, &spath[0])) == NULL)
+			err(1, "realpath: %s", filename);
+
+		walker = strrchr(fpath, '/');
+		if (walker != NULL) {
+			*walker = '\0';
+			scriptroot = fpath;
+			script = walker + 1;
+		} else {
+			scriptroot = ".";
+			script = fpath;
 		}
 
+		/* XXX Should be configurable */
+		orchlua_add_execpath(scriptroot);
+
+		orchlua_cfg.dirfd = open(scriptroot,
+		    O_DIRECTORY | O_PATH | O_CLOEXEC);
+		if (orchlua_cfg.dirfd == -1)
+			err(1, "open: %s", fpath);
+	}
+
+	fd = -1;
+	if (orchlua_cfg.dirfd == -1) {
 		fd = dup(STDIN_FILENO);
 		if (fd == -1)
 			return (luaL_fileresult(L, 0, "stdin"));
@@ -94,7 +122,7 @@ orchlua_open(lua_State *L)
 	luaL_setmetatable(L, LUA_FILEHANDLE);
 
 	if (fd == -1)
-		fd = openat(orchlua_cfg.dirfd, filename, O_RDONLY | O_CLOEXEC);
+		fd = openat(orchlua_cfg.dirfd, script, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
 		return (luaL_fileresult(L, 0, filename));
 
@@ -785,49 +813,8 @@ orchlua_configure(struct orch_interp_cfg *cfg)
 int
 luaopen_orch(lua_State *L)
 {
-	const char *script;
-	int dirfd;
 
 	luaL_newlib(L, orchlib);
-
-	/* stdin */
-	if (strcmp(orchlua_cfg.scriptf, "-") == 0) {
-		script = "-";
-
-		lua_pushnil(L);
-	} else {
-		char spath[PATH_MAX];
-		char *fpath, *walker;
-		const char *scriptroot;
-
-		if ((fpath = realpath(orchlua_cfg.scriptf, &spath[0])) == NULL)
-			err(1, "realpath: %s", orchlua_cfg.scriptf);
-
-		walker = strrchr(fpath, '/');
-		if (walker != NULL) {
-			*walker = '\0';
-			scriptroot = fpath;
-			script = walker + 1;
-		} else {
-			scriptroot = ".";
-			script = fpath;
-		}
-
-		orchlua_add_execpath(scriptroot);
-
-		dirfd = open(scriptroot, O_DIRECTORY | O_PATH | O_CLOEXEC);
-		if (dirfd == -1)
-			err(1, "open: %s", fpath);
-
-		orchlua_cfg.dirfd = dirfd;
-		lua_pushstring(L, scriptroot);
-	}
-
-	/* script_root is on the stack from above. */
-	lua_setfield(L, -2, "script_root");
-
-	lua_pushstring(L, script);
-	lua_setfield(L, -2, "script");
 
 	lua_createtable(L, orchlua_cfg.argc, 0);
 	for (int i = 0; i < orchlua_cfg.argc; i++) {

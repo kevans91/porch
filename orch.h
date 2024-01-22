@@ -19,7 +19,6 @@
 #endif
 
 struct orch_interp_cfg {
-	const char		*scriptf;
 	int			 dirfd;
 	int			 argc;
 	const char *const	*argv;

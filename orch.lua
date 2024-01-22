@@ -5,6 +5,7 @@
 --
 
 local impl = require("orch_impl")
+local orch = {}
 
 local CTX_QUEUE = 1
 local CTX_FAIL = 2
@@ -712,8 +713,11 @@ function orch_env.write(str)
 	return true
 end
 
-local function run_script()
+function orch.run_script(scriptfile)
 	local done
+
+	include_file(scriptfile)
+	--match_ctx_stack:dump()
 
 	if match_ctx_stack:empty() then
 		error("script did not define any actions")
@@ -745,7 +749,4 @@ if #arg > 0 then
 	process = internal_spawn(arg)
 end
 
-include_file(impl.script)
---match_ctx_stack:dump()
-
-return run_script()
+return orch

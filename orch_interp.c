@@ -80,7 +80,6 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 		errx(1, "luaL_newstate: out of memory");
 
 	orchlua_configure(&(struct orch_interp_cfg) {
-		.scriptf = scriptf,
 		.argc = argc,
 		.argv = argv,
 	});
@@ -102,8 +101,16 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 		status = 1;
 		fprintf(stderr, "%s\n", err);
 	} else {
+		/*
+		 * orch table is now at the top of stack, fetch run_script()
+		 * and call it.
+		 */
+		lua_getfield(L, -1, "run_script");
+		lua_pushstring(L, scriptf);
+		lua_call(L, 1, 1);
 		status = lua_toboolean(L, -1) ? 0 : 1;
 	}
+
 	lua_close(L);
 	return (status);
 }
