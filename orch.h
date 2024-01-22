@@ -18,10 +18,6 @@
 #define	__unused	__attribute__((unused))
 #endif
 
-struct orch_interp_cfg {
-	int			 dirfd;
-};
-
 struct orch_process {
 	int			 cmdsock;
 	pid_t			 pid;

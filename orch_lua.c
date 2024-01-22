@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -50,8 +51,12 @@
 #define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
 #define	ORCHLUA_REGEXHANDLE	"orchlua_regex_t"
 
-static struct orch_interp_cfg orchlua_cfg = {
+static struct orchlua_cfg {
+	int			 dirfd;
+	bool			 initialized;
+} orchlua_cfg = {
 	.dirfd = -1,
+	.initialized = false,
 };
 
 static int orchlua_add_execpath(const char *);
@@ -71,20 +76,15 @@ orchlua_close(lua_State *L)
 }
 
 static int
-orchlua_open(lua_State *L)
+orchlua_open_init(const char *filename, const char **script)
 {
-	luaL_Stream *p;
-	const char *filename, *script;
-	int fd;
 
-	filename = luaL_checkstring(L, 1);
-
-	/* First open() sets up the sandbox state. */
+	assert(!orchlua_cfg.initialized);
 	assert(orchlua_cfg.dirfd == -1);
 
 	/* stdin */
 	if (strcmp(filename, "-") == 0) {
-		script = filename;
+		*script = filename;
 	} else {
 		char spath[PATH_MAX];
 		char *fpath, *walker;
@@ -97,11 +97,14 @@ orchlua_open(lua_State *L)
 		if (walker != NULL) {
 			*walker = '\0';
 			scriptroot = fpath;
-			script = walker + 1;
+			*script = strdup(walker + 1);
 		} else {
 			scriptroot = ".";
-			script = fpath;
+			*script = strdup(fpath);
 		}
+
+		if (*script == NULL)
+			return (ENOMEM);
 
 		/* XXX Should be configurable */
 		orchlua_add_execpath(scriptroot);
@@ -112,8 +115,40 @@ orchlua_open(lua_State *L)
 			err(1, "open: %s", fpath);
 	}
 
+	orchlua_cfg.initialized = true;
+	return (0);
+}
+
+static int
+orchlua_open(lua_State *L)
+{
+	luaL_Stream *p;
+	const char *filename, *script;
+	int fd, rvals;
+
+	rvals = 1;
+	filename = luaL_checkstring(L, 1);
+	script = NULL;
+
+	/* First open() sets up the sandbox state. */
+	if (!orchlua_cfg.initialized) {
+		int error;
+
+		if ((error = orchlua_open_init(filename, &script)) != 0) {
+			luaL_pushfail(L);
+			lua_pushstring(L, strerror(error));
+			return (true);
+		}
+	} else if (orchlua_cfg.dirfd == -1) {
+		luaL_pushfail(L);
+		lua_pushstring(L,
+		    "No sandbox granted (script opened from stdin)");
+		return (2);
+	}
+
 	fd = -1;
 	if (orchlua_cfg.dirfd == -1) {
+		assert(script == filename);
 		fd = dup(STDIN_FILENO);
 		if (fd == -1)
 			return (luaL_fileresult(L, 0, "stdin"));
@@ -121,18 +156,26 @@ orchlua_open(lua_State *L)
 
 	p = (luaL_Stream *)lua_newuserdata(L, sizeof(*p));
 	p->closef = &orchlua_close;
+	p->f = NULL;
 	luaL_setmetatable(L, LUA_FILEHANDLE);
 
 	if (fd == -1)
 		fd = openat(orchlua_cfg.dirfd, script, O_RDONLY | O_CLOEXEC);
-	if (fd == -1)
-		return (luaL_fileresult(L, 0, filename));
+	if (fd != -1)
+		p->f = fdopen(fd, "r");
 
-	p->f = fdopen(fd, "r");
+	/*
+	 * Check for errors up front, to avoid clobbering errno.  We don't want
+	 * to use luaL_fileresult() for success because this particular API
+	 * returns a file handle.
+	 */
 	if (p->f == NULL)
-		return (luaL_fileresult(L, 0, filename));
-
-	return (1);
+		rvals = luaL_fileresult(L, 0, filename);
+	else
+		rvals = 1;
+	if (script != filename)
+		free((void *)(uintptr_t)script);
+	return (rvals);
 }
 
 static int
