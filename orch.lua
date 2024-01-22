@@ -5,7 +5,7 @@
 --
 
 local impl = require("orch_impl")
-local orch = {}
+local orch = {env = {}}
 
 local CTX_QUEUE = 1
 local CTX_FAIL = 2
@@ -376,8 +376,6 @@ function match_ctx_stack:dump()
 end
 
 
-local orch_env = {}
-
 -- Execute a chunk; may either be a callback from a match block, or it may be
 -- an entire included file.  Either way, each execution gets a new match context
 -- that we may or may not use.  We'll act upon the latest in the stack no matter
@@ -431,7 +429,7 @@ local function grab_caller(level)
 	return info.short_src, info.currentline
 end
 
--- Bits available to the sandbox; orch_env functions are directly exposed, the
+-- Bits available to the sandbox; orch.env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
 local function do_debug(action)
@@ -516,7 +514,7 @@ local function do_write(action)
 	return true
 end
 
-function orch_env.debug(str)
+function orch.env.debug(str)
 	local debug_action = MatchAction:new("debug", do_debug)
 	debug_action.message = str
 	if ctx() ~= CTX_QUEUE then
@@ -527,7 +525,7 @@ function orch_env.debug(str)
 	return true
 end
 
-function orch_env.enqueue(callback)
+function orch.env.enqueue(callback)
 	local enqueue_action = MatchAction:new("enqueue", do_enqueue)
 	enqueue_action.callback = callback
 
@@ -540,7 +538,7 @@ function orch_env.enqueue(callback)
 	return true
 end
 
-function orch_env.eof(timeout)
+function orch.env.eof(timeout)
 	local eof_action = MatchAction:new("eof", do_eof)
 	eof_action.timeout = timeout or current_timeout
 
@@ -555,7 +553,7 @@ function orch_env.eof(timeout)
 	return true
 end
 
-function orch_env.exit(code)
+function orch.env.exit(code)
 	local exit_action = MatchAction:new("exit", do_exit)
 	exit_action.code = code
 
@@ -572,14 +570,14 @@ function orch_env.exit(code)
 	return true
 end
 
-function orch_env.fail(func)
+function orch.env.fail(func)
 	local fail_action = MatchAction:new("fail", do_fail_handler)
 	fail_action.callback = func
 	match_ctx:push(fail_action)
 	return true
 end
 
-function orch_env.match(pattern)
+function orch.env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
 	match_action.timeout = current_timeout
@@ -608,7 +606,7 @@ function orch_env.match(pattern)
 	return set_cfg
 end
 
-function orch_env.matcher(val)
+function orch.env.matcher(val)
 	local matcher_obj
 
 	for k, v in pairs(available_matchers) do
@@ -627,7 +625,7 @@ function orch_env.matcher(val)
 	return true
 end
 
-function orch_env.one(func)
+function orch.env.one(func)
 	local action_obj = MatchAction:new("one", do_one)
 	local parent_ctx = match_ctx
 	local src, line = grab_caller(2)
@@ -662,20 +660,20 @@ function orch_env.one(func)
 	return true
 end
 
-function orch_env.raw(val)
+function orch.env.raw(val)
 	local action_obj = MatchAction:new("raw", do_raw)
 	action_obj.value = val
 	match_ctx:push(action_obj)
 	return true
 end
 
-function orch_env.release()
+function orch.env.release()
 	local action_obj = MatchAction:new("release", do_release)
 	match_ctx:push(action_obj)
 	return true
 end
 
-function orch_env.sleep(duration)
+function orch.env.sleep(duration)
 	local action_obj = MatchAction:new("sleep", do_sleep)
 	action_obj.duration = duration
 	if ctx() ~= CTX_QUEUE then
@@ -686,7 +684,7 @@ function orch_env.sleep(duration)
 	return true
 end
 
-function orch_env.spawn(...)
+function orch.env.spawn(...)
 	local action_obj = MatchAction:new("spawn", do_spawn)
 	action_obj.cmd = { ... }
 	if type(action_obj.cmd[1]) == "table" then
@@ -699,14 +697,14 @@ function orch_env.spawn(...)
 	return true
 end
 
-function orch_env.timeout(val)
+function orch.env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")
 	end
 	current_timeout = val
 end
 
-function orch_env.write(str)
+function orch.env.write(str)
 	local action_obj = MatchAction:new("write", do_write)
 	action_obj.data = str
 	match_ctx:push(action_obj)
@@ -719,12 +717,12 @@ end
 function orch.run_script(scriptfile, config)
 	local done
 
-	-- Make a copy of orch_env at the time of script execution.  The
+	-- Make a copy of orch.env at the time of script execution.  The
 	-- environment is effectively immutable from the driver's perspective
 	-- after execution starts, and we want to avoid a script from corrupting
 	-- future executions when we eventually support that.
 	local current_env = {}
-	for k, v in pairs(orch_env) do
+	for k, v in pairs(orch.env) do
 		current_env[k] = v
 	end
 
@@ -758,9 +756,9 @@ function orch.run_script(scriptfile, config)
 end
 
 -- Inherited from our environment
-orch_env.assert = assert
-orch_env.string = string
-orch_env.table = table
-orch_env.type = type
+orch.env.assert = assert
+orch.env.string = string
+orch.env.table = table
+orch.env.type = type
 
 return orch
