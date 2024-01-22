@@ -76,7 +76,7 @@ orchlua_close(lua_State *L)
 }
 
 static int
-orchlua_open_init(const char *filename, const char **script)
+orchlua_open_init(const char *filename, const char **script, bool alter_path)
 {
 
 	assert(!orchlua_cfg.initialized);
@@ -106,8 +106,8 @@ orchlua_open_init(const char *filename, const char **script)
 		if (*script == NULL)
 			return (ENOMEM);
 
-		/* XXX Should be configurable */
-		orchlua_add_execpath(scriptroot);
+		if (alter_path)
+			orchlua_add_execpath(scriptroot);
 
 		orchlua_cfg.dirfd = open(scriptroot,
 		    O_DIRECTORY | O_PATH | O_CLOEXEC);
@@ -125,16 +125,19 @@ orchlua_open(lua_State *L)
 	luaL_Stream *p;
 	const char *filename, *script;
 	int fd, rvals;
+	bool alter_path;
 
 	rvals = 1;
 	filename = luaL_checkstring(L, 1);
+	alter_path = lua_toboolean(L, 2);
 	script = NULL;
 
 	/* First open() sets up the sandbox state. */
 	if (!orchlua_cfg.initialized) {
 		int error;
 
-		if ((error = orchlua_open_init(filename, &script)) != 0) {
+		error = orchlua_open_init(filename, &script, alter_path);
+		if (error != 0) {
 			luaL_pushfail(L);
 			lua_pushstring(L, strerror(error));
 			return (true);

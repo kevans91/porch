@@ -102,19 +102,21 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 	if (luaL_dofile(L, orch_interp_script(orch_invoke_path)) != LUA_OK) {
 		status = orch_interp_error(L);
 	} else {
-		int nargs = 1;
-
 		/*
 		 * orch table is now at the top of stack, fetch run_script()
 		 * and call it.  run_script(scriptf[, config])
 		 */
 		lua_getfield(L, -1, "run_script");
 		lua_pushstring(L, scriptf);
-		if (argc > 0) {
-			/* config */
-			lua_createtable(L, 0, 1);
-			nargs++;
 
+		/* config */
+		lua_createtable(L, 0, 1);
+
+		/* config.alter_path */
+		lua_pushboolean(L, 1);
+		lua_setfield(L, -2, "alter_path");
+
+		if (argc > 0) {
 			/* config.command */
 			lua_createtable(L, argc, 0);
 			for (int i = 0; i < argc; i++) {
@@ -125,7 +127,7 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 			lua_setfield(L, -2, "command");
 		}
 
-		if (lua_pcall(L, nargs, 1, 0) == LUA_OK)
+		if (lua_pcall(L, 2, 1, 0) == LUA_OK)
 			status = lua_toboolean(L, -1) ? 0 : 1;
 		else
 			status = orch_interp_error(L);

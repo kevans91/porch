@@ -398,8 +398,8 @@ execute = function(func, freshctx)
 	end
 end
 
-local function include_file(file)
-	local f = assert(impl.open(file))
+local function include_file(file, alter_path)
+	local f = assert(impl.open(file, alter_path))
 	local chunk = f:read("*l")	-- * for compatibility with Lua 5.2...
 
 	if not chunk then
@@ -713,10 +713,15 @@ function orch_env.write(str)
 	return true
 end
 
+-- Valid config options:
+--   * alter_path: boolean, add script's directory to $PATH (default: false)
+--   * command: argv table to pass to spawn
 function orch.run_script(scriptfile, config)
 	local done
 
-	include_file(scriptfile)
+	-- Note that the orch(1) driver will setup alter_path == true; scripts
+	-- importing orch.lua are expected to be more explicit.
+	include_file(scriptfile, config and config.alter_path)
 	--match_ctx_stack:dump()
 
 	if config and config.command then
