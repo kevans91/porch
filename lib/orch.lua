@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-2-Clause
 --
 
-local impl = require("orch_impl")
+local impl = require("orch.core")
 local orch = {env = {}}
 
 local CTX_QUEUE = 1

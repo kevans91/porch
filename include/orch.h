@@ -12,7 +12,7 @@
 
 #include <lua.h>
 
-#define	ORCHLUA_MODNAME	"orch_impl"
+#define	ORCHLUA_MODNAME	"orch.core"
 
 #ifndef __unused
 #define	__unused	__attribute__((unused))
@@ -36,7 +36,7 @@ int orch_spawn(int, const char *[], struct orch_process *);
 int orch_interp(const char *, const char *, int, const char * const []);
 
 /* orch_lua.c */
-int luaopen_orch(lua_State *);
+int luaopen_orch_core(lua_State *);
 
 /* orch_compat.c */
 #ifdef __linux__

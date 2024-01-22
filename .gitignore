@@ -4,6 +4,6 @@
 *.debug
 *.full
 *.gz
-.depend
+.depend*
 orch
 ktrace.out

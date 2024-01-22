@@ -22,10 +22,6 @@
 #define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY | O_CLOEXEC)
 #endif
 
-#ifndef __dead2
-#define	__dead2	__attribute__((noreturn))
-#endif
-
 extern char **environ;
 
 static void orch_exec(int argc, const char *argv[], int cmdsock);
@@ -34,51 +30,6 @@ static pid_t orch_newsess(void);
 static void orch_usept(pid_t sess, int termctl);
 static void orch_wait(int cmdsock);
 static void orch_release(int cmdsock);
-
-static void __dead2
-usage(const char *name, int error)
-{
-	FILE *f;
-
-	if (error == 0)
-		f = stdout;
-	else
-		f = stderr;
-
-	fprintf(f, "usage: %s [-f file] [command [argument ...]]\n", name);
-	exit(error);
-}
-
-int
-main(int argc, char *argv[])
-{
-	const char *invoke_path = argv[0];
-	const char *scriptf = "-";	/* stdin */
-	int ch;
-
-	while ((ch = getopt(argc, argv, "f:h")) != -1) {
-		switch (ch) {
-		case 'f':
-			scriptf = optarg;
-			break;
-		case 'h':
-			usage(invoke_path, 0);
-		default:
-			usage(invoke_path, 1);
-		}
-	}
-
-	argc -= optind;
-	argv += optind;
-
-	/*
-	 * If we have a command supplied, we'll spawn() it for the script just to
-	 * simplify things.  If we didn't, then the script just needs to make sure
-	 * that it spawns something before a match/one block.
-	 */
-	return (orch_interp(scriptf, invoke_path, argc,
-	    (const char * const *)argv));
-}
 
 int
 orch_spawn(int argc, const char *argv[], struct orch_process *p)

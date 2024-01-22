@@ -96,7 +96,7 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 	luaL_openlibs(L);
 
 	/* As well as our internal library */
-	luaL_requiref(L, ORCHLUA_MODNAME, luaopen_orch, 0);
+	luaL_requiref(L, ORCHLUA_MODNAME, luaopen_orch_core, 0);
 	lua_pop(L, 1);
 
 	if (luaL_dofile(L, orch_interp_script(orch_invoke_path)) != LUA_OK) {

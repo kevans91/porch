@@ -851,7 +851,7 @@ orchlua_add_execpath(const char *path)
  * Available: functions above, orch_impl.script, orch_impl.script_root
  */
 int
-luaopen_orch(lua_State *L)
+luaopen_orch_core(lua_State *L)
 {
 
 	luaL_newlib(L, orchlib);
