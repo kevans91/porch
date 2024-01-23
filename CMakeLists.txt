@@ -3,7 +3,10 @@ cmake_minimum_required(VERSION 3.18)
 project(orch)
 
 find_package("Lua")
-# XXX Make sure it was found?
+
+if(NOT LUA_FOUND)
+	message(FATAL_ERROR "No Lua installation found; please install Lua")
+endif()
 
 set(LUA_MODLIBDIR "/usr/local/lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua dynamic library modules into")
