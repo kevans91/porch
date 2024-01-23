@@ -23,17 +23,15 @@ orch(1) strives to be portable.  Currently supported platforms:
 We build on all of the above platforms.  To build and actually use orch, one
 needs:
 
- - bmake
+ - cmake
  - liblua + headers (orch(1) supports 5.2+)
  - a compiler
  - this source tree
 
-The following vars will need to be set, as the defaults are likely not correct
-for your system:
+CMake's built-in FindLua support will be used, but you may need to tweak the
+following variables for install:
 
- - ORCHLUA_PATH (no default; we install it in /usr/local/share/orch on FreeBSD.
-    This is where orch.lua will be installed)
- - LUA_INCDIR (default: /usr/local/include/lua54.  Path to directory containing
-    liblua headers)
- - LUA_LIB (default: -L/usr/local/lib -llua-5.4.  All flags the link command
-    will need too link orch(1))
+ - LUA_MODLIBDIR (default: /usr/local/lib/lua/MAJOR.MINOR) - path to install lua
+    shared library modules
+ - LUA_MODSHAREDIR (default: /usr/local/share/lua/MAJOR.MINOR) - path to install
+    lua .lua modules
