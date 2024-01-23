@@ -1,5 +1,6 @@
 
 SUBDIR+=	src
+SUBDIR+=	man
 
 # For compatibility with earlier versions, make install in the root just does
 # the src install, which installs orch(1) and orch.lua into
