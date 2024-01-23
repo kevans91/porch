@@ -12,9 +12,5 @@ FILESDIR=	${LUA_MODSHAREDIR}
 lint:
 	luacheck orch.lua
 
-# Just pass this on for now.
-check:
-	env ORCHLUA_PATH=${.CURDIR} $(MAKE) -C tests check
-
 .include "Makefile.inc"
 .include <bsd.lib.mk>

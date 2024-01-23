@@ -1,7 +1,7 @@
 #!/bin/sh
 
 scriptdir=$(dirname $(realpath "$0"))
-orchbin="$scriptdir/../orch"
+orchbin="$scriptdir/../src/orch"
 if [ ! -x "$orchbin" ]; then
 	orchbin="$(which orch)"
 fi
