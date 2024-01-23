@@ -17,10 +17,6 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-#ifndef ORCHLUA_PATH
-#define	ORCHLUA_PATH ""
-#endif
-
 static const char orchlua_path[] = ORCHLUA_PATH;
 
 static const char *
