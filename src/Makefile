@@ -2,6 +2,8 @@
 PROG=	orch
 WARNS?=	6
 
+.PATH:	${.CURDIR}/../man
+
 SRCS=	orch.c		\
 	orch_compat.c	\
 	orch_interp.c
