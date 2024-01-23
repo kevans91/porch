@@ -18,8 +18,12 @@ jobs:
       - name: install system packages
         run: |
           sudo apt-get update --quiet || true
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install bmake luarocks
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install cmake luarocks
       - name: install lua packages
         run: sudo luarocks install luacheck
+      - name: configure
+        run: |
+          mkdir build
+          cd build && cmake ..
       - name: run linter
-        run: bmake lint
+        run: make -C build lint

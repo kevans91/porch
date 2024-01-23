@@ -4,8 +4,11 @@ build_task:
       freebsd_instance:
         image: freebsd-13-2-release-amd64
   setup_script:
-    sudo pkg install -y lua54
+    sudo pkg install -y lua54 cmake
+  configure_script:
+    - mkdir build
+    - cd build && cmake ..
   build_script:
-    env ORCHLUA_PATH=/usr/local/share/orch make
+    make -C build
   test_script:
-    make check
+    make -C build check

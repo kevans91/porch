@@ -21,7 +21,7 @@ jobs:
           - os: ubuntu-22.04
           - os: macos-latest
             lua: 5.4
-            pkgs: bmake coreutils lua@5.4
+            pkgs: cmake coreutils lua@5.4
         exclude:
           - os: ubuntu-20.04
             lua: 5.4
@@ -36,29 +36,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update --quiet || true
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install bmake liblua${{ matrix.lua }}-dev
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install cmake liblua${{ matrix.lua }}-dev
       - name: install system packages (macOS)
         if: runner.os == 'macOS'
         run: |
           brew update --quiet || true
           brew install ${{ matrix.pkgs }}
-      - name: build orch(1) (Ubuntu)
-        if: runner.os == 'Linux'
+      - name: configure
         run: |
-          env ORCHLUA_PATH=/usr/local/share/orch LUA_INCDIR=/usr/include/lua${{ matrix.lua }} \
-              LUA_LIB=-llua${{ matrix.lua }} bmake
-      - name: build orch(1) (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          if [ -d /opt/homebrew ]; then
-            lua_incdir="/opt/homebrew/Cellar/lua/5.4.6/include/lua"
-            lua_lib="-L/opt/homebrew/Cellar/lua/5.4.6/lib -llua5.4"
-          else
-            lua_incdir="/usr/local/Cellar/lua/5.4.6/include/lua"
-            lua_lib="-L/usr/local/Cellar/lua/5.4.6/lib -llua5.4"
-          fi
-          env ORCHLUA_PATH=/usr/local/share/orch LUA_INCDIR="${lua_incdir}" \
-              LUA_LIB="${lua_lib}" bmake
+          mkdir build
+          cd build && cmake ..
+      - name: build orch(1)
+        run: make -C build
       - name: Run self-tests
-        run: |
-          bmake check
+        run: make -C build check
