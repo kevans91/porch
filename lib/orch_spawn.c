@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "orch.h"
+#include "orch_lib.h"
 
 #ifdef __OpenBSD__
 #define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY)
@@ -24,12 +25,17 @@
 
 extern char **environ;
 
-static void orch_exec(int argc, const char *argv[], int cmdsock);
+/* Parent */
 static int orch_newpt(void);
+
+/* Child */
 static pid_t orch_newsess(void);
-static void orch_usept(pid_t sess, int termctl);
-static void orch_wait(int cmdsock);
-static void orch_release(int cmdsock);
+static void orch_usept(pid_t, int);
+static void orch_exec(int, const char *[], int);
+
+/* Both */
+static void orch_release(int);
+static void orch_wait(int);
 
 int
 orch_spawn(int argc, const char *argv[], struct orch_process *p)

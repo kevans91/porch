@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include "orch.h"
+#include "orch_lib.h"
 
 #include <lauxlib.h>
 

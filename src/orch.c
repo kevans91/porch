@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "orch.h"
+#include "orch_bin.h"
 
 #ifndef __dead2
 #define	__dead2	__attribute__((noreturn))

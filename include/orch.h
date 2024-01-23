@@ -18,32 +18,15 @@
 #define	__unused	__attribute__((unused))
 #endif
 
-struct orch_process {
-	int			 cmdsock;
-	pid_t			 pid;
-	int			 status;
-	int			 termctl;
-	bool			 raw;
-	bool			 released;
-	bool			 eof;
-	bool			 buffered;
-};
-
-/* orch.c */
-int orch_spawn(int, const char *[], struct orch_process *);
-
-/* orch_interp.c */
-int orch_interp(const char *, const char *, int, const char * const []);
-
-/* orch_lua.c */
-int luaopen_orch_core(lua_State *);
-
 /* orch_compat.c */
 #ifdef __linux__
-size_t strlcpy(char * __restrict dst, const char * __restrict src, size_t dsize);
-size_t strlcat(char * __restrict dst, const char * __restrict src, size_t dsize);
+size_t strlcpy(char * __restrict, const char * __restrict, size_t);
+size_t strlcat(char * __restrict, const char * __restrict, size_t);
 #endif
 #if defined(__linux__) || defined(__APPLE__) || defined(__OpenBSD__) || \
     defined(__NetBSD__)
-int tcsetsid(int tty, int sess);
+int tcsetsid(int, int);
 #endif
+
+/* orch_lua.c */
+int luaopen_orch_core(lua_State *);

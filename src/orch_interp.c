@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "orch.h"
+#include "orch_bin.h"
 
 #include <lauxlib.h>
 #include <lualib.h>
