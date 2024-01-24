@@ -23,4 +23,4 @@ target_include_directories(core_static PRIVATE ${core_INCDIRS})
 target_link_libraries(core "${LUA_LIBRARIES}")
 
 install(TARGETS core
-	DESTINATION "${CMAKE_INSTALL_PREFIX}${LUA_MODLIBDIR}/orch")
+	DESTINATION "${LUA_MODLIBDIR}/orch")

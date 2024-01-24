@@ -8,15 +8,18 @@ if(NOT LUA_FOUND)
 	message(FATAL_ERROR "No Lua installation found; please install Lua")
 endif()
 
-set(LUA_MODLIBDIR "/usr/local/lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
+set(LUA_MODLIBDIR "lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua dynamic library modules into")
-set(LUA_MODSHAREDIR "/usr/local/share/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
+set(LUA_MODSHAREDIR "share/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua modules into")
 set(ORCHLUA_PATH "${LUA_MODSHAREDIR}"
 	CACHE PATH "Path to install orch.lua into")
-set(ORCHLUA_BINDIR "/usr/bin"
+set(ORCHLUA_BINDIR "bin"
 	CACHE PATH "Path to install orch(1) into")
+set(ORCHLUA_EXAMPLESDIR "share/${CMAKE_PROJECT_NAME}/examples"
+	CACHE PATH "Path to install .orch examples into")
 
+add_subdirectory(examples)
 add_subdirectory(lib)
 add_subdirectory(man)
 add_subdirectory(src)
