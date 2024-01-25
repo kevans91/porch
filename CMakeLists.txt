@@ -24,8 +24,18 @@ set(ORCHLUA_BINDIR "bin"
 set(ORCHLUA_EXAMPLESDIR "share/examples/${CMAKE_PROJECT_NAME}"
 	CACHE PATH "Path to install .orch examples into")
 
-add_subdirectory(examples)
+option(EXAMPLES "Install examples" ON)
+option(MANPAGES "Install manpages" ON)
+option(BUILD_DRIVER "Build the orch(1) driver" ON)
+
+if(EXAMPLES)
+	add_subdirectory(examples)
+endif()
 add_subdirectory(lib)
-add_subdirectory(man)
-add_subdirectory(src)
+if(MANPAGES)
+	add_subdirectory(man)
+endif()
+if(BUILD_DRIVER)
+	add_subdirectory(src)
+endif()
 add_subdirectory(tests)
