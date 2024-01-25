@@ -12,8 +12,13 @@ set(LUA_MODLIBDIR "lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua dynamic library modules into")
 set(LUA_MODSHAREDIR "share/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua modules into")
-set(ORCHLUA_PATH "${LUA_MODSHAREDIR}"
-	CACHE PATH "Path to install orch.lua into")
+if(IS_ABSOLUTE "${LUA_MODSHAREDIR}")
+	set(ORCHLUA_PATH "${LUA_MODSHAREDIR}"
+		CACHE PATH "Path to install orch.lua into")
+else()
+	set(ORCHLUA_PATH "${CMAKE_INSTALL_PREFIX}/${LUA_MODSHAREDIR}"
+		CACHE PATH "Path to install orch.lua into")
+endif()
 set(ORCHLUA_BINDIR "bin"
 	CACHE PATH "Path to install orch(1) into")
 set(ORCHLUA_EXAMPLESDIR "share/${CMAKE_PROJECT_NAME}/examples"
