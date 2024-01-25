@@ -399,7 +399,7 @@ end
 
 local function include_file(file, alter_path, env)
 	local f = assert(impl.open(file, alter_path))
-	local chunk = f:read("*l")	-- * for compatibility with Lua 5.2...
+	local chunk = f:read("l")
 
 	if not chunk then
 		error(file .. " appears to be empty!")
@@ -412,7 +412,7 @@ local function include_file(file, alter_path, env)
 		chunk = chunk .. "\n"
 	end
 
-	chunk = chunk .. assert(f:read("*a"))
+	chunk = chunk .. assert(f:read("a"))
 	local func = assert(load(chunk, "@" .. file, "t", env))
 
 	return execute(func, true)

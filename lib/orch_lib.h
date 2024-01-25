@@ -14,7 +14,7 @@
 #include <lua.h>
 #include <lauxlib.h>
 
-/* We only support Lua 5.2+ */
+/* We only support Lua 5.3+ */
 
 /* Introduced in Lua 5.4 */
 #ifndef luaL_pushfail
