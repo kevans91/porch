@@ -21,7 +21,7 @@ else()
 endif()
 set(ORCHLUA_BINDIR "bin"
 	CACHE PATH "Path to install orch(1) into")
-set(ORCHLUA_EXAMPLESDIR "share/${CMAKE_PROJECT_NAME}/examples"
+set(ORCHLUA_EXAMPLESDIR "share/examples/${CMAKE_PROJECT_NAME}"
 	CACHE PATH "Path to install .orch examples into")
 
 add_subdirectory(examples)
