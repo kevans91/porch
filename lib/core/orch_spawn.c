@@ -10,6 +10,7 @@
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -247,6 +248,8 @@ static void
 orch_exec(int argc __unused, const char *argv[], struct termios *t)
 {
 	int error;
+
+	signal(SIGINT, SIG_DFL);
 
 	/*
 	 * Register a couple of events that the script may want to use:
