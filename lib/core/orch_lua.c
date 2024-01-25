@@ -112,6 +112,23 @@ orchlua_open_init(const char *filename, const char **script, bool alter_path)
 }
 
 static int
+orchlua_reset(lua_State *L)
+{
+
+	if (orchlua_cfg.initialized) {
+		if (orchlua_cfg.dirfd >= 0) {
+			close(orchlua_cfg.dirfd);
+			orchlua_cfg.dirfd = -1;
+		}
+
+		orchlua_cfg.initialized = false;
+	}
+
+	lua_pushboolean(L, 1);
+	return (1);
+}
+
+static int
 orchlua_open(lua_State *L)
 {
 	luaL_Stream *p;
@@ -139,6 +156,8 @@ orchlua_open(lua_State *L)
 		lua_pushstring(L,
 		    "No sandbox granted (script opened from stdin)");
 		return (2);
+	} else {
+		script = filename;
 	}
 
 	fd = -1;
@@ -323,6 +342,7 @@ orchlua_spawn(lua_State *L)
 static const struct luaL_Reg orchlib[] = {
 	REG_SIMPLE(open),
 	REG_SIMPLE(regcomp),
+	REG_SIMPLE(reset),
 	REG_SIMPLE(sleep),
 	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),

@@ -58,6 +58,9 @@ end
 function Queue:back()
 	return self.elements[#self.elements]
 end
+function Queue:clear()
+	self.elements = {}
+end
 function Queue:remove(elem)
 	for k, v in ipairs(self.elements) do
 		if v == elem then
@@ -760,6 +763,21 @@ function orch.env.write(str)
 	action_obj.data = str
 	match_ctx:push(action_obj)
 	return true
+end
+
+function orch.reset()
+	if process then
+		assert(process:close())
+	end
+
+	term = nil
+	process = nil
+
+	match_ctx_stack:clear()
+	match_ctx = nil
+
+	orch_ctx = CTX_QUEUE
+	assert(impl.reset())
 end
 
 -- Valid config options:
