@@ -9,16 +9,12 @@ stty("lflag", 0, tty.lflag.ICANON)
 write "Hello the"
 match "^Hello the$"
 
--- We should be able to toggle it off then back on again, so the next will
--- timeout.
+-- Also test cc changes
 spawn("cat")
 
-stty("lflag", 0, tty.lflag.ICANON)
-write "Hello the"
-stty("lflag", tty.lflag.ICANON)
+stty("cc", {
+	VEOF = "^F"
+})
+write "Hello the^F"
 
-fail(function()
-	exit(0)
-end)
 match "^Hello the$"
-exit(1)
