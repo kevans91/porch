@@ -618,6 +618,57 @@ function orch.env.fail(func)
 	return true
 end
 
+function orch.env.hexdump(str)
+	if ctx() == CTX_QUEUE then
+		error("hexdump may only be called in a non-queue context")
+	end
+
+	local output = ""
+
+	local function append(left, right)
+		if output ~= "" then
+			output = output .. "\n"
+		end
+
+		left = string.format("%-50s", left)
+		output = output .. "DEBUG: " .. left .. "\t|" .. right .. "|"
+	end
+
+	local lcol, rcol = "", ""
+	for c = 1, #str do
+		if (c - 1) % 16 == 0 then
+			-- Flush output every 16th character
+			if c ~= 1 then
+				append(lcol, rcol)
+				lcol = ""
+				rcol = ""
+			end
+		else
+			if (c - 1) % 8 == 0 then
+				lcol = lcol .. "  "
+			else
+				lcol = lcol .. " "
+			end
+		end
+
+		local ch = str:sub(c, c)
+		local byte = string.byte(ch)
+		lcol = lcol .. string.format("%.02x", byte)
+		if byte >= 0x20 and byte < 0x7f then
+			rcol = rcol .. ch
+		else
+			rcol = rcol .. "."
+		end
+	end
+
+	if lcol ~= "" then
+		append(lcol, rcol)
+	end
+
+	io.stderr:write(output .. "\n")
+	return true
+end
+
 function orch.env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
