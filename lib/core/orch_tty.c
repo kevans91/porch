@@ -177,12 +177,12 @@ orchlua_term_update_cc(lua_State *L, struct termios *term)
 				    "cntrl char for cc '%s' out of bounds: %c",
 				    iter->cntrl_name, str[1]);
 				return (2);
+			} else {
+				if (str[1] == '?')
+					cc = 0177;
+				else
+					cc = str[1] - 0x40;
 			}
-
-			if (str[1] == '?')
-				cc = 0177;
-			else
-				cc = str[1] - 0x40;
 		}
 
 		term->c_cc[iter->cntrl_idx] = cc;
