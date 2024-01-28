@@ -301,9 +301,10 @@ orchlua_term_update(lua_State *L)
 		luaL_pushfail(L);
 		lua_pushstring(L, "unknown unexpected message received");
 		return (2);
-	} else if (msg->hdr.tag != IPC_TERMIOS_ACK) {
+	} else if (orch_ipc_msg_tag(msg) != IPC_TERMIOS_ACK) {
 		luaL_pushfail(L);
-		lua_pushfstring(L, "unexpected message type '%d'", msg->hdr.tag);
+		lua_pushfstring(L, "unexpected message type '%d'",
+		    orch_ipc_msg_tag(msg));
 		orch_ipc_msg_free(msg);
 		return (2);
 	}

@@ -21,7 +21,10 @@
 #define	luaL_pushfail(L)	lua_pushnil(L)
 #endif
 
+struct orch_ipc_msg;
 typedef struct orch_ipc *orch_ipc_t;
+
+struct orch_term;
 
 enum orch_ipc_tag {
 	IPC_NOXMIT = 0,
@@ -32,18 +35,6 @@ enum orch_ipc_tag {
 	IPC_TERMIOS_ACK,	/* Child -> Parent */
 	IPC_LAST,
 };
-
-struct orch_ipc_header {
-	size_t			 size;
-	enum orch_ipc_tag	 tag;
-};
-
-struct orch_ipc_msg {
-	struct orch_ipc_header		 hdr;
-	_Alignas(max_align_t) unsigned char	 data[];
-};
-
-struct orch_term;
 
 struct orch_process {
 	lua_State		*L;
@@ -90,9 +81,11 @@ bool orch_ipc_okay(orch_ipc_t);
 int orch_ipc_recv(orch_ipc_t, struct orch_ipc_msg **);
 struct orch_ipc_msg *orch_ipc_msg_alloc(enum orch_ipc_tag, size_t, void **);
 void *orch_ipc_msg_payload(struct orch_ipc_msg *, size_t *);
+enum orch_ipc_tag orch_ipc_msg_tag(struct orch_ipc_msg *);
 void orch_ipc_msg_free(struct orch_ipc_msg *);
 int orch_ipc_register(orch_ipc_t, enum orch_ipc_tag, orch_ipc_handler *, void *);
 int orch_ipc_send(orch_ipc_t, struct orch_ipc_msg *);
+int orch_ipc_send_nodata(orch_ipc_t, enum orch_ipc_tag);
 int orch_ipc_wait(orch_ipc_t, bool *);
 
 /* orch_spawn.c */

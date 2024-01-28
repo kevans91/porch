@@ -776,9 +776,6 @@ orchlua_process_term(lua_State *L)
 	struct orch_term sterm;
 	struct orch_ipc_msg *cmsg;
 	struct orch_process *self;
-	struct orch_ipc_msg msg = {
-		.hdr = { .size = sizeof(msg), .tag = IPC_TERMIOS_INQUIRY }
-	};
 	int error, retvals;
 
 	retvals = 0;
@@ -803,7 +800,8 @@ orchlua_process_term(lua_State *L)
 	 * there shouldn't be anything in the queue.  We'll just fire this off,
 	 * and wait for a response to become ready.
 	 */
-	if ((error = orch_ipc_send(self->ipc, &msg)) != 0) {
+	if ((error = orch_ipc_send_nodata(self->ipc,
+	    IPC_TERMIOS_INQUIRY)) != 0) {
 		error = errno;
 		goto out;
 	}
@@ -821,7 +819,7 @@ orchlua_process_term(lua_State *L)
 	if (cmsg != NULL) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "unexpected message type '%d'",
-		    cmsg->hdr.tag);
+		    orch_ipc_msg_tag(cmsg));
 
 		orch_ipc_msg_free(cmsg);
 		cmsg = NULL;

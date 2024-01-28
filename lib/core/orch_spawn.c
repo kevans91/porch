@@ -158,7 +158,7 @@ orch_wait(orch_ipc_t ipc)
 		if (msg == NULL)
 			continue;
 
-		stop = msg->hdr.tag == IPC_RELEASE;
+		stop = orch_ipc_msg_tag(msg) == IPC_RELEASE;
 
 		orch_ipc_msg_free(msg);
 		msg = NULL;
@@ -170,11 +170,8 @@ orch_wait(orch_ipc_t ipc)
 int
 orch_release(orch_ipc_t ipc)
 {
-	struct orch_ipc_msg msg = {
-		.hdr = { .size = sizeof(msg), .tag = IPC_RELEASE }
-	};
 
-	return (orch_ipc_send(ipc, &msg));
+	return (orch_ipc_send_nodata(ipc, IPC_RELEASE));
 }
 
 static void
@@ -241,9 +238,6 @@ orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
 {
 	struct termios *updated_termios;
 	struct termios *current_termios = cookie;
-	struct orch_ipc_msg ack = {
-		.hdr = { .size = sizeof(ack), .tag = IPC_TERMIOS_ACK }
-	};
 	size_t datasz;
 
 	updated_termios = orch_ipc_msg_payload(msg, &datasz);
@@ -261,7 +255,7 @@ orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
 	if (tcsetattr(STDIN_FILENO, TCSANOW, current_termios) == -1)
 		orch_child_error(ipc, "tcsetattr");
 
-	return (orch_ipc_send(ipc, &ack));
+	return (orch_ipc_send_nodata(ipc, IPC_TERMIOS_ACK));
 }
 
 static void

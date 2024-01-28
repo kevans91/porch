@@ -15,6 +15,16 @@
 #include "orch.h"
 #include "orch_lib.h"
 
+struct orch_ipc_header {
+	size_t			 size;
+	enum orch_ipc_tag	 tag;
+};
+
+struct orch_ipc_msg {
+	struct orch_ipc_header		 hdr;
+	_Alignas(max_align_t) unsigned char	 data[];
+};
+
 struct orch_ipc_msgq {
 	struct orch_ipc_msg	*msg;
 	struct orch_ipc_msgq	*next;
@@ -112,6 +122,8 @@ orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
 
 	assert(payloadsz >= 0);
 	assert(payloadsz == 0 || payload != NULL);
+	assert(tag != IPC_NOXMIT);
+
 	msgsz = sizeof(msg->hdr) + payloadsz;
 
 	msg = calloc(1, msgsz);
@@ -141,6 +153,13 @@ orch_ipc_msg_payload(struct orch_ipc_msg *msg, size_t *odatasz)
 	if (datasz == 0)
 		return (NULL);
 	return (msg + 1);
+}
+
+enum orch_ipc_tag
+orch_ipc_msg_tag(struct orch_ipc_msg *msg)
+{
+
+	return (msg->hdr.tag);
 }
 
 void
@@ -367,6 +386,17 @@ retry:
 	}
 
 	return (0);
+}
+
+int
+orch_ipc_send_nodata(orch_ipc_t ipc, enum orch_ipc_tag tag)
+{
+	struct orch_ipc_msg msg = { 0 };
+
+	msg.hdr.tag = tag;
+	msg.hdr.size = sizeof(msg.hdr);
+
+	return (orch_ipc_send(ipc, &msg));
 }
 
 int
