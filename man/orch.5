@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 24, 2024
+.Dd January 27, 2024
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -127,6 +127,14 @@ The
 function is not available as a direct child of a
 .Fn one
 block.
+.It Fn hexdump "string"
+Writes an
+.Xr hd 1
+style hexdump output to stderr of the input
+.Fa string .
+.Pp
+This directive is always processed immediately, and is intended to be used
+within a failure context to aide in analysis of why a match failed.
 .It Fn matcher "type"
 Changes the default matcher for subsequent match blocks to the type described
 by
