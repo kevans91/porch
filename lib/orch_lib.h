@@ -21,6 +21,8 @@
 #define	luaL_pushfail(L)	lua_pushnil(L)
 #endif
 
+typedef struct orch_ipc *orch_ipc_t;
+
 enum orch_ipc_tag {
 	IPC_RELEASE = 1,	/* Bidrectional */
 	IPC_ERROR,		/* Child -> Parent */
@@ -45,6 +47,7 @@ struct orch_term;
 struct orch_process {
 	lua_State		*L;
 	struct orch_term	*term;
+	orch_ipc_t		 ipc;
 	int			 cmdsock;
 	pid_t			 pid;
 	int			 status;
@@ -58,6 +61,7 @@ struct orch_process {
 
 struct orch_term {
 	struct termios		term;
+	struct orch_process	*proc;
 	bool			initialized;
 };
 
@@ -78,18 +82,18 @@ struct orchlua_tty_mode {
 #define	CNTRL_LITERAL	0x04
 
 /* orch_ipc.c */
-typedef int (orch_ipc_handler)(struct orch_ipc_msg *, void *);
-int orch_ipc_close(void);
-void orch_ipc_open(int);
-bool orch_ipc_okay(void);
-int orch_ipc_recv(struct orch_ipc_msg **);
-int orch_ipc_register(enum orch_ipc_tag, orch_ipc_handler *, void *);
-int orch_ipc_send(struct orch_ipc_msg *);
-int orch_ipc_wait(bool *);
+typedef int (orch_ipc_handler)(orch_ipc_t, struct orch_ipc_msg *, void *);
+int orch_ipc_close(orch_ipc_t);
+orch_ipc_t orch_ipc_open(int);
+bool orch_ipc_okay(orch_ipc_t);
+int orch_ipc_recv(orch_ipc_t, struct orch_ipc_msg **);
+int orch_ipc_register(orch_ipc_t, enum orch_ipc_tag, orch_ipc_handler *, void *);
+int orch_ipc_send(orch_ipc_t, struct orch_ipc_msg *);
+int orch_ipc_wait(orch_ipc_t, bool *);
 
 /* orch_spawn.c */
-int orch_release(void);
-int orch_spawn(int, const char *[], struct orch_process *);
+int orch_release(orch_ipc_t);
+int orch_spawn(int, const char *[], struct orch_process *, orch_ipc_handler *);
 
 /* orch_tty.c */
 int orchlua_setup_tty(lua_State *);

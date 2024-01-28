@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 
 #include <err.h>
 #include <errno.h>
@@ -44,16 +45,17 @@ extern char **environ;
 static int orch_newpt(void);
 
 /* Child */
-static pid_t orch_newsess(void);
-static void orch_usept(pid_t, int, struct termios *);
-static void orch_child_error(const char *, ...) __printflike(1, 2);
-static void orch_exec(int, const char *[], struct termios *t);
+static pid_t orch_newsess(orch_ipc_t);
+static void orch_usept(orch_ipc_t, pid_t, int, struct termios *);
+static void orch_child_error(orch_ipc_t, const char *, ...) __printflike(2, 3);
+static void orch_exec(orch_ipc_t, int, const char *[], struct termios *);
 
 /* Both */
-static int orch_wait(void);
+static int orch_wait(orch_ipc_t);
 
 int
-orch_spawn(int argc, const char *argv[], struct orch_process *p)
+orch_spawn(int argc, const char *argv[], struct orch_process *p,
+    orch_ipc_handler *child_error_handler)
 {
 	int cmdsock[2];
 	pid_t pid, sess;
@@ -85,47 +87,70 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p)
 		err(1, "fork");
 	} else if (pid == 0) {
 		struct termios t;
+		orch_ipc_t ipc;
 
 		/* Child */
 		close(cmdsock[0]);
-		orch_ipc_open(cmdsock[1]);
+		ipc = orch_ipc_open(cmdsock[1]);
+		if (ipc == NULL) {
+			close(cmdsock[1]);
+			fprintf(stderr, "child out of memory\n");
+			_exit(1);
+		}
 
-		sess = orch_newsess();
+		sess = orch_newsess(ipc);
 
-		orch_usept(sess, p->termctl, &t);
+		orch_usept(ipc, sess, p->termctl, &t);
 		close(p->termctl);
 		p->termctl = -1;
 
-		orch_exec(argc, argv, &t);
+		orch_exec(ipc, argc, argv, &t);
 	}
 
 	p->released = false;
 	p->pid = pid;
-	orch_ipc_open(cmdsock[0]);
+	p->ipc = orch_ipc_open(cmdsock[0]);
 
 	/* Parent */
 	close(cmdsock[1]);
+
+	if (p->ipc == NULL) {
+		int status;
+
+		close(p->termctl);
+		close(cmdsock[0]);
+
+		kill(pid, SIGKILL);
+		while (waitpid(pid, &status, 0) != pid) {
+			continue;
+		}
+
+		errno = ENOMEM;
+		return (-1);
+	}
+
+	orch_ipc_register(p->ipc, IPC_ERROR, child_error_handler, p);
 
 	/*
 	 * Stalls until the tty is configured, completely side step races from
 	 * script writing to the tty before, e.g., echo is disabled.
 	 */
-	return (orch_wait());
+	return (orch_wait(p->ipc));
 }
 
 static int
-orch_wait(void)
+orch_wait(orch_ipc_t ipc)
 {
 	struct orch_ipc_msg *msg;
 	bool stop = false;
 
 	while (!stop) {
-		if (orch_ipc_wait(&stop) == -1)
+		if (orch_ipc_wait(ipc, &stop) == -1)
 			return (-1);
 		else if (stop)
 			break;
 
-		if (orch_ipc_recv(&msg) != 0)
+		if (orch_ipc_recv(ipc, &msg) != 0)
 			return (-1);
 		if (msg == NULL)
 			continue;
@@ -140,18 +165,18 @@ orch_wait(void)
 }
 
 int
-orch_release(void)
+orch_release(orch_ipc_t ipc)
 {
 	struct orch_ipc_msg msg;
 
 	msg.hdr.size = sizeof(msg.hdr);
 	msg.hdr.tag = IPC_RELEASE;
 
-	return (orch_ipc_send(&msg));
+	return (orch_ipc_send(ipc, &msg));
 }
 
 static void
-orch_child_error(const char *fmt, ...)
+orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
 {
 	struct orch_ipc_msg *errmsg;
 	char *str, *msgstr;
@@ -176,17 +201,18 @@ orch_child_error(const char *fmt, ...)
 	free(str);
 	str = NULL;
 
-	orch_ipc_send(errmsg);
+	orch_ipc_send(ipc, errmsg);
 
 out:
 	free(errmsg);
 	free(str);
-	orch_ipc_close();
+	orch_ipc_close(ipc);
 	_exit(1);
 }
 
 static int
-orch_child_termios_inquiry(struct orch_ipc_msg *inmsg __unused, void *cookie)
+orch_child_termios_inquiry(orch_ipc_t ipc, struct orch_ipc_msg *inmsg __unused,
+    void *cookie)
 {
 	struct orch_ipc_msg *msg;
 	struct termios *child_termios = cookie, *parent_termios;
@@ -206,7 +232,7 @@ orch_child_termios_inquiry(struct orch_ipc_msg *inmsg __unused, void *cookie)
 	parent_termios = (void *)(msg + 1);
 	memcpy(parent_termios, child_termios, sizeof(*child_termios));
 
-	error = orch_ipc_send(msg);
+	error = orch_ipc_send(ipc, msg);
 	serr = errno;
 
 	free(msg);
@@ -216,7 +242,7 @@ orch_child_termios_inquiry(struct orch_ipc_msg *inmsg __unused, void *cookie)
 }
 
 static int
-orch_child_termios_set(struct orch_ipc_msg *msg, void *cookie)
+orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
 {
 	struct termios *updated_termios;
 	struct termios *current_termios = cookie;
@@ -239,13 +265,14 @@ orch_child_termios_set(struct orch_ipc_msg *msg, void *cookie)
 	memcpy(current_termios, updated_termios, sizeof(*updated_termios));
 
 	if (tcsetattr(STDIN_FILENO, TCSANOW, current_termios) == -1)
-		orch_child_error("tcsetattr");
+		orch_child_error(ipc, "tcsetattr");
 
-	return (orch_ipc_send(&ack));
+	return (orch_ipc_send(ipc, &ack));
 }
 
 static void
-orch_exec(int argc __unused, const char *argv[], struct termios *t)
+orch_exec(orch_ipc_t ipc, int argc __unused, const char *argv[],
+    struct termios *t)
 {
 	int error;
 
@@ -256,11 +283,12 @@ orch_exec(int argc __unused, const char *argv[], struct termios *t)
 	 * - IPC_TERMIOS_INQUIRY: sent our terminal attributes back over.
 	 * - IPC_TERMIOS_SET: update our terminal attributes
 	 */
-	orch_ipc_register(IPC_TERMIOS_INQUIRY, orch_child_termios_inquiry, t);
-	orch_ipc_register(IPC_TERMIOS_SET, orch_child_termios_set, t);
+	orch_ipc_register(ipc, IPC_TERMIOS_INQUIRY, orch_child_termios_inquiry,
+	    t);
+	orch_ipc_register(ipc, IPC_TERMIOS_SET, orch_child_termios_set, t);
 
 	/* Let the script commence. */
-	if (orch_release() != 0)
+	if (orch_release(ipc) != 0)
 		_exit(1);
 
 	/*
@@ -272,8 +300,8 @@ orch_exec(int argc __unused, const char *argv[], struct termios *t)
 	 * For now this is just a simple int, in the future it may grow a more
 	 * extensive protocol so that the script can, e.g., reconfigure the tty.
 	 */
-	error = orch_wait();
-	orch_ipc_close();
+	error = orch_wait(ipc);
+	orch_ipc_close(ipc);
 
 	if (error != 0)
 		_exit(1);
@@ -305,36 +333,36 @@ orch_newpt(void)
 }
 
 static pid_t
-orch_newsess(void)
+orch_newsess(orch_ipc_t ipc)
 {
 	pid_t sess;
 
 	sess = setsid();
 	if (sess == -1)
-		orch_child_error("setsid");
+		orch_child_error(ipc, "setsid");
 
 	return (sess);
 }
 
 static void
-orch_usept(pid_t sess, int termctl, struct termios *t)
+orch_usept(orch_ipc_t ipc, pid_t sess, int termctl, struct termios *t)
 {
 	const char *name;
 	int target;
 
 	name = ptsname(termctl);
 	if (name == NULL)
-		orch_child_error("ptsname: %s", strerror(errno));
+		orch_child_error(ipc, "ptsname: %s", strerror(errno));
 
 	target = open(name, O_RDWR);
 	if (target == -1)
-		orch_child_error("open %s: %s", name, strerror(errno));
+		orch_child_error(ipc, "open %s: %s", name, strerror(errno));
 
 	if (tcsetsid(target, sess) == -1)
-		orch_child_error("tcsetsid");
+		orch_child_error(ipc, "tcsetsid");
 
 	if (tcgetattr(target, t) == -1)
-		orch_child_error("tcgetattr");
+		orch_child_error(ipc, "tcgetattr");
 
 	/* XXX Accept mask, buffering? */
 	dup2(target, STDIN_FILENO);

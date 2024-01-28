@@ -263,7 +263,8 @@ orchlua_time(lua_State *L)
 }
 
 static int
-orchlua_child_error(struct orch_ipc_msg *msg, void *cookie)
+orchlua_child_error(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
+    void *cookie)
 {
 	struct orch_process *proc = cookie;
 
@@ -321,9 +322,7 @@ orchlua_spawn(lua_State *L)
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 
-	orch_ipc_register(IPC_ERROR, &orchlua_child_error, proc);
-
-	if (orch_spawn(argc, argv, proc) != 0) {
+	if (orch_spawn(argc, argv, proc, &orchlua_child_error) != 0) {
 		int serrno = errno;
 
 		free(argv);
@@ -445,9 +444,11 @@ again:
 		self->pid = 0;
 	}
 
-	orch_ipc_close();
+	orch_ipc_close(self->ipc);
+	self->ipc = NULL;
 
-	close(self->termctl);
+	if (self->termctl != -1)
+		close(self->termctl);
 	self->termctl = -1;
 
 	if (failed) {
@@ -716,8 +717,9 @@ orchlua_process_release(lua_State *L)
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 
-	error = orch_release();
-	orch_ipc_close();
+	error = orch_release(self->ipc);
+	orch_ipc_close(self->ipc);
+	self->ipc = NULL;
 
 	if (error != 0) {
 		error = errno;
@@ -744,7 +746,8 @@ orchlua_process_released(lua_State *L)
 }
 
 static int
-orchlua_process_term_set(struct orch_ipc_msg *msg, void *cookie)
+orchlua_process_term_set(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
+    void *cookie)
 {
 	struct orch_term *term = cookie;
 	struct termios *parent_termios = &term->term;
@@ -775,7 +778,7 @@ orchlua_process_term(lua_State *L)
 
 	retvals = 0;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if (!orch_ipc_okay()) {
+	if (!orch_ipc_okay(self->ipc)) {
 		luaL_pushfail(L);
 		lua_pushstring(L, "process already released");
 		return (2);
@@ -785,25 +788,27 @@ orchlua_process_term(lua_State *L)
 		return (2);
 	}
 
+	sterm.proc = self;
 	sterm.initialized = false;
-	orch_ipc_register(IPC_TERMIOS_SET, orchlua_process_term_set, &sterm);
+	orch_ipc_register(self->ipc, IPC_TERMIOS_SET, orchlua_process_term_set,
+	    &sterm);
 
 	/*
 	 * The client is only responding to our messages up until we release, so
 	 * there shouldn't be anything in the queue.  We'll just fire this off,
 	 * and wait for a response to become ready.
 	 */
-	if ((error = orch_ipc_send(&msg)) != 0) {
+	if ((error = orch_ipc_send(self->ipc, &msg)) != 0) {
 		error = errno;
 		goto out;
 	}
 
-	if (orch_ipc_wait(NULL) == -1) {
+	if (orch_ipc_wait(self->ipc, NULL) == -1) {
 		error = errno;
 		goto out;
 	}
 
-	if (orch_ipc_recv(&cmsg) != 0) {
+	if (orch_ipc_recv(self->ipc, &cmsg) != 0) {
 		error = errno;
 		goto out;
 	}
@@ -825,7 +830,7 @@ orchlua_process_term(lua_State *L)
 
 out:
 	/* Deallocate the slot */
-	orch_ipc_register(IPC_TERMIOS_SET, NULL, NULL);
+	orch_ipc_register(self->ipc, IPC_TERMIOS_SET, NULL, NULL);
 	if (error != 0 && retvals == 0) {
 		luaL_pushfail(L);
 		lua_pushstring(L, strerror(error));

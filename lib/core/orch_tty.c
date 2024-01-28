@@ -279,7 +279,7 @@ orchlua_term_update(lua_State *L)
 	msg->hdr.size = msgsz;
 
 	memcpy(msgterm, &self->term, sizeof(self->term));
-	error = orch_ipc_send(msg);
+	error = orch_ipc_send(self->proc->ipc, msg);
 	if (error != 0)
 		error = errno;
 
@@ -293,12 +293,12 @@ orchlua_term_update(lua_State *L)
 	}
 
 	/* Wait for ack */
-	if (orch_ipc_wait(NULL) == -1) {
+	if (orch_ipc_wait(self->proc->ipc, NULL) == -1) {
 		error = errno;
 		goto err;
 	}
 
-	if (orch_ipc_recv(&msg) != 0) {
+	if (orch_ipc_recv(self->proc->ipc, &msg) != 0) {
 		error = errno;
 		goto err;
 	} else if (msg == NULL) {
