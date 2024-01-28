@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 
+#include <assert.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -101,6 +102,7 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p,
 		sess = orch_newsess(ipc);
 
 		orch_usept(ipc, sess, p->termctl, &t);
+		assert(p->termctl >= 0);
 		close(p->termctl);
 		p->termctl = -1;
 
@@ -117,6 +119,7 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p,
 	if (p->ipc == NULL) {
 		int status;
 
+		assert(p->termctl >= 0);
 		close(p->termctl);
 		close(cmdsock[0]);
 
@@ -167,10 +170,9 @@ orch_wait(orch_ipc_t ipc)
 int
 orch_release(orch_ipc_t ipc)
 {
-	struct orch_ipc_msg msg;
-
-	msg.hdr.size = sizeof(msg.hdr);
-	msg.hdr.tag = IPC_RELEASE;
+	struct orch_ipc_msg msg = {
+		.hdr = { .size = sizeof(msg), .tag = IPC_RELEASE }
+	};
 
 	return (orch_ipc_send(ipc, &msg));
 }
@@ -227,6 +229,7 @@ orch_child_termios_inquiry(orch_ipc_t ipc, struct orch_ipc_msg *inmsg __unused,
 		return (-1);
 	}
 
+	memset(msg, 0, msgsz);
 	msg->hdr.tag = IPC_TERMIOS_SET;
 	msg->hdr.size = msgsz;
 	parent_termios = (void *)(msg + 1);
