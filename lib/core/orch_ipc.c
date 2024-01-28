@@ -22,8 +22,23 @@ struct orch_ipc_header {
 
 struct orch_ipc_msg {
 	struct orch_ipc_header		 hdr;
+	/* Non-wire contents between hdr and data */
 	_Alignas(max_align_t) unsigned char	 data[];
 };
+
+/*
+ * We'll start making a distinction between things that need the size of an
+ * orch_ipc_msg and things that need the size we would see on the wire.  The
+ * header contains the latter, but the orch_ipc_msg may have more contents that
+ * are used for internal book-keeping.
+ */
+#define	IPC_MSG_SIZE(payloadsz)	\
+	(sizeof(struct orch_ipc_msg) + payloadsz)
+#define	IPC_MSG_HDR_SIZE(payloadsz)	\
+	(sizeof(struct orch_ipc_header) + payloadsz)
+
+#define	IPC_MSG_PAYLOAD_SIZE(msg)	\
+	((msg)->hdr.size - sizeof(msg->hdr))
 
 struct orch_ipc_msgq {
 	struct orch_ipc_msg	*msg;
@@ -124,14 +139,12 @@ orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
 	assert(payloadsz == 0 || payload != NULL);
 	assert(tag != IPC_NOXMIT);
 
-	msgsz = sizeof(msg->hdr) + payloadsz;
-
-	msg = calloc(1, msgsz);
+	msg = calloc(1, IPC_MSG_SIZE(payloadsz));
 	if (msg == NULL)
 		return (NULL);
 
 	msg->hdr.tag = tag;
-	msg->hdr.size = msgsz;
+	msg->hdr.size = IPC_MSG_HDR_SIZE(payloadsz);
 
 	if (payloadsz != 0)
 		*payload = msg + 1;
@@ -142,7 +155,7 @@ orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
 void *
 orch_ipc_msg_payload(struct orch_ipc_msg *msg, size_t *odatasz)
 {
-	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+	size_t datasz = IPC_MSG_PAYLOAD_SIZE(msg);
 
 	/*
 	 * orch_ipc_drain() should have rejected negative payload indications.
@@ -200,7 +213,7 @@ orch_ipc_drain(orch_ipc_t ipc)
 			return (-1);
 		}
 
-		msg = malloc(hdr.size);
+		msg = malloc(IPC_MSG_SIZE(hdr.size));
 		if (msg == NULL)
 			return (-1);
 
@@ -217,7 +230,7 @@ orch_ipc_drain(orch_ipc_t ipc)
 		msg->hdr = hdr;
 
 		off = 0;
-		resid = hdr.size - sizeof(hdr);
+		resid = IPC_MSG_PAYLOAD_SIZE(msg);
 
 		while (resid != 0) {
 			readsz = read(ipc->sockfd, &msg->data[off], resid);
@@ -372,7 +385,7 @@ retry:
 	}
 
 	off = 0;
-	resid = msg->hdr.size - sizeof(msg->hdr);
+	resid = IPC_MSG_PAYLOAD_SIZE(msg);
 	while (resid != 0) {
 		writesz = write(ipc->sockfd, &msg->data[off], resid);
 		if (writesz == -1) {
@@ -394,7 +407,7 @@ orch_ipc_send_nodata(orch_ipc_t ipc, enum orch_ipc_tag tag)
 	struct orch_ipc_msg msg = { 0 };
 
 	msg.hdr.tag = tag;
-	msg.hdr.size = sizeof(msg.hdr);
+	msg.hdr.size = IPC_MSG_HDR_SIZE(0);
 
 	return (orch_ipc_send(ipc, &msg));
 }
