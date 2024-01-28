@@ -20,70 +20,90 @@ struct orch_ipc_msgq {
 	struct orch_ipc_msgq	*next;
 };
 
-static struct orch_ipc_register {
+struct orch_ipc_register {
 	orch_ipc_handler	*handler;
 	void			*cookie;
-} orch_ipc_registration[IPC_LAST - 1];
+};
 
-static struct orch_ipc_msgq *head, *tail;
-static int sockfd = -1;
+struct orch_ipc {
+	struct orch_ipc_register	*callbacks;
+	struct orch_ipc_msgq		*head;
+	struct orch_ipc_msgq		*tail;
+	int				 sockfd;
+};
 
-static int orch_ipc_drain(void);
-static int orch_ipc_pop(struct orch_ipc_msg **);
+static int orch_ipc_drain(orch_ipc_t);
+static int orch_ipc_pop(orch_ipc_t, struct orch_ipc_msg **);
 
 int
-orch_ipc_close(void)
+orch_ipc_close(orch_ipc_t ipc)
 {
 	int error;
 
+	if (ipc == NULL)
+		return (0);
+
 	error = 0;
-	if (sockfd != -1) {
-		shutdown(sockfd, SHUT_WR);
+	if (ipc->sockfd != -1) {
+		shutdown(ipc->sockfd, SHUT_WR);
 
 		/*
-		 * orch_ipc_drain() should hit EOF then close the socket.
+		 * orch_ipc_drain() should hit EOF then close the socket.  This
+		 * will just drain the socket, a follow-up orch_ipc_pop() will
+		 * drain the read queue and invoke callbacks.
 		 */
-		while (sockfd != -1 && error == 0) {
-			orch_ipc_wait(NULL);
+		while (ipc->sockfd != -1 && error == 0) {
+			orch_ipc_wait(ipc, NULL);
 
-			error = orch_ipc_drain();
+			error = orch_ipc_drain(ipc);
 		}
+
+		close(ipc->sockfd);
+		ipc->sockfd = -1;
 	}
 
 	/*
 	 * We may have hit EOF at an inopportune time, just cope with it
 	 * and free the queue.
 	 */
-	error = orch_ipc_pop(NULL);
-	assert(head == NULL);
-	tail = NULL;
-	for (size_t i = 0; i < IPC_LAST; i++) {
-		struct orch_ipc_register *reg = &orch_ipc_registration[i];
+	error = orch_ipc_pop(ipc, NULL);
+	assert(ipc->head == NULL);
 
-		reg->handler = NULL;
-		reg->cookie = NULL;
-	}
+	free(ipc->callbacks);
+	free(ipc);
 
 	return (error);
 }
 
-void
+orch_ipc_t
 orch_ipc_open(int fd)
 {
+	orch_ipc_t hdl;
 
-	assert(sockfd == -1);
-	sockfd = fd;
+	hdl = malloc(sizeof(*hdl));
+	if (hdl == NULL)
+		return (NULL);
+
+	hdl->callbacks = calloc(IPC_LAST - 1, sizeof(*hdl->callbacks));
+	if (hdl->callbacks == NULL) {
+		free(hdl);
+		return (NULL);
+	}
+
+	hdl->head = hdl->tail = NULL;
+	hdl->sockfd = fd;
+	return (hdl);
 }
 
 bool
-orch_ipc_okay(void)
+orch_ipc_okay(orch_ipc_t ipc)
 {
 
-	return (sockfd >= 0);
+	return (ipc->sockfd >= 0);
 }
 
 static int
-orch_ipc_drain(void)
+orch_ipc_drain(orch_ipc_t ipc)
 {
 	struct orch_ipc_header hdr;
 	struct orch_ipc_msg *msg;
@@ -91,11 +111,11 @@ orch_ipc_drain(void)
 	ssize_t readsz;
 	size_t off, resid;
 
-	if (sockfd == -1)
+	if (!orch_ipc_okay(ipc))
 		return (0);
 
 	for (;;) {
-		readsz = read(sockfd, &hdr, sizeof(hdr));
+		readsz = read(ipc->sockfd, &hdr, sizeof(hdr));
 		if (readsz == -1) {
 			if (errno == EAGAIN)
 				break;
@@ -133,7 +153,7 @@ orch_ipc_drain(void)
 		resid = hdr.size - sizeof(hdr);
 
 		while (resid != 0) {
-			readsz = read(sockfd, &msg->data[off], resid);
+			readsz = read(ipc->sockfd, &msg->data[off], resid);
 			if (readsz == -1) {
 				if (errno != EAGAIN) {
 					free(msg);
@@ -153,11 +173,11 @@ orch_ipc_drain(void)
 			resid -= readsz;
 		}
 
-		if (head == NULL) {
-			head = tail = msgq;
+		if (ipc->head == NULL) {
+			ipc->head = ipc->tail = msgq;
 		} else {
-			tail->next = msgq;
-			tail = msgq;
+			ipc->tail->next = msgq;
+			ipc->tail = msgq;
 		}
 
 		msg = NULL;
@@ -167,13 +187,14 @@ orch_ipc_drain(void)
 	return (0);
 eof:
 
-	close(sockfd);
-	sockfd = -1;
+	close(ipc->sockfd);
+	ipc->sockfd = -1;
+
 	return (0);
 }
 
 static int
-orch_ipc_pop(struct orch_ipc_msg **omsg)
+orch_ipc_pop(orch_ipc_t ipc, struct orch_ipc_msg **omsg)
 {
 	struct orch_ipc_register *reg;
 	struct orch_ipc_msgq *msgq;
@@ -181,10 +202,10 @@ orch_ipc_pop(struct orch_ipc_msg **omsg)
 	int error;
 
 	error = 0;
-	while (head != NULL) {
+	while (ipc->head != NULL) {
 		/* Dequeue a msg */
-		msgq = head;
-		head = head->next;
+		msgq = ipc->head;
+		ipc->head = ipc->head->next;
 
 		/* Free the container */
 		msg = msgq->msg;
@@ -193,11 +214,11 @@ orch_ipc_pop(struct orch_ipc_msg **omsg)
 		msgq = NULL;
 
 		/* Do we have a handler for it? */
-		reg = &orch_ipc_registration[msg->hdr.tag - 1];
+		reg = &ipc->callbacks[msg->hdr.tag - 1];
 		if (reg->handler != NULL) {
 			int serr;
 
-			error = (*reg->handler)(msg, reg->cookie);
+			error = (*reg->handler)(ipc, msg, reg->cookie);
 			if (error != 0)
 				serr = errno;
 
@@ -236,26 +257,26 @@ orch_ipc_pop(struct orch_ipc_msg **omsg)
 }
 
 int
-orch_ipc_recv(struct orch_ipc_msg **omsg)
+orch_ipc_recv(orch_ipc_t ipc, struct orch_ipc_msg **omsg)
 {
 	struct orch_ipc_msg *rcvmsg;
 	int error;
 
-	if (orch_ipc_drain() != 0)
+	if (orch_ipc_drain(ipc) != 0)
 		return (-1);
 
 	rcvmsg = NULL;
-	error = orch_ipc_pop(&rcvmsg);
+	error = orch_ipc_pop(ipc, &rcvmsg);
 	if (error == 0)
 		*omsg = rcvmsg;
 	return (error);
 }
 
 int
-orch_ipc_register(enum orch_ipc_tag tag, orch_ipc_handler *handler,
-    void *cookie)
+orch_ipc_register(orch_ipc_t ipc, enum orch_ipc_tag tag,
+    orch_ipc_handler *handler, void *cookie)
 {
-	struct orch_ipc_register *reg = &orch_ipc_registration[tag - 1];
+	struct orch_ipc_register *reg = &ipc->callbacks[tag - 1];
 
 	reg->handler = handler;
 	reg->cookie = cookie;
@@ -263,16 +284,16 @@ orch_ipc_register(enum orch_ipc_tag tag, orch_ipc_handler *handler,
 }
 
 int
-orch_ipc_send(struct orch_ipc_msg *msg)
+orch_ipc_send(orch_ipc_t ipc, struct orch_ipc_msg *msg)
 {
 	ssize_t writesz;
 	size_t off, resid;
 
 retry:
-	if (orch_ipc_drain() != 0)
+	if (orch_ipc_drain(ipc) != 0)
 		return (-1);
 
-	writesz = write(sockfd, &msg->hdr, sizeof(msg->hdr));
+	writesz = write(ipc->sockfd, &msg->hdr, sizeof(msg->hdr));
 	if (writesz == -1) {
 		if (errno != EAGAIN)
 			return (-1);
@@ -285,7 +306,7 @@ retry:
 	off = 0;
 	resid = msg->hdr.size - sizeof(msg->hdr);
 	while (resid != 0) {
-		writesz = write(sockfd, &msg->data[off], resid);
+		writesz = write(ipc->sockfd, &msg->data[off], resid);
 		if (writesz == -1) {
 			if (errno != EAGAIN)
 				return (-1);
@@ -299,10 +320,8 @@ retry:
 	return (0);
 }
 
-#include <stdio.h>
-
 int
-orch_ipc_wait(bool *eof_seen)
+orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
 {
 	fd_set rfd;
 	int error;
@@ -314,20 +333,20 @@ orch_ipc_wait(bool *eof_seen)
 	 * If we have any messages in the queue, don't bother polling; recv
 	 * will return something.
 	 */
-	if (head != NULL)
+	if (ipc->head != NULL)
 		return (0);
 
 	FD_ZERO(&rfd);
 	do {
-		if (sockfd == -1) {
+		if (ipc->sockfd == -1) {
 			if (eof_seen != NULL)
 				*eof_seen = true;
 			return (0);
 		}
 
-		FD_SET(sockfd, &rfd);
+		FD_SET(ipc->sockfd, &rfd);
 
-		error = select(sockfd + 1, &rfd, NULL, NULL, NULL);
+		error = select(ipc->sockfd + 1, &rfd, NULL, NULL, NULL);
 	} while (error == -1 && errno == EINTR);
 
 	return (error);
