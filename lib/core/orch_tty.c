@@ -266,25 +266,20 @@ orchlua_term_update(lua_State *L)
 
 	self->term = updated;
 
-	msgsz = sizeof(msg->hdr) + sizeof(self->term);
-	msg = malloc(msgsz);
+	msg = orch_ipc_msg_alloc(IPC_TERMIOS_SET, sizeof(self->term),
+	    (void **)&msgterm);
 	if (msg == NULL) {
 		luaL_pushfail(L);
 		lua_pushstring(L, strerror(ENOMEM));
 		return (2);
 	}
 
-	memset(msg, 0, msgsz);
-	msgterm = (void *)(msg + 1);
-	msg->hdr.tag = IPC_TERMIOS_SET;
-	msg->hdr.size = msgsz;
-
 	memcpy(msgterm, &self->term, sizeof(self->term));
 	error = orch_ipc_send(self->proc->ipc, msg);
 	if (error != 0)
 		error = errno;
 
-	free(msg);
+	orch_ipc_msg_free(msg);
 	msg = NULL;
 
 	if (error != 0) {
@@ -309,11 +304,11 @@ orchlua_term_update(lua_State *L)
 	} else if (msg->hdr.tag != IPC_TERMIOS_ACK) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "unexpected message type '%d'", msg->hdr.tag);
-		free(msg);
+		orch_ipc_msg_free(msg);
 		return (2);
 	}
 
-	free(msg);
+	orch_ipc_msg_free(msg);
 
 	lua_pushboolean(L, 1);
 	return (1);

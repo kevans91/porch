@@ -818,6 +818,10 @@ orchlua_process_term(lua_State *L)
 		luaL_pushfail(L);
 		lua_pushfstring(L, "unexpected message type '%d'",
 		    cmsg->hdr.tag);
+
+		orch_ipc_msg_free(cmsg);
+		cmsg = NULL;
+
 		retvals = 2;
 		goto out;
 	} else if (!sterm.initialized) {

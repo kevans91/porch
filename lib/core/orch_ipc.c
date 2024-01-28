@@ -104,6 +104,36 @@ orch_ipc_okay(orch_ipc_t ipc)
 	return (ipc->sockfd >= 0);
 }
 
+struct orch_ipc_msg *
+orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
+{
+	struct orch_ipc_msg *msg;
+	size_t msgsz;
+
+	assert(payloadsz >= 0);
+	assert(payloadsz == 0 || payload != NULL);
+	msgsz = sizeof(msg->hdr) + payloadsz;
+
+	msg = calloc(1, msgsz);
+	if (msg == NULL)
+		return (NULL);
+
+	msg->hdr.tag = tag;
+	msg->hdr.size = msgsz;
+
+	if (payloadsz != 0)
+		*payload = msg + 1;
+
+	return (msg);
+}
+
+void
+orch_ipc_msg_free(struct orch_ipc_msg *msg)
+{
+
+	free(msg);
+}
+
 static int
 orch_ipc_drain(orch_ipc_t ipc)
 {

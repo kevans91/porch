@@ -160,7 +160,7 @@ orch_wait(orch_ipc_t ipc)
 
 		stop = msg->hdr.tag == IPC_RELEASE;
 
-		free(msg);
+		orch_ipc_msg_free(msg);
 		msg = NULL;
 	}
 
@@ -191,13 +191,10 @@ orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
 		goto out;
 	va_end(ap);
 
-	errmsg = malloc(sizeof(errmsg->hdr) + sz + 1);
+	errmsg = orch_ipc_msg_alloc(IPC_ERROR, sz + 1, (void **)&msgstr);
 	if (errmsg == NULL)
 		goto out;
 
-	errmsg->hdr.tag = IPC_ERROR;
-	errmsg->hdr.size = sizeof(errmsg->hdr) + sz + 1;
-	msgstr = (void *)(errmsg + 1);
 	strlcpy(msgstr, str, sz + 1);
 
 	free(str);
@@ -206,7 +203,7 @@ orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
 	orch_ipc_send(ipc, errmsg);
 
 out:
-	free(errmsg);
+	orch_ipc_msg_free(errmsg);
 	free(str);
 	orch_ipc_close(ipc);
 	_exit(1);
@@ -218,27 +215,22 @@ orch_child_termios_inquiry(orch_ipc_t ipc, struct orch_ipc_msg *inmsg __unused,
 {
 	struct orch_ipc_msg *msg;
 	struct termios *child_termios = cookie, *parent_termios;
-	size_t msgsz;
 	int error, serr;
 
 	/* Send term attributes back over the wire. */
-	msgsz = sizeof(msg->hdr) + sizeof(*child_termios);
-	msg = malloc(msgsz);
+	msg = orch_ipc_msg_alloc(IPC_TERMIOS_SET, sizeof(*child_termios),
+	    (void **)&parent_termios);
 	if (msg == NULL) {
 		errno = EINVAL;
 		return (-1);
 	}
 
-	memset(msg, 0, msgsz);
-	msg->hdr.tag = IPC_TERMIOS_SET;
-	msg->hdr.size = msgsz;
-	parent_termios = (void *)(msg + 1);
 	memcpy(parent_termios, child_termios, sizeof(*child_termios));
 
 	error = orch_ipc_send(ipc, msg);
 	serr = errno;
 
-	free(msg);
+	orch_ipc_msg_free(msg);
 	if (error != 0)
 		errno = serr;
 	return (error);

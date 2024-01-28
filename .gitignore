@@ -1,6 +1,7 @@
 build
 .*.swp
 *.o
+*.bak
 *.core
 *.debug
 *.full
