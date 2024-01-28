@@ -267,9 +267,12 @@ orchlua_child_error(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
     void *cookie)
 {
 	struct orch_process *proc = cookie;
+	const char *childstr;
+	size_t datasz;
 
-	fprintf(stderr, "CHILD ERROR: %.*s\n",
-	    (int)(msg->hdr.size - sizeof(msg->hdr)), msg->data);
+	childstr = orch_ipc_msg_payload(msg, &datasz);
+	if (datasz != 0)
+		fprintf(stderr, "CHILD ERROR: %.*s\n", (int)datasz, childstr);
 	proc->error = true;
 	return (0);
 }
@@ -751,11 +754,12 @@ orchlua_process_term_set(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
     void *cookie)
 {
 	struct orch_term *term = cookie;
+	struct termios *child_termios;
 	struct termios *parent_termios = &term->term;
-	struct termios *child_termios = (void *)(msg + 1);
-	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+	size_t datasz;
 
-	if (datasz != sizeof(*child_termios)) {
+	child_termios = orch_ipc_msg_payload(msg, &datasz);
+	if (child_termios == NULL || datasz != sizeof(*child_termios)) {
 		errno = EINVAL;
 		return (-1);
 	}

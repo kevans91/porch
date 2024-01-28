@@ -88,6 +88,7 @@ orch_ipc_t orch_ipc_open(int);
 bool orch_ipc_okay(orch_ipc_t);
 int orch_ipc_recv(orch_ipc_t, struct orch_ipc_msg **);
 struct orch_ipc_msg *orch_ipc_msg_alloc(enum orch_ipc_tag, size_t, void **);
+void *orch_ipc_msg_payload(struct orch_ipc_msg *, size_t *);
 void orch_ipc_msg_free(struct orch_ipc_msg *);
 int orch_ipc_register(orch_ipc_t, enum orch_ipc_tag, orch_ipc_handler *, void *);
 int orch_ipc_send(orch_ipc_t, struct orch_ipc_msg *);

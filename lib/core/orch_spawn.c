@@ -244,14 +244,13 @@ orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
 	struct orch_ipc_msg ack = {
 		.hdr = { .size = sizeof(ack), .tag = IPC_TERMIOS_ACK }
 	};
-	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+	size_t datasz;
 
-	if (datasz != sizeof(*updated_termios)) {
+	updated_termios = orch_ipc_msg_payload(msg, &datasz);
+	if (updated_termios == NULL || datasz != sizeof(*updated_termios)) {
 		errno = EINVAL;
 		return (-1);
 	}
-
-	updated_termios = (void *)(msg + 1);
 
 	/*
 	 * We don't need to keep track of the updated state, but we do so

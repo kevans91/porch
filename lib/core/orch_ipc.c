@@ -127,6 +127,22 @@ orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
 	return (msg);
 }
 
+void *
+orch_ipc_msg_payload(struct orch_ipc_msg *msg, size_t *odatasz)
+{
+	size_t datasz = msg->hdr.size - sizeof(msg->hdr);
+
+	/*
+	 * orch_ipc_drain() should have rejected negative payload indications.
+	 */
+	assert(datasz >= 0);
+	if (odatasz != NULL)
+		*odatasz = datasz;
+	if (datasz == 0)
+		return (NULL);
+	return (msg + 1);
+}
+
 void
 orch_ipc_msg_free(struct orch_ipc_msg *msg)
 {
