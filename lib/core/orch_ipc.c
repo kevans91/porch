@@ -176,7 +176,7 @@ orch_ipc_drain(orch_ipc_t ipc)
 		 * We might have an empty payload, but we should never have less
 		 * than a header's worth of data.
 		 */
-		if (hdr.size < sizeof(hdr)) {
+		if (hdr.size < sizeof(hdr) || hdr.tag == IPC_NOXMIT) {
 			errno = EINVAL;
 			return (-1);
 		}

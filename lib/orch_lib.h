@@ -24,7 +24,8 @@
 typedef struct orch_ipc *orch_ipc_t;
 
 enum orch_ipc_tag {
-	IPC_RELEASE = 1,	/* Bidrectional */
+	IPC_NOXMIT = 0,
+	IPC_RELEASE,		/* Bidrectional */
 	IPC_ERROR,		/* Child -> Parent */
 	IPC_TERMIOS_INQUIRY,	/* Parent -> Child */
 	IPC_TERMIOS_SET,	/* Bidirectional */
