@@ -3,7 +3,7 @@ file(GLOB core_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 set(warnings "-Wall -Wextra -Werror")
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_GNU_SOURCE")
+	add_compile_options(-D_GNU_SOURCE)
 endif()
 
 add_library(core SHARED ${core_SOURCES})

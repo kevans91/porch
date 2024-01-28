@@ -28,6 +28,11 @@ option(EXAMPLES "Install examples" ON)
 option(MANPAGES "Install manpages" ON)
 option(BUILD_DRIVER "Build the orch(1) driver" ON)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_compile_options(-fsanitize=address)
+	add_link_options(-fsanitize=address)
+endif()
+
 if(EXAMPLES)
 	add_subdirectory(examples)
 endif()

@@ -43,7 +43,7 @@ jobs:
       - name: configure
         run: |
           mkdir build
-          cd build && cmake ..
+          cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..
       - name: build orch(1)
         run: make -C build
       - name: Run self-tests
