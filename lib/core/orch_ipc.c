@@ -58,8 +58,10 @@ orch_ipc_close(orch_ipc_t ipc)
 			error = orch_ipc_drain(ipc);
 		}
 
-		close(ipc->sockfd);
-		ipc->sockfd = -1;
+		if (ipc->sockfd != -1) {
+			close(ipc->sockfd);
+			ipc->sockfd = -1;
+		}
 	}
 
 	/*
@@ -187,6 +189,7 @@ orch_ipc_drain(orch_ipc_t ipc)
 	return (0);
 eof:
 
+	assert(ipc->sockfd >= 0);
 	close(ipc->sockfd);
 	ipc->sockfd = -1;
 

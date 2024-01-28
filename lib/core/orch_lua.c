@@ -565,6 +565,7 @@ orchlua_process_read(lua_State *L)
 
 				self->eof = true;
 
+				assert(self->termctl >= 0);
 				close(self->termctl);
 				self->termctl = -1;
 

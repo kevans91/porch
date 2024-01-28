@@ -274,6 +274,7 @@ orchlua_term_update(lua_State *L)
 		return (2);
 	}
 
+	memset(msg, 0, msgsz);
 	msgterm = (void *)(msg + 1);
 	msg->hdr.tag = IPC_TERMIOS_SET;
 	msg->hdr.size = msgsz;
