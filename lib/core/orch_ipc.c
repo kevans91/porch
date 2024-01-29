@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "orch.h"
@@ -51,7 +52,7 @@ struct orch_ipc_register {
 };
 
 struct orch_ipc {
-	struct orch_ipc_register	*callbacks;
+	struct orch_ipc_register	 callbacks[IPC_LAST - 1];
 	struct orch_ipc_msgq		*head;
 	struct orch_ipc_msgq		*tail;
 	int				 sockfd;
@@ -96,7 +97,6 @@ orch_ipc_close(orch_ipc_t ipc)
 	error = orch_ipc_pop(ipc, NULL);
 	assert(ipc->head == NULL);
 
-	free(ipc->callbacks);
 	free(ipc);
 
 	return (error);
@@ -111,12 +111,7 @@ orch_ipc_open(int fd)
 	if (hdl == NULL)
 		return (NULL);
 
-	hdl->callbacks = calloc(IPC_LAST - 1, sizeof(*hdl->callbacks));
-	if (hdl->callbacks == NULL) {
-		free(hdl);
-		return (NULL);
-	}
-
+	memset(&hdl->callbacks[0], 0, sizeof(hdl->callbacks));
 	hdl->head = hdl->tail = NULL;
 	hdl->sockfd = fd;
 	return (hdl);
