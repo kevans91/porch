@@ -1,7 +1,6 @@
 
 file(GLOB orch_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
-set(warnings "-Wall -Wextra -Werror")
 add_compile_definitions(ORCHLUA_PATH="${ORCHLUA_PATH}")
 
 add_executable(orch ${orch_SOURCES})

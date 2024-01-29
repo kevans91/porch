@@ -28,9 +28,10 @@ option(EXAMPLES "Install examples" ON)
 option(MANPAGES "Install manpages" ON)
 option(BUILD_DRIVER "Build the orch(1) driver" ON)
 
+set(warnings "-Wall -Wextra -Werror")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	add_compile_options(-fsanitize=address)
-	add_link_options(-fsanitize=address)
+	add_compile_options(-fsanitize=address,undefined -fstrict-aliasing)
+	add_link_options(-fsanitize=address,undefined -fstrict-aliasing)
 endif()
 
 if(EXAMPLES)
