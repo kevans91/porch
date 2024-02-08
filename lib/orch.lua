@@ -368,9 +368,9 @@ local orch_actions = {
 		end,
 	},
 	eof = {
-		diagnostics = function(action, src, line)
+		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
-			    src, line))
+			    action.src, action.line))
 		end,
 		init = function(action, args)
 			action.timeout = args[1] or action.ctx.timeout
@@ -711,6 +711,9 @@ function orch.run_script(scriptfile, config)
 			local ret, state
 
 			action.ctx = current_ctx
+			action.src, action.line = grab_caller(2)
+
+			action.print_diagnostics = def.print_diagnostics
 
 			if def.init then
 				-- We preserve the return value of init() in case
