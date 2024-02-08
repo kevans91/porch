@@ -157,7 +157,7 @@ function MatchContext:process()
 			if current_ctx.match_ctx_stack:count() ~= ctx_cnt then
 				break
 			end
-		elseif not action:execute(action, arg) then
+		elseif not action:execute() then
 			return false
 		end
 
@@ -352,37 +352,60 @@ local orch_actions = {
 			return true
 		end,
 	},
+	enqueue = {
+		allow_direct = true,
+		init = function(action, args)
+			action.callback = args[1]
+		end,
+		execute = function(action)
+			local ctx = action.ctx
+			local restore_ctx = ctx:state(CTX_CALLBACK)
+
+			ctx:execute(action.callback)
+
+			ctx:state(restore_ctx)
+			return true
+		end,
+	},
+	eof = {
+		diagnostics = function(action, src, line)
+			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
+			    src, line))
+		end,
+		init = function(action, args)
+			action.timeout = args[1] or action.ctx.timeout
+		end,
+		execute = function(action)
+			local ctx = action.ctx
+			local buffer = ctx.process.buffer
+
+			if buffer.eof then
+				return true
+			end
+
+			local function discard()
+			end
+
+			buffer:refill(discard, action.timeout)
+			if not buffer.eof then
+				if not ctx:fail(action, buffer:contents()) then
+					return false
+				end
+			end
+
+			return true
+		end,
+	},
+	exit = {
+		allow_direct = true,
+		init = function(action, args)
+			action.code = args[1]
+		end,
+		execute = function(action)
+			os.exit(action.code)
+		end,
+	},
 }
-
-local function do_enqueue(obj)
-	local restore_ctx = current_ctx:state(CTX_CALLBACK)
-	current_ctx:execute(obj.callback)
-	current_ctx:state(restore_ctx)
-	return true
-end
-
-local function do_eof(obj)
-	local buffer = current_ctx.process.buffer
-	if buffer.eof then
-		return true
-	end
-
-	local function discard()
-	end
-
-	buffer:refill(discard, obj.timeout)
-	if not buffer.eof then
-		if not current_ctx:fail(obj, buffer:contents()) then
-			return false
-		end
-	end
-
-	return true
-end
-
-local function do_exit(obj)
-	os.exit(obj.code)
-end
 
 local function do_fail_handler(obj)
 	current_ctx.fail_callback = obj.callback
@@ -457,51 +480,6 @@ local function do_write(action)
 	end
 
 	assert(current_ctx.process:write(action.data))
-	return true
-end
-
-function orch.env.enqueue(callback)
-	local enqueue_action = MatchAction:new("enqueue", do_enqueue)
-	enqueue_action.callback = callback
-
-	if current_ctx:state() ~= CTX_QUEUE then
-		do_enqueue(enqueue_action)
-	else
-		current_ctx.match_ctx:push(enqueue_action)
-	end
-
-	return true
-end
-
-function orch.env.eof(timeout)
-	local eof_action = MatchAction:new("eof", do_eof)
-	eof_action.timeout = timeout or current_ctx.timeout
-
-	local src, line = grab_caller(2)
-
-	function eof_action.print_diagnostics()
-		io.stderr:write(string.format("[%s]:%d: eof not observed\n",
-		    src, line))
-	end
-
-	current_ctx.match_ctx:push(eof_action)
-	return true
-end
-
-function orch.env.exit(code)
-	local exit_action = MatchAction:new("exit", do_exit)
-	exit_action.code = code
-
-	-- Don't enqueue in a failure context, just exit immediately.  We don't want
-	-- to support, e.g., match blocks upon failure -- the supported way to do
-	-- that is for the script's fail handler to set a local variable in the
-	-- script environment, ignore the error (don't exit), then check it before
-	-- setting up any more match blocks.
-	if current_ctx:state() ~= CTX_QUEUE then
-		do_exit(exit_action)
-	end
-
-	current_ctx.match_ctx:push(exit_action)
 	return true
 end
 
@@ -731,6 +709,8 @@ function orch.run_script(scriptfile, config)
 			local action = MatchAction:new(name, def.execute)
 			local args = { ... }
 			local ret, state
+
+			action.ctx = current_ctx
 
 			if def.init then
 				-- We preserve the return value of init() in case
