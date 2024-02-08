@@ -1,0 +1,31 @@
+function() creates an action, might execute it immediately, pushes it onto the queue
+
+GOAL: Offer a direct execution scheme where we're never in a queue context, the
+  caller anticipates it being executed immediately.
+
+RANDOM OBSERVATIONS:
+  - Whether an action makes sense outside of the queue or not could be
+    configurable
+  - Most of these actions are synthesized with some boilerplate that could be
+    generalized to some extent
+
+WHAT MAKES SENSE?
+  - orch.actions that contains definitions for each action, generates the
+    boilerplate.
+  - The boilerplate generator should take a context with a :created() method
+    that it returns the result of.  For a script context, created() will either
+    insert into the queue or execute it.  We'll add a direct exec context later
+    for lib calls.
+  - The generator should attach the .src definition, an entry in actions.defined
+  - Note that not all of these make sense to break out into a non-script
+    context!  For instance, these:
+      * debug()
+      * enqueue()
+      * exit()
+      * one()
+    one() may be initially surprising, but I think a lua script using orch.lua
+    would just drive the same machinery manually.
+
+Context:
+  created(action)
+  execute()
