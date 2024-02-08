@@ -5,6 +5,7 @@
 --
 
 local impl = require("orch.core")
+local context = require("orch.context")
 local matchers = require("orch.matchers")
 local process = require("orch.process")
 local tty = impl.tty
@@ -14,44 +15,14 @@ local CTX_QUEUE = 1
 local CTX_FAIL = 2
 local CTX_CALLBACK = 3
 
+local current_ctx
 local default_matcher = matchers.available.default
-local orch_ctx = CTX_QUEUE
-local match_ctx, match_ctx_stack
-local fail_callback
-local current_process
-local current_timeout = 10
+local default_timeout = 10
 
 local match_valid_cfg = {
 	callback = true,
 	timeout = true,
 }
-
-local function ctx(new_ctx)
-	local prev_ctx = orch_ctx
-
-	if new_ctx then
-		orch_ctx = new_ctx
-	end
-
-	return prev_ctx
-end
-
-local function fail(action, buffer)
-	if fail_callback then
-		local restore_ctx = ctx(CTX_FAIL)
-		fail_callback(buffer)
-		ctx(restore_ctx)
-
-		return true
-	else
-		-- Print diagnostics if we can
-		if action.print_diagnostics then
-			action:print_diagnostics()
-		end
-	end
-
-	return false
-end
 
 -- Sometimes a queue, sometimes a stack.  Oh well.
 local Queue = {}
@@ -162,7 +133,8 @@ function MatchContext:process()
 
 		self.last_processed = idx
 		if action.type == "match" then
-			local ctx_cnt = match_ctx_stack:count()
+			local ctx_cnt = current_ctx.match_ctx_stack:count()
+			local current_process = current_ctx.process
 
 			if not current_process then
 				error("Script did not spawn process prior to matching")
@@ -174,7 +146,7 @@ function MatchContext:process()
 			local buffer = current_process.buffer
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
-				if not fail(action, buffer:contents()) then
+				if not current_ctx:fail(action, buffer:contents()) then
 					self.errors = true
 					return false
 				end
@@ -182,7 +154,7 @@ function MatchContext:process()
 
 			-- Even if this is the last element, doesn't matter; we're finished
 			-- here.
-			if match_ctx_stack:count() ~= ctx_cnt then
+			if current_ctx.match_ctx_stack:count() ~= ctx_cnt then
 				break
 			end
 		elseif not action:execute(action, arg) then
@@ -197,6 +169,7 @@ end
 function MatchContext:process_one()
 	local actions = self:items()
 	local elapsed = 0
+	local current_process = current_ctx.process
 
 	if not current_process then
 		error("Script did not spawn process prior to matching")
@@ -260,7 +233,7 @@ function MatchContext:process_one()
 	end
 
 	if not matched then
-		if not fail(self.action, buffer:contents()) then
+		if not current_ctx:fail(self.action, buffer:contents()) then
 			self.errors = true
 			return false
 		end
@@ -269,34 +242,76 @@ function MatchContext:process_one()
 	return true
 end
 
-match_ctx_stack = setmetatable({ elements = {} }, { __index = Queue })
-function match_ctx_stack:dump()
+local script_ctx = context:new({
+	match_ctx_stack = setmetatable({ elements = {} }, { __index = Queue }),
+})
+
+function script_ctx.match_ctx_stack:dump()
 	self:each(function(dctx)
 		dctx:dump()
 	end)
 end
-
 -- Execute a chunk; may either be a callback from a match block, or it may be
 -- an entire included file.  Either way, each execution gets a new match context
 -- that we may or may not use.  We'll act upon the latest in the stack no matter
 -- what happens.
-local function execute(func, freshctx)
-	if freshctx then
-		match_ctx = MatchContext:new()
-	end
+function script_ctx:execute(func, match_ctx)
+	local match_ctx_stack = self.match_ctx_stack
+	local prev_ctx = self.match_ctx
+	self.match_ctx = match_ctx or MatchContext:new()
 
 	assert(pcall(func))
 
-	if freshctx then
-		if not match_ctx:empty() then
-			match_ctx_stack:push(match_ctx)
+	-- If we created a new context for this, we may need to put it on the
+	-- stack.  We'll leave caller-supplied contexts alone.
+	if not match_ctx then
+		if not self.match_ctx:empty() then
+			-- If it defined any queued items, we'll leave it as the
+			-- currently open match ctx.
+			match_ctx_stack:push(self.match_ctx)
 		else
-			match_ctx = match_ctx_stack:back()
+			self.match_ctx = match_ctx_stack:back()
 		end
+	else
+		self.match_ctx = prev_ctx
 	end
 end
 
-local function include_file(file, alter_path, env)
+function script_ctx:fail(action, buffer)
+	if self.fail_callback then
+		local restore_ctx = self:state(CTX_FAIL)
+		self.fail_callback(buffer)
+		self:state(restore_ctx)
+
+		return true
+	else
+		-- Print diagnostics if we can
+		if action.print_diagnostics then
+			action:print_diagnostics()
+		end
+	end
+
+	return false
+end
+function script_ctx:reset()
+	if self.process then
+		assert(self.process:close())
+	end
+
+	self.process = nil
+
+	self.match_ctx_stack:clear()
+	self.match_ctx = nil
+	self._state = CTX_QUEUE
+	self.timeout = default_timeout
+end
+function script_ctx:state(new_state)
+	local prev_state = self._state
+	self._state = new_state or prev_state
+	return prev_state
+end
+
+local function include_file(ctx, file, alter_path, env)
 	local f = assert(impl.open(file, alter_path))
 	local chunk = f:read("l")
 
@@ -314,7 +329,7 @@ local function include_file(file, alter_path, env)
 	chunk = chunk .. assert(f:read("a"))
 	local func = assert(load(chunk, "@" .. file, "t", env))
 
-	return execute(func, true)
+	return ctx:execute(func)
 end
 
 local function grab_caller(level)
@@ -332,14 +347,14 @@ local function do_debug(action)
 end
 
 local function do_enqueue(obj)
-	local restore_ctx = ctx(CTX_CALLBACK)
-	execute(obj.callback)
-	ctx(restore_ctx)
+	local restore_ctx = current_ctx:state(CTX_CALLBACK)
+	current_ctx:execute(obj.callback)
+	current_ctx:state(restore_ctx)
 	return true
 end
 
 local function do_eof(obj)
-	local buffer = current_process.buffer
+	local buffer = current_ctx.process.buffer
 	if buffer.eof then
 		return true
 	end
@@ -349,7 +364,7 @@ local function do_eof(obj)
 
 	buffer:refill(discard, obj.timeout)
 	if not buffer.eof then
-		if not fail(obj, buffer:contents()) then
+		if not current_ctx:fail(obj, buffer:contents()) then
 			return false
 		end
 	end
@@ -362,27 +377,27 @@ local function do_exit(obj)
 end
 
 local function do_fail_handler(obj)
-	fail_callback = obj.callback
+	current_ctx.fail_callback = obj.callback
 end
 
 local function do_one(obj)
-	match_ctx_stack:push(obj.match_ctx)
+	current_ctx.match_ctx_stack:push(obj.match_ctx)
 	return false
 end
 
 local function do_raw(obj)
-	if not current_process then
+	if not current_ctx.process then
 		error("raw() called before process spawned.")
 	end
-	current_process:raw(obj.value)
+	current_ctx.process:raw(obj.value)
 	return true
 end
 
 local function do_release()
-	if not current_process then
+	if not current_ctx.process then
 		error("release() called before process spawned.")
 	end
-	current_process:release()
+	current_ctx.process:release()
 	return true
 end
 
@@ -392,17 +407,18 @@ local function do_sleep(obj)
 end
 
 local function do_spawn(obj)
-	if current_process then
-		assert(current_process:close())
+	if current_ctx.process then
+		assert(current_ctx.process:close())
 	end
 
-	current_process = process:new(obj.cmd, execute)
+	current_ctx.process = process:new(obj.cmd, current_ctx)
 
 	return true
 end
 
 local function do_stty(obj)
 	local field, set, unset = obj.field, obj.set, obj.unset
+	local current_process = current_ctx.process
 
 	local value = current_process.term:fetch(field)
 	if type(value) == "table" then
@@ -428,21 +444,21 @@ local function do_stty(obj)
 end
 
 local function do_write(action)
-	if not current_process then
+	if not current_ctx.process then
 		error("Script did not spawn process prior to writing")
 	end
 
-	assert(current_process:write(action.data))
+	assert(current_ctx.process:write(action.data))
 	return true
 end
 
 function orch.env.debug(str)
 	local debug_action = MatchAction:new("debug", do_debug)
 	debug_action.message = str
-	if ctx() ~= CTX_QUEUE then
+	if current_ctx:state() ~= CTX_QUEUE then
 		do_debug(debug_action)
 	else
-		match_ctx:push(debug_action)
+		current_ctx.match_ctx:push(debug_action)
 	end
 	return true
 end
@@ -451,10 +467,10 @@ function orch.env.enqueue(callback)
 	local enqueue_action = MatchAction:new("enqueue", do_enqueue)
 	enqueue_action.callback = callback
 
-	if ctx() ~= CTX_QUEUE then
+	if current_ctx:state() ~= CTX_QUEUE then
 		do_enqueue(enqueue_action)
 	else
-		match_ctx:push(enqueue_action)
+		current_ctx.match_ctx:push(enqueue_action)
 	end
 
 	return true
@@ -462,7 +478,7 @@ end
 
 function orch.env.eof(timeout)
 	local eof_action = MatchAction:new("eof", do_eof)
-	eof_action.timeout = timeout or current_timeout
+	eof_action.timeout = timeout or current_ctx.timeout
 
 	local src, line = grab_caller(2)
 
@@ -471,7 +487,7 @@ function orch.env.eof(timeout)
 		    src, line))
 	end
 
-	match_ctx:push(eof_action)
+	current_ctx.match_ctx:push(eof_action)
 	return true
 end
 
@@ -484,23 +500,23 @@ function orch.env.exit(code)
 	-- that is for the script's fail handler to set a local variable in the
 	-- script environment, ignore the error (don't exit), then check it before
 	-- setting up any more match blocks.
-	if ctx() ~= CTX_QUEUE then
+	if current_ctx:state() ~= CTX_QUEUE then
 		do_exit(exit_action)
 	end
 
-	match_ctx:push(exit_action)
+	current_ctx.match_ctx:push(exit_action)
 	return true
 end
 
 function orch.env.fail(func)
 	local fail_action = MatchAction:new("fail", do_fail_handler)
 	fail_action.callback = func
-	match_ctx:push(fail_action)
+	current_ctx.match_ctx:push(fail_action)
 	return true
 end
 
 function orch.env.hexdump(str)
-	if ctx() == CTX_QUEUE then
+	if current_ctx:state() == CTX_QUEUE then
 		error("hexdump may only be called in a non-queue context")
 	end
 
@@ -553,7 +569,7 @@ end
 function orch.env.match(pattern)
 	local match_action = MatchAction:new("match")
 	match_action.pattern = pattern
-	match_action.timeout = current_timeout
+	match_action.timeout = current_ctx.timeout
 
 	if match_action.matcher.compile then
 		match_action.pattern_obj = match_action.matcher.compile(pattern)
@@ -575,7 +591,7 @@ function orch.env.match(pattern)
 		end
 	end
 
-	match_ctx:push(match_action)
+	current_ctx.match_ctx:push(match_action)
 	return set_cfg
 end
 
@@ -600,7 +616,7 @@ end
 
 function orch.env.one(func)
 	local action_obj = MatchAction:new("one", do_one)
-	local parent_ctx = match_ctx
+	local parent_ctx = current_ctx.match_ctx
 	local src, line = grab_caller(2)
 	function action_obj.print_diagnostics()
 		io.stderr:write(string.format("[%s]:%d: all matches failed\n",
@@ -610,25 +626,18 @@ function orch.env.one(func)
 	parent_ctx:push(action_obj)
 
 	action_obj.match_ctx = MatchContext:new()
-	action_obj.match_ctx.process = match_ctx.process_one
+	action_obj.match_ctx.process = current_ctx.match_ctx.process_one
 	action_obj.match_ctx.action = action_obj
 
-	-- Nest this one inside our action
-	match_ctx = action_obj.match_ctx
-
 	-- Now execute it
-	execute(func)
+	script_ctx:execute(func, action_obj.match_ctx)
 
 	-- Sanity check the script
-	for _, action in ipairs(match_ctx:items()) do
+	for _, action in ipairs(action_obj.match_ctx:items()) do
 		if action.type ~= "match" then
 			error("Type '" .. action.type .. "' not legal in a one() block")
 		end
 	end
-
-	-- Return to the parent context; that's the one we'll be acting on
-	-- action.
-	match_ctx = parent_ctx
 
 	return true
 end
@@ -636,23 +645,23 @@ end
 function orch.env.raw(val)
 	local action_obj = MatchAction:new("raw", do_raw)
 	action_obj.value = val
-	match_ctx:push(action_obj)
+	current_ctx.match_ctx:push(action_obj)
 	return true
 end
 
 function orch.env.release()
 	local action_obj = MatchAction:new("release", do_release)
-	match_ctx:push(action_obj)
+	current_ctx.match_ctx:push(action_obj)
 	return true
 end
 
 function orch.env.sleep(duration)
 	local action_obj = MatchAction:new("sleep", do_sleep)
 	action_obj.duration = duration
-	if ctx() ~= CTX_QUEUE then
+	if current_ctx:state() ~= CTX_QUEUE then
 		do_sleep(action_obj)
 	else
-		match_ctx:push(action_obj)
+		current_ctx.match_ctx:push(action_obj)
 	end
 	return true
 end
@@ -666,7 +675,7 @@ function orch.env.spawn(...)
 		end
 		action_obj.cmd = table.unpack(action_obj.cmd)
 	end
-	match_ctx:push(action_obj)
+	current_ctx.match_ctx:push(action_obj)
 	return true
 end
 
@@ -679,7 +688,7 @@ function orch.env.stty(field, set, unset)
 	action_obj.field = field
 	action_obj.set = set
 	action_obj.unset = unset
-	match_ctx:push(action_obj)
+	current_ctx.match_ctx:push(action_obj)
 	return true
 end
 
@@ -687,27 +696,18 @@ function orch.env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")
 	end
-	current_timeout = val
+	current_ctx.timeout = val
 end
 
 function orch.env.write(str)
 	local action_obj = MatchAction:new("write", do_write)
 	action_obj.data = str
-	match_ctx:push(action_obj)
+	current_ctx.match_ctx:push(action_obj)
 	return true
 end
 
 function orch.reset()
-	if current_process then
-		assert(current_process:close())
-	end
-
-	current_process = nil
-
-	match_ctx_stack:clear()
-	match_ctx = nil
-
-	orch_ctx = CTX_QUEUE
+	script_ctx:reset()
 	assert(impl.reset())
 end
 
@@ -716,6 +716,9 @@ end
 --   * command: argv table to pass to spawn
 function orch.run_script(scriptfile, config)
 	local done
+
+	script_ctx:reset()
+	current_ctx = script_ctx
 
 	-- Make a copy of orch.env at the time of script execution.  The
 	-- environment is effectively immutable from the driver's perspective
@@ -728,25 +731,25 @@ function orch.run_script(scriptfile, config)
 
 	-- Note that the orch(1) driver will setup alter_path == true; scripts
 	-- importing orch.lua are expected to be more explicit.
-	include_file(scriptfile, config and config.alter_path, current_env)
-	--match_ctx_stack:dump()
+	include_file(script_ctx, scriptfile, config and config.alter_path, current_env)
+	--current_ctx.match_ctx_stack:dump()
 
 	if config and config.command then
-		current_process = process:new(config.command, execute)
+		current_ctx.process = process:new(config.command, current_ctx)
 	end
 
-	if match_ctx_stack:empty() then
+	if current_ctx.match_ctx_stack:empty() then
 		error("script did not define any actions")
 	end
 
 	-- To run the script, we'll grab the back of the context stack and process
 	-- that.
 	while not done do
-		local run_ctx = match_ctx_stack:back()
+		local run_ctx = current_ctx.match_ctx_stack:back()
 
 		if run_ctx:process() then
-			match_ctx_stack:remove(run_ctx)
-			done = match_ctx_stack:empty()
+			current_ctx.match_ctx_stack:remove(run_ctx)
+			done = current_ctx.match_ctx_stack:empty()
 		elseif run_ctx:error() then
 			return false
 		end

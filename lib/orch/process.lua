@@ -8,11 +8,11 @@ local core = require("orch.core")
 local tty = core.tty
 
 local MatchBuffer = {}
-function MatchBuffer:new(process, execute)
+function MatchBuffer:new(process, ctx)
 	local obj = setmetatable({}, self)
 	self.__index = self
 	self.buffer = ""
-	self.execute = execute
+	self.ctx = ctx
 	self.process = process
 	self.eof = false
 	return obj
@@ -30,7 +30,7 @@ function MatchBuffer:_matches(action)
 
 	-- Return value is not significant, ignored.
 	if action.callback then
-		self.execute(action.callback, true)
+		self.ctx:execute(action.callback)
 	end
 
 	return true
@@ -79,12 +79,12 @@ end
 
 -- Wrap a process and perform operations on it.
 local Process = {}
-function Process:new(cmd, execute)
+function Process:new(cmd, ctx)
 	local pwrap = setmetatable({}, self)
 	self.__index = self
 
 	pwrap._process = assert(core.spawn(table.unpack(cmd)))
-	pwrap.buffer = MatchBuffer:new(pwrap, execute)
+	pwrap.buffer = MatchBuffer:new(pwrap, ctx)
 
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
