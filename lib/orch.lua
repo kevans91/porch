@@ -15,7 +15,7 @@ local CTX_CALLBACK = 3
 local orch_ctx = CTX_QUEUE
 local execute, match_ctx, match_ctx_stack
 local fail_callback
-local process, term
+local process
 local current_timeout = 10
 
 local match_valid_cfg = {
@@ -379,6 +379,53 @@ function match_ctx_stack:dump()
 	end)
 end
 
+-- Wrap a process and perform operations on it.
+local Process = {}
+function Process:new(cmd)
+	local pwrap = setmetatable({}, self)
+	self.__index = self
+
+	pwrap._process = assert(impl.spawn(table.unpack(cmd)))
+	assert(pwrap._process:buffer(MatchBuffer:new()))
+
+	pwrap.term = assert(pwrap._process:term())
+	local mask = pwrap.term:fetch("lflag")
+
+	mask = mask & ~tty.lflag.ECHO
+	assert(pwrap.term:update({
+		lflag = mask,
+	}))
+
+	return pwrap
+end
+-- Proxied through to the wrapped process
+function Process:released()
+	return self._process:released()
+end
+function Process:release()
+	return self._process:release()
+end
+function Process:read(func, timeout)
+	return self._process:read(func, timeout)
+end
+function Process:buffer()
+	return self._process:buffer()
+end
+function Process:raw(text)
+	return self._process:raw(text)
+end
+function Process:write(data)
+	return self._process:write(data)
+end
+function Process:close()
+	assert(self._process:close())
+
+	self._process = nil
+	self.term = nil
+	return true
+end
+
+
 
 -- Execute a chunk; may either be a callback from a match block, or it may be
 -- an entire included file.  Either way, each execution gets a new match context
@@ -419,21 +466,6 @@ local function include_file(file, alter_path, env)
 	local func = assert(load(chunk, "@" .. file, "t", env))
 
 	return execute(func, true)
-end
-
-local function internal_spawn(cmd)
-	local new_process = assert(impl.spawn(table.unpack(cmd)))
-	assert(new_process:buffer(MatchBuffer:new()))
-
-	local new_term = assert(new_process:term())
-	local mask = new_term:fetch("lflag")
-
-	mask = mask & ~tty.lflag.ECHO
-	assert(new_term:update({
-		lflag = mask,
-	}))
-
-	return new_process, new_term
 end
 
 local function grab_caller(level)
@@ -514,8 +546,8 @@ local function do_spawn(obj)
 	if process then
 		assert(process:close())
 	end
-	process, term = internal_spawn(obj.cmd)
-	-- XXX something with term
+
+	process = Process:new(obj.cmd)
 
 	return true
 end
@@ -523,7 +555,7 @@ end
 local function do_stty(obj)
 	local field, set, unset = obj.field, obj.set, obj.unset
 
-	local value = term:fetch(field)
+	local value = process.term:fetch(field)
 	if type(value) == "table" then
 		set = set or {}
 
@@ -539,7 +571,7 @@ local function do_stty(obj)
 		value = (value | set) & ~unset
 	end
 
-	assert(term:update({
+	assert(process.term:update({
 		[field] = value
 	}))
 
@@ -821,7 +853,6 @@ function orch.reset()
 		assert(process:close())
 	end
 
-	term = nil
 	process = nil
 
 	match_ctx_stack:clear()
@@ -852,7 +883,7 @@ function orch.run_script(scriptfile, config)
 	--match_ctx_stack:dump()
 
 	if config and config.command then
-		process = internal_spawn(config.command)
+		process = Process:new(config.command)
 	end
 
 	if match_ctx_stack:empty() then
