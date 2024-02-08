@@ -882,9 +882,4 @@ orch.env.table = table
 orch.env.tty = tty
 orch.env.type = type
 
---for k, v in pairs(tty.lflags) do
---	print(k, v)
---end
---print(tty.flags())
-
 return orch
