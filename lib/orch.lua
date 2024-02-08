@@ -341,10 +341,18 @@ end
 -- Bits available to the sandbox; orch.env functions are directly exposed, the
 -- below do_*() implementations are the callbacks we use when the main loop goes
 -- to process them.
-local function do_debug(action)
-	io.stderr:write("DEBUG: " .. action.message .. "\n")
-	return true
-end
+local orch_actions = {
+	debug = {
+		allow_direct = true,
+		init = function(action, args)
+			action.message = args[1]
+		end,
+		execute = function(action)
+			io.stderr:write("DEBUG: " .. action.message .. "\n")
+			return true
+		end,
+	},
+}
 
 local function do_enqueue(obj)
 	local restore_ctx = current_ctx:state(CTX_CALLBACK)
@@ -449,17 +457,6 @@ local function do_write(action)
 	end
 
 	assert(current_ctx.process:write(action.data))
-	return true
-end
-
-function orch.env.debug(str)
-	local debug_action = MatchAction:new("debug", do_debug)
-	debug_action.message = str
-	if current_ctx:state() ~= CTX_QUEUE then
-		do_debug(debug_action)
-	else
-		current_ctx.match_ctx:push(debug_action)
-	end
 	return true
 end
 
@@ -727,6 +724,34 @@ function orch.run_script(scriptfile, config)
 	local current_env = {}
 	for k, v in pairs(orch.env) do
 		current_env[k] = v
+	end
+
+	for name, def in pairs(orch_actions) do
+		current_env[name] = function(...)
+			local action = MatchAction:new(name, def.execute)
+			local args = { ... }
+			local ret, state
+
+			if def.init then
+				-- We preserve the return value of init() in case
+				-- the action wanted to, e.g., return a callback
+				-- for some good old fashion chaining like with
+				-- match "foo" { config }.
+				ret = def.init(action, args)
+			end
+
+			state = current_ctx:state()
+			if state ~= CTX_QUEUE then
+				if not def.allow_direct then
+					error(name .. " may not be called in a direct context")
+				end
+
+				return action:execute()
+			end
+
+			current_ctx.match_ctx:push(action)
+			return ret or true
+		end
 	end
 
 	-- Note that the orch(1) driver will setup alter_path == true; scripts
