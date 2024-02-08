@@ -5,6 +5,7 @@
 --
 
 local impl = require("orch.core")
+local matchers = require("orch.matchers")
 local tty = impl.tty
 local orch = {env = {}}
 
@@ -12,6 +13,7 @@ local CTX_QUEUE = 1
 local CTX_FAIL = 2
 local CTX_CALLBACK = 3
 
+local default_matcher = matchers.available.default
 local orch_ctx = CTX_QUEUE
 local execute, match_ctx, match_ctx_stack
 local fail_callback
@@ -93,44 +95,6 @@ end
 function Queue:items()
 	return self.elements
 end
-
-local PatternMatcher = {}
-function PatternMatcher:new()
-	local obj = setmetatable({}, self)
-	self.__index = self
-	return obj
-end
-function PatternMatcher.match()
-	-- All matchers should return start, last of match
-	return false
-end
-
-local LuaMatcher = PatternMatcher:new()
-function LuaMatcher.match(pattern, buffer)
-	return buffer:find(pattern)
-end
-
-local PlainMatcher = PatternMatcher:new()
-function PlainMatcher.match(pattern, buffer)
-	return buffer:find(pattern, nil, true)
-end
-
-local PosixMatcher = PatternMatcher:new()
-function PosixMatcher.compile(pattern)
-	return assert(impl.regcomp(pattern))
-end
-function PosixMatcher.match(pattern, buffer)
-	return pattern:find(buffer)
-end
-
--- default_matcher will be configurable via `matcher()`
-local default_matcher = LuaMatcher
-local available_matchers = {
-	default = LuaMatcher,
-	lua = LuaMatcher,
-	plain = PlainMatcher,
-	posix = PosixMatcher,
-}
 
 local MatchAction = {}
 function MatchAction:new(action, func)
@@ -730,7 +694,7 @@ end
 function orch.env.matcher(val)
 	local matcher_obj
 
-	for k, v in pairs(available_matchers) do
+	for k, v in pairs(matchers.available) do
 		if k == val then
 			matcher_obj = v
 			break

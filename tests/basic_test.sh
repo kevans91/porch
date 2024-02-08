@@ -16,6 +16,10 @@ fi
 
 orchdir="$(dirname "$orchbin")"
 
+if [ -n "$ORCHLUA_PATH" ]; then
+	cd "$ORCHLUA_PATH"
+fi
+
 1>&2 echo "Using binary: $orchbin"
 
 fails=0
