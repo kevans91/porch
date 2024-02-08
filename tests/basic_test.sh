@@ -25,7 +25,18 @@ fi
 fails=0
 testid=1
 
-set -- "$scriptdir"/*.orch
+if [ $# -ge 1 ]; then
+	tests=""
+
+	for test in "$@"; do
+		tests="$tests $scriptdir/$test.orch"
+	done
+
+	set -- $tests
+else
+	set -- "$scriptdir"/*.orch
+fi
+
 echo "1..$#"
 
 ok()
