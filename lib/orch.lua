@@ -274,7 +274,7 @@ function MatchContext:process()
 			-- Another action in this context could have swapped out the process
 			-- from underneath us, so pull the buffer at the last possible
 			-- minute.
-			local buffer = process:buffer()
+			local buffer = process.buffer
 			if not buffer:match(action) then
 				-- Error out... not acceptable at all.
 				if not fail(action, buffer:contents()) then
@@ -328,7 +328,7 @@ function MatchContext:process_one()
 	-- The process can't be swapped out by an immediate descendant of a one()
 	-- block, but it could be swapped out by a later block.  We don't care,
 	-- though, because we won't need the buffer anymore.
-	local buffer = process:buffer()
+	local buffer = process.buffer
 
 	local start = impl.time()
 	local matched
@@ -386,7 +386,7 @@ function Process:new(cmd)
 	self.__index = self
 
 	pwrap._process = assert(impl.spawn(table.unpack(cmd)))
-	assert(pwrap._process:buffer(MatchBuffer:new()))
+	pwrap.buffer = MatchBuffer:new()
 
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
@@ -407,9 +407,6 @@ function Process:release()
 end
 function Process:read(func, timeout)
 	return self._process:read(func, timeout)
-end
-function Process:buffer()
-	return self._process:buffer()
 end
 function Process:raw(text)
 	return self._process:raw(text)
@@ -490,7 +487,7 @@ local function do_enqueue(obj)
 end
 
 local function do_eof(obj)
-	local buffer = process:buffer()
+	local buffer = process.buffer
 	if buffer.eof then
 		return true
 	end
