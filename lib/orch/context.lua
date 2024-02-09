@@ -11,10 +11,10 @@ function Context:new(def)
 
 	return ctx
 end
-function Context:execute()
+function Context.execute(_)
 	return true
 end
-function Context:fail()
+function Context.fail(_)
 	return false
 end
 
