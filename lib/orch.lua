@@ -410,6 +410,34 @@ local orch_actions = {
 			return true
 		end,
 	},
+	match = {
+		print_diagnostics = function(action)
+			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
+			    action.src, action.line, action.pattern))
+		end,
+		init = function(action, args)
+			local pattern = args[1]
+
+			action.pattern = pattern
+			action.timeout = action.ctx.timeout
+
+			if action.matcher.compile then
+				action.pattern_obj = action.matcher.compile(pattern)
+			end
+
+			local function set_cfg(cfg)
+				for k, v in pairs(cfg) do
+					if not match_valid_cfg[k] then
+						error(k .. " is not a valid cfg field")
+					end
+
+					action[k] = v
+				end
+			end
+
+			return set_cfg
+		end,
+	},
 	one = {
 		-- This does its own queue management
 		auto_queue = false,
@@ -601,35 +629,6 @@ function orch.env.hexdump(str)
 	return true
 end
 
-function orch.env.match(pattern)
-	local match_action = MatchAction:new("match")
-	match_action.pattern = pattern
-	match_action.timeout = current_ctx.timeout
-
-	if match_action.matcher.compile then
-		match_action.pattern_obj = match_action.matcher.compile(pattern)
-	end
-
-	local src, line = grab_caller(2)
-	function match_action.print_diagnostics()
-		io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
-		    src, line, pattern))
-	end
-
-	local function set_cfg(cfg)
-		for k, v in pairs(cfg) do
-			if not match_valid_cfg[k] then
-				error(k .. " is not a valid cfg field")
-			end
-
-			match_action[k] = v
-		end
-	end
-
-	current_ctx.match_ctx:push(match_action)
-	return set_cfg
-end
-
 function orch.env.matcher(val)
 	local matcher_obj
 
@@ -648,7 +647,6 @@ function orch.env.matcher(val)
 
 	return true
 end
-
 
 function orch.env.timeout(val)
 	if val == nil or val < 0 then
