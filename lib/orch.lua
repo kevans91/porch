@@ -410,79 +410,121 @@ local orch_actions = {
 			return true
 		end,
 	},
-}
+	raw = {
+		init = function(action, args)
+			action.value = args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
 
+			if not current_process then
+				error("raw() called before process spawned.")
+			end
+
+			current_process:raw(action.value)
+			return true
+		end,
+	},
+	release = {
+		execute = function(action)
+			local current_process = action.ctx.process
+			if not current_process then
+				error("release() called before process spawned.")
+			end
+
+			assert(current_process:release())
+			return true
+		end,
+	},
+	sleep = {
+		allow_direct = true,
+		init = function(action, args)
+			action.duration = args[1]
+		end,
+		execute = function(action)
+			assert(impl.sleep(action.duration))
+			return true
+		end,
+	},
+	spawn = {
+		init = function(action, args)
+			action.cmd = args
+
+			if type(action.cmd[1]) == "table" then
+				if #action.cmd > 1 then
+					error("spawn: bad mix of table and additional arguments")
+				end
+				action.cmd = table.unpack(action.cmd)
+			end
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process then
+				assert(current_process:close())
+			end
+
+			action.ctx.process = process:new(action.cmd, action.ctx)
+			return true
+		end,
+	},
+	stty = {
+		init = function(action, args)
+			local field = args[1]
+			if not tty[field] then
+				error("stty: not a valid field to set: " .. field)
+			end
+
+			action.field = field
+			action.set = args[2]
+			action.unset = args[3]
+		end,
+		execute = function(action)
+			local field = action.field
+			local set, unset = action.set, action.unset
+			local current_process = action.ctx.process
+
+			local value = current_process.term:fetch(field)
+			if type(value) == "table" then
+				set = set or {}
+
+				-- cc
+				for k, v in pairs(set) do
+					value[k] = v
+				end
+			else
+				set = set or 0
+				unset = unset or 0
+
+				-- *flag mask
+				value = (value | set) & ~unset
+			end
+
+			assert(current_process.term:update({
+				[field] = value
+			}))
+
+			return true
+		end,
+	},
+	write = {
+		init = function(action, args)
+			action.value = args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if not current_process then
+				error("Script did not spawn process prior to writing")
+			end
+
+			assert(current_process:write(action.value))
+			return true
+		end,
+	},
+}
 
 local function do_one(obj)
 	current_ctx.match_ctx_stack:push(obj.match_ctx)
 	return false
-end
-
-local function do_raw(obj)
-	if not current_ctx.process then
-		error("raw() called before process spawned.")
-	end
-	current_ctx.process:raw(obj.value)
-	return true
-end
-
-local function do_release()
-	if not current_ctx.process then
-		error("release() called before process spawned.")
-	end
-	current_ctx.process:release()
-	return true
-end
-
-local function do_sleep(obj)
-	assert(impl.sleep(obj.duration))
-	return true
-end
-
-local function do_spawn(obj)
-	if current_ctx.process then
-		assert(current_ctx.process:close())
-	end
-
-	current_ctx.process = process:new(obj.cmd, current_ctx)
-
-	return true
-end
-
-local function do_stty(obj)
-	local field, set, unset = obj.field, obj.set, obj.unset
-	local current_process = current_ctx.process
-
-	local value = current_process.term:fetch(field)
-	if type(value) == "table" then
-		set = set or {}
-
-		-- cc
-		for k, v in pairs(set) do
-			value[k] = v
-		end
-	else
-		set = set or 0
-		unset = unset or 0
-
-		-- *flag mask
-		value = (value | set) & ~unset
-	end
-
-	assert(current_process.term:update({
-		[field] = value
-	}))
-
-	return true
-end
-
-local function do_write(action)
-	if not current_ctx.process then
-		error("Script did not spawn process prior to writing")
-	end
-
-	assert(current_ctx.process:write(action.data))
-	return true
 end
 
 function orch.env.hexdump(str)
@@ -612,68 +654,11 @@ function orch.env.one(func)
 	return true
 end
 
-function orch.env.raw(val)
-	local action_obj = MatchAction:new("raw", do_raw)
-	action_obj.value = val
-	current_ctx.match_ctx:push(action_obj)
-	return true
-end
-
-function orch.env.release()
-	local action_obj = MatchAction:new("release", do_release)
-	current_ctx.match_ctx:push(action_obj)
-	return true
-end
-
-function orch.env.sleep(duration)
-	local action_obj = MatchAction:new("sleep", do_sleep)
-	action_obj.duration = duration
-	if current_ctx:state() ~= CTX_QUEUE then
-		do_sleep(action_obj)
-	else
-		current_ctx.match_ctx:push(action_obj)
-	end
-	return true
-end
-
-function orch.env.spawn(...)
-	local action_obj = MatchAction:new("spawn", do_spawn)
-	action_obj.cmd = { ... }
-	if type(action_obj.cmd[1]) == "table" then
-		if #action_obj.cmd > 1 then
-			error("spawn: bad mix of table and additional arguments")
-		end
-		action_obj.cmd = table.unpack(action_obj.cmd)
-	end
-	current_ctx.match_ctx:push(action_obj)
-	return true
-end
-
-function orch.env.stty(field, set, unset)
-	if not tty[field] then
-		error("stty: not a valid field to set: " .. field)
-	end
-
-	local action_obj = MatchAction:new("stty", do_stty)
-	action_obj.field = field
-	action_obj.set = set
-	action_obj.unset = unset
-	current_ctx.match_ctx:push(action_obj)
-	return true
-end
-
 function orch.env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")
 	end
 	current_ctx.timeout = val
-end
-
-function orch.env.write(str)
-	local action_obj = MatchAction:new("write", do_write)
-	action_obj.data = str
-	current_ctx.match_ctx:push(action_obj)
-	return true
 end
 
 function orch.reset()
