@@ -85,6 +85,7 @@ function Process:new(cmd, ctx)
 
 	pwrap._process = assert(core.spawn(table.unpack(cmd)))
 	pwrap.buffer = MatchBuffer:new(pwrap, ctx)
+	pwrap.ctx = ctx
 
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
@@ -117,6 +118,17 @@ function Process:close()
 
 	self._process = nil
 	self.term = nil
+	return true
+end
+-- Our own special salt
+function Process:match(action)
+	local buffer = self.buffer
+	if not buffer:match(action) then
+		if not self.ctx:fail(action, buffer:contents()) then
+			return false
+		end
+	end
+
 	return true
 end
 

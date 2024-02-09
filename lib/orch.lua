@@ -143,13 +143,9 @@ function MatchContext:process()
 			-- Another action in this context could have swapped out the process
 			-- from underneath us, so pull the buffer at the last possible
 			-- minute.
-			local buffer = current_process.buffer
-			if not buffer:match(action) then
-				-- Error out... not acceptable at all.
-				if not current_ctx:fail(action, buffer:contents()) then
-					self.errors = true
-					return false
-				end
+			if not current_process:match(action) then
+				self.errors = true
+				return false
 			end
 
 			-- Even if this is the last element, doesn't matter; we're finished
