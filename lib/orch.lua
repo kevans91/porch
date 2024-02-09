@@ -401,11 +401,17 @@ local orch_actions = {
 			os.exit(action.code)
 		end,
 	},
+	fail = {
+		init = function(action, args)
+			action.callback = args[1]
+		end,
+		execute = function(action)
+			action.ctx.fail_callback = action.callback
+			return true
+		end,
+	},
 }
 
-local function do_fail_handler(obj)
-	current_ctx.fail_callback = obj.callback
-end
 
 local function do_one(obj)
 	current_ctx.match_ctx_stack:push(obj.match_ctx)
@@ -476,13 +482,6 @@ local function do_write(action)
 	end
 
 	assert(current_ctx.process:write(action.data))
-	return true
-end
-
-function orch.env.fail(func)
-	local fail_action = MatchAction:new("fail", do_fail_handler)
-	fail_action.callback = func
-	current_ctx.match_ctx:push(fail_action)
 	return true
 end
 
