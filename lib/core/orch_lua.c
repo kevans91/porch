@@ -507,6 +507,14 @@ orchlua_process_read(lua_State *L)
 
 		/* Read it */
 		readsz = read(fd, buf, sizeof(buf));
+
+		/*
+		 * Some platforms will return `0` when the slave side of a pty
+		 * has gone away, while others will return -1 + EIO.  Convert
+		 * the latter to the former.
+		 */
+		if (readsz == -1 && errno == EIO)
+			readsz = 0;
 		if (readsz < 0) {
 			int err = errno;
 
