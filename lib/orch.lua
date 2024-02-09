@@ -410,6 +410,34 @@ local orch_actions = {
 			return true
 		end,
 	},
+	one = {
+		-- This does its own queue management
+		auto_queue = false,
+		init = function(action, args)
+			local func = args[1]
+			local parent_ctx = action.ctx.match_ctx
+
+			parent_ctx:push(action)
+
+			action.match_ctx = MatchContext:new()
+			action.match_ctx.process = action.match_ctx.process_one
+			action.match_ctx.action = action
+
+			-- Now execute it
+			script_ctx:execute(func, action.match_ctx)
+
+			-- Sanity check the script
+			for _, chaction in ipairs(action.match_ctx:items()) do
+				if chaction.type ~= "match" then
+					error("Type '" .. chaction.type .. "' not legal in a one() block")
+				end
+			end
+		end,
+		execute = function(action)
+			action.ctx.match_ctx_stack:push(action.match_ctx)
+			return false
+		end,
+	},
 	raw = {
 		init = function(action, args)
 			action.value = args[1]
@@ -522,11 +550,6 @@ local orch_actions = {
 	},
 }
 
-local function do_one(obj)
-	current_ctx.match_ctx_stack:push(obj.match_ctx)
-	return false
-end
-
 function orch.env.hexdump(str)
 	if current_ctx:state() == CTX_QUEUE then
 		error("hexdump may only be called in a non-queue context")
@@ -626,33 +649,6 @@ function orch.env.matcher(val)
 	return true
 end
 
-function orch.env.one(func)
-	local action_obj = MatchAction:new("one", do_one)
-	local parent_ctx = current_ctx.match_ctx
-	local src, line = grab_caller(2)
-	function action_obj.print_diagnostics()
-		io.stderr:write(string.format("[%s]:%d: all matches failed\n",
-		    src, line))
-	end
-
-	parent_ctx:push(action_obj)
-
-	action_obj.match_ctx = MatchContext:new()
-	action_obj.match_ctx.process = current_ctx.match_ctx.process_one
-	action_obj.match_ctx.action = action_obj
-
-	-- Now execute it
-	script_ctx:execute(func, action_obj.match_ctx)
-
-	-- Sanity check the script
-	for _, action in ipairs(action_obj.match_ctx:items()) do
-		if action.type ~= "match" then
-			error("Type '" .. action.type .. "' not legal in a one() block")
-		end
-	end
-
-	return true
-end
 
 function orch.env.timeout(val)
 	if val == nil or val < 0 then
@@ -712,7 +708,15 @@ function orch.run_script(scriptfile, config)
 				return action:execute()
 			end
 
-			current_ctx.match_ctx:push(action)
+			-- Defaults to true if unset.
+			local auto_queue = def.auto_queue
+			if auto_queue == nil then
+				auto_queue = true
+			end
+
+			if auto_queue then
+				current_ctx.match_ctx:push(action)
+			end
 			return ret or true
 		end
 	end
