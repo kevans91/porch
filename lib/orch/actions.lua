@@ -53,6 +53,21 @@ end
 
 actions.MatchAction = MatchAction
 actions.defined = {
+	cfg = {
+		init = function(action, args)
+			action.cfg = args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			if not current_process then
+				error("cfg() called before process spawned.")
+			end
+
+			current_process:set(action.cfg)
+			return true
+		end,
+	},
 	eof = {
 		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: eof not observed\n",

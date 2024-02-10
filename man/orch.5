@@ -69,6 +69,16 @@ modules are exposed.
 The following functions exist for usage within the
 .Ar scriptfile :
 .Bl -tag -width indent
+.It Fn cfg "cfg"
+Set configuration for the current process using the
+.Fa cfg
+table.
+The specified
+.Fa cfg
+is merged into the current configuration.
+Currently, the only recognized configuration items are those described for the
+.Fn write
+function.
 .It Fn debug "string"
 Writes
 .Fa string

@@ -89,6 +89,7 @@ function Process:new(cmd, ctx)
 
 	pwrap._process = assert(core.spawn(table.unpack(cmd)))
 	pwrap.buffer = MatchBuffer:new(pwrap, ctx)
+	pwrap.cfg = {}
 	pwrap.ctx = ctx
 	pwrap.is_raw = false
 
@@ -158,32 +159,47 @@ function Process:write(data, cfg)
 	end
 
 	local bytes, delay
-	if cfg and cfg.rate then
-		local rate = cfg.rate
-
-		bytes = rate.bytes
-		delay = rate.delay
-	end
-
-	if bytes ~= nil and bytes > 0 then
-		local sent = 0
-		local total = #data
-
-		while sent < total do
-			local bound = math.min(total, sent + bytes)
-
-			assert(self._process:write(data:sub(sent + 1, bound)))
-			sent = bound
-
-			if delay and sent < total then
-				core.sleep(delay)
-			end
+	local function set_rate(which_cfg)
+		if not which_cfg or not which_cfg.rate then
+			return
 		end
 
-		return sent
-	else
-		return assert(self._process:write(data))
+		local rate = which_cfg.rate
+
+		if rate.bytes ~= nil then
+			bytes = rate.bytes
+		end
+		if rate.delay ~= nil then
+			delay = rate.delay
+		end
 	end
+
+	-- Give process configuration a first go at it
+	set_rate(self.cfg)
+	set_rate(cfg)
+
+	-- If we didn't have a configured rate, just send a single batch of all
+	-- data without delay.
+	if not bytes or bytes == 0 then
+		bytes = #data
+		delay = nil
+	end
+
+	local sent = 0
+	local total = #data
+
+	while sent < total do
+		local bound = math.min(total, sent + bytes)
+
+		assert(self._process:write(data:sub(sent + 1, bound)))
+		sent = bound
+
+		if delay and sent < total then
+			core.sleep(delay)
+		end
+	end
+
+	return sent
 end
 function Process:close()
 	assert(self._process:close())
@@ -212,6 +228,11 @@ function Process:match(action)
 	end
 
 	return true
+end
+function Process:set(cfg)
+	for k, v in pairs(cfg) do
+		self.cfg[k] = v
+	end
 end
 
 return Process
