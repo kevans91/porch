@@ -21,5 +21,12 @@ target_include_directories(core_static PRIVATE ${core_INCDIRS})
 
 target_link_libraries(core "${LUA_LIBRARIES}")
 
+# Disable all sanitizers for the dynamic library, because that requires us to
+# also have a lua built with them enabled.  For our purposes, it's sufficient to
+# just roll with a sanitizer-enabled static build since that's what we'll be
+# using to run our tests.
+target_compile_options(core PUBLIC -fno-sanitize=all)
+target_link_options(core PUBLIC -fno-sanitize=all)
+
 install(TARGETS core
 	DESTINATION "${LUA_MODLIBDIR}/orch")
