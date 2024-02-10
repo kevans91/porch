@@ -90,6 +90,7 @@ function Process:new(cmd, ctx)
 	pwrap._process = assert(core.spawn(table.unpack(cmd)))
 	pwrap.buffer = MatchBuffer:new(pwrap, ctx)
 	pwrap.ctx = ctx
+	pwrap.is_raw = false
 
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
@@ -116,10 +117,42 @@ function Process:read(func, timeout)
 	end
 end
 function Process:raw(is_raw)
+	local prev_raw = self.is_raw
 	self.is_raw = is_raw
-	return self._process:raw(is_raw)
+	return prev_raw
 end
 function Process:write(data)
+	if not self.is_raw then
+		-- Convert ^[A-Z] -> cntrl sequence
+		local quoted = false
+		for i = 1, #data do
+			if i > #data then
+				break
+			end
+
+			local ch = data:sub(i, i)
+
+			if quoted then
+				quoted = false
+			elseif ch == "\\" then
+				quoted = true
+				data = data:sub(1, i - 1) .. data:sub(i + 1)
+			elseif ch == "^" then
+				if i == #data then
+					error("Incomplete CNTRL character at end of buffer")
+				end
+
+				local esch = data:sub(i + 1, i + 1)
+				local esc = string.byte(esch)
+				if esc < 0x40 or esc > 0x5f then
+					error("Invalid escape of '" .. esch .. "'")
+				end
+
+				esch = string.char(esc - 0x40)
+				data = data:sub(1, i - 1) .. esch .. data:sub(i + 2)
+			end
+		end
+	end
 	if self.log then
 		self.log:write(data)
 	end
