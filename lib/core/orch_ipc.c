@@ -60,6 +60,7 @@ struct orch_ipc {
 
 static int orch_ipc_drain(orch_ipc_t);
 static int orch_ipc_pop(orch_ipc_t, struct orch_ipc_msg **);
+static int orch_ipc_poll(orch_ipc_t, bool *);
 
 int
 orch_ipc_close(orch_ipc_t ipc)
@@ -235,7 +236,11 @@ orch_ipc_drain(orch_ipc_t ipc)
 					return (-1);
 				}
 
-				/* XXX Poll? */
+				if (orch_ipc_poll(ipc, NULL) == -1) {
+					free(msg);
+					return (-1);
+				}
+
 				continue;
 			} else if (readsz == 0) {
 				free(msg);
@@ -407,21 +412,14 @@ orch_ipc_send_nodata(orch_ipc_t ipc, enum orch_ipc_tag tag)
 	return (orch_ipc_send(ipc, &msg));
 }
 
-int
-orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
+static int
+orch_ipc_poll(orch_ipc_t ipc, bool *eof_seen)
 {
 	fd_set rfd;
 	int error;
 
 	if (eof_seen != NULL)
 		*eof_seen = false;
-
-	/*
-	 * If we have any messages in the queue, don't bother polling; recv
-	 * will return something.
-	 */
-	if (ipc->head != NULL)
-		return (0);
 
 	FD_ZERO(&rfd);
 	do {
@@ -437,4 +435,18 @@ orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
 	} while (error == -1 && errno == EINTR);
 
 	return (error);
+}
+
+int
+orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
+{
+
+	/*
+	 * If we have any messages in the queue, don't bother polling; recv
+	 * will return something.
+	 */
+	if (ipc->head != NULL)
+		return (0);
+
+	return (orch_ipc_poll(ipc, eof_seen));
 }
