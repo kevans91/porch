@@ -22,6 +22,11 @@ orch.env = scripter.env
 -- (table) to indicate the argv of a process to spawn before running the script.
 orch.run_script = scripter.run_script
 
+-- sleep(duration): sleep for the given duration, in seconds.  Fractional
+-- seconds are supported; core uses nanosleep(2) to implement sleep(), so this
+-- is at least somewhat high resolution.
+orch.sleep = core.sleep
+
 -- spawn(cmd...): spawn the given command, returning a process that may be
 -- manipulated as needed.
 orch.spawn = direct.spawn
