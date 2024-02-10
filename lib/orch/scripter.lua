@@ -7,6 +7,7 @@
 local core = require("orch.core")
 
 local context = require("orch.context")
+local actions = require("orch.actions")
 local matchers = require("orch.matchers")
 local process = require("orch.process")
 local tty = core.tty
@@ -17,8 +18,6 @@ local CTX_FAIL = 2
 local CTX_CALLBACK = 3
 
 local current_ctx
-local default_matcher = matchers.available.default
-local default_timeout = 10
 
 local match_valid_cfg = {
 	callback = true,
@@ -69,42 +68,6 @@ function Queue:items()
 	return self.elements
 end
 
-local MatchAction = {}
-function MatchAction:new(action, func)
-	local obj = setmetatable({}, self)
-	self.__index = self
-	obj.type = action
-	if action ~= "match" then
-		obj.execute = assert(func, "Not implemented on type '" .. action .. "'")
-	end
-	obj.completed = false
-	obj.matcher = default_matcher
-	return obj
-end
-function MatchAction:dump(level)
-	local indent = " "
-	local is_one = self.type == "one"
-
-	print(indent:rep((level - 1) * 2) .. "MATCH OBJECT [" .. self.type .. "]:")
-	for k, v in pairs(self) do
-		if k == "type" or (is_one and k == "match_ctx") then
-			goto continue
-		end
-
-		print(indent:rep(level * 2) .. k, v)
-		::continue::
-	end
-
-	if is_one and self.match_ctx then
-		self.match_ctx:dump(level + 1)
-	end
-end
-function MatchAction:matches(buffer)
-	local matcher_arg = self.pattern_obj or self.pattern
-
-	return self.matcher.match(matcher_arg, buffer)
-end
-
 local MatchContext = setmetatable({}, { __index = Queue })
 function MatchContext:new()
 	local obj = setmetatable({}, self)
@@ -125,9 +88,9 @@ function MatchContext:error()
 end
 function MatchContext:process()
 	local latest = self.last_processed
-	local actions = self:items()
+	local ctx_actions = self:items()
 
-	for idx, action in ipairs(actions) do
+	for idx, action in ipairs(ctx_actions) do
 		if idx <= latest then
 			goto skip
 		end
@@ -161,10 +124,10 @@ function MatchContext:process()
 		::skip::
 	end
 
-	return self.last_processed == #actions
+	return self.last_processed == #ctx_actions
 end
 function MatchContext:process_one()
-	local actions = self:items()
+	local ctx_actions = self:items()
 	local elapsed = 0
 	local current_process = current_ctx.process
 
@@ -176,7 +139,7 @@ function MatchContext:process_one()
 	local function get_timeout()
 		local low
 
-		for _, action in ipairs(actions) do
+		for _, action in ipairs(ctx_actions) do
 			if action.timeout <= elapsed then
 				goto skip
 			end
@@ -202,7 +165,7 @@ function MatchContext:process_one()
 
 	local function match_any()
 		local elapsed_now = core.time() - start
-		for _, action in ipairs(actions) do
+		for _, action in ipairs(ctx_actions) do
 			if action.timeout >= elapsed_now and buffer:_matches(action) then
 				matched = true
 				return true
@@ -300,7 +263,7 @@ function script_ctx:reset()
 	self.match_ctx_stack:clear()
 	self.match_ctx = nil
 	self._state = CTX_QUEUE
-	self.timeout = default_timeout
+	self.timeout = actions.default_timeout
 end
 function script_ctx:state(new_state)
 	local prev_state = self._state
@@ -335,250 +298,8 @@ local function grab_caller(level)
 	return info.short_src, info.currentline
 end
 
--- Bits available to the sandbox; scripter.env functions are directly exposed, the
--- below do_*() implementations are the callbacks we use when the main loop goes
--- to process them.
-local orch_actions = {
-	debug = {
-		allow_direct = true,
-		init = function(action, args)
-			action.message = args[1]
-		end,
-		execute = function(action)
-			io.stderr:write("DEBUG: " .. action.message .. "\n")
-			return true
-		end,
-	},
-	enqueue = {
-		allow_direct = true,
-		init = function(action, args)
-			action.callback = args[1]
-		end,
-		execute = function(action)
-			local ctx = action.ctx
-			local restore_ctx = ctx:state(CTX_CALLBACK)
-
-			ctx:execute(action.callback)
-
-			ctx:state(restore_ctx)
-			return true
-		end,
-	},
-	eof = {
-		print_diagnostics = function(action)
-			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
-			    action.src, action.line))
-		end,
-		init = function(action, args)
-			action.timeout = args[1] or action.ctx.timeout
-		end,
-		execute = function(action)
-			local ctx = action.ctx
-			local buffer = ctx.process.buffer
-
-			if buffer.eof then
-				return true
-			end
-
-			local function discard()
-			end
-
-			buffer:refill(discard, action.timeout)
-			if not buffer.eof then
-				if not ctx:fail(action, buffer:contents()) then
-					return false
-				end
-			end
-
-			return true
-		end,
-	},
-	exit = {
-		allow_direct = true,
-		init = function(action, args)
-			action.code = args[1]
-		end,
-		execute = function(action)
-			os.exit(action.code)
-		end,
-	},
-	fail = {
-		init = function(action, args)
-			action.callback = args[1]
-		end,
-		execute = function(action)
-			action.ctx.fail_callback = action.callback
-			return true
-		end,
-	},
-	match = {
-		print_diagnostics = function(action)
-			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
-			    action.src, action.line, action.pattern))
-		end,
-		init = function(action, args)
-			local pattern = args[1]
-
-			action.pattern = pattern
-			action.timeout = action.ctx.timeout
-
-			if action.matcher.compile then
-				action.pattern_obj = action.matcher.compile(pattern)
-			end
-
-			local function set_cfg(cfg)
-				for k, v in pairs(cfg) do
-					if not match_valid_cfg[k] then
-						error(k .. " is not a valid cfg field")
-					end
-
-					action[k] = v
-				end
-			end
-
-			return set_cfg
-		end,
-	},
-	one = {
-		-- This does its own queue management
-		auto_queue = false,
-		init = function(action, args)
-			local func = args[1]
-			local parent_ctx = action.ctx.match_ctx
-
-			parent_ctx:push(action)
-
-			action.match_ctx = MatchContext:new()
-			action.match_ctx.process = action.match_ctx.process_one
-			action.match_ctx.action = action
-
-			-- Now execute it
-			script_ctx:execute(func, action.match_ctx)
-
-			-- Sanity check the script
-			for _, chaction in ipairs(action.match_ctx:items()) do
-				if chaction.type ~= "match" then
-					error("Type '" .. chaction.type .. "' not legal in a one() block")
-				end
-			end
-		end,
-		execute = function(action)
-			action.ctx.match_ctx_stack:push(action.match_ctx)
-			return false
-		end,
-	},
-	raw = {
-		init = function(action, args)
-			action.value = args[1]
-		end,
-		execute = function(action)
-			local current_process = action.ctx.process
-
-			if not current_process then
-				error("raw() called before process spawned.")
-			end
-
-			current_process:raw(action.value)
-			return true
-		end,
-	},
-	release = {
-		execute = function(action)
-			local current_process = action.ctx.process
-			if not current_process then
-				error("release() called before process spawned.")
-			end
-
-			assert(current_process:release())
-			return true
-		end,
-	},
-	sleep = {
-		allow_direct = true,
-		init = function(action, args)
-			action.duration = args[1]
-		end,
-		execute = function(action)
-			assert(core.sleep(action.duration))
-			return true
-		end,
-	},
-	spawn = {
-		init = function(action, args)
-			action.cmd = args
-
-			if type(action.cmd[1]) == "table" then
-				if #action.cmd > 1 then
-					error("spawn: bad mix of table and additional arguments")
-				end
-				action.cmd = table.unpack(action.cmd)
-			end
-		end,
-		execute = function(action)
-			local current_process = action.ctx.process
-			if current_process then
-				assert(current_process:close())
-			end
-
-			action.ctx.process = process:new(action.cmd, action.ctx)
-			return true
-		end,
-	},
-	stty = {
-		init = function(action, args)
-			local field = args[1]
-			if not tty[field] then
-				error("stty: not a valid field to set: " .. field)
-			end
-
-			action.field = field
-			action.set = args[2]
-			action.unset = args[3]
-		end,
-		execute = function(action)
-			local field = action.field
-			local set, unset = action.set, action.unset
-			local current_process = action.ctx.process
-
-			local value = current_process.term:fetch(field)
-			if type(value) == "table" then
-				set = set or {}
-
-				-- cc
-				for k, v in pairs(set) do
-					value[k] = v
-				end
-			else
-				set = set or 0
-				unset = unset or 0
-
-				-- *flag mask
-				value = (value | set) & ~unset
-			end
-
-			assert(current_process.term:update({
-				[field] = value
-			}))
-
-			return true
-		end,
-	},
-	write = {
-		init = function(action, args)
-			action.value = args[1]
-		end,
-		execute = function(action)
-			local current_process = action.ctx.process
-			if not current_process then
-				error("Script did not spawn process prior to writing")
-			end
-
-			assert(current_process:write(action.value))
-			return true
-		end,
-	},
-}
-
+-- Bits available to the sandbox; scripter.env functions are directly exposed,
+-- and may be added to via orch.env.
 function scripter.env.hexdump(str)
 	if current_ctx:state() == CTX_QUEUE then
 		error("hexdump may only be called in a non-queue context")
@@ -644,7 +365,7 @@ function scripter.env.matcher(val)
 		error("Unknown matcher '" .. val .. "'")
 	end
 
-	default_matcher = matcher_obj
+	actions.default_matcher = matcher_obj
 
 	return true
 end
@@ -655,6 +376,99 @@ function scripter.env.timeout(val)
 	end
 	current_ctx.timeout = val
 end
+
+local extra_actions = {
+	debug = {
+		allow_direct = true,
+		init = function(action, args)
+			action.message = args[1]
+		end,
+		execute = function(action)
+			io.stderr:write("DEBUG: " .. action.message .. "\n")
+			return true
+		end,
+	},
+	enqueue = {
+		allow_direct = true,
+		init = function(action, args)
+			action.callback = args[1]
+		end,
+		execute = function(action)
+			local ctx = action.ctx
+			local restore_ctx = ctx:state(CTX_CALLBACK)
+
+			ctx:execute(action.callback)
+
+			ctx:state(restore_ctx)
+			return true
+		end,
+	},
+	exit = {
+		allow_direct = true,
+		init = function(action, args)
+			action.code = args[1]
+		end,
+		execute = function(action)
+			os.exit(action.code)
+		end,
+	},
+	match = {
+		print_diagnostics = function(action)
+			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
+			    action.src, action.line, action.pattern))
+		end,
+		init = function(action, args)
+			local pattern = args[1]
+
+			action.pattern = pattern
+			action.timeout = action.ctx.timeout
+
+			if action.matcher.compile then
+				action.pattern_obj = action.matcher.compile(pattern)
+			end
+
+			local function set_cfg(cfg)
+				for k, v in pairs(cfg) do
+					if not match_valid_cfg[k] then
+						error(k .. " is not a valid cfg field")
+					end
+
+					action[k] = v
+				end
+			end
+
+			return set_cfg
+		end,
+	},
+	one = {
+		-- This does its own queue management
+		auto_queue = false,
+		init = function(action, args)
+			local func = args[1]
+			local parent_ctx = action.ctx.match_ctx
+
+			parent_ctx:push(action)
+
+			action.match_ctx = MatchContext:new()
+			action.match_ctx.process = action.match_ctx.process_one
+			action.match_ctx.action = action
+
+			-- Now execute it
+			script_ctx:execute(func, action.match_ctx)
+
+			-- Sanity check the script
+			for _, chaction in ipairs(action.match_ctx:items()) do
+				if chaction.type ~= "match" then
+					error("Type '" .. chaction.type .. "' not legal in a one() block")
+				end
+			end
+		end,
+		execute = function(action)
+			action.ctx.match_ctx_stack:push(action.match_ctx)
+			return false
+		end,
+	},
+}
 
 -- Valid config options:
 --   * alter_path: boolean, add script's directory to $PATH (default: false)
@@ -674,9 +488,9 @@ function scripter.run_script(scriptfile, config)
 		current_env[k] = v
 	end
 
-	for name, def in pairs(orch_actions) do
-		current_env[name] = function(...)
-			local action = MatchAction:new(name, def.execute)
+	local function generate_handler(name, def)
+		return function(...)
+			local action = actions.MatchAction:new(name, def.execute)
 			local args = { ... }
 			local ret, state
 
@@ -713,6 +527,12 @@ function scripter.run_script(scriptfile, config)
 			end
 			return ret or true
 		end
+	end
+	for name, def in pairs(actions.defined) do
+		current_env[name] = generate_handler(name, def)
+	end
+	for name, def in pairs(extra_actions) do
+		current_env[name] = generate_handler(name, def)
 	end
 
 	-- Note that the orch(1) driver will setup alter_path == true; scripts
