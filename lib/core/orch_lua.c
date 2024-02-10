@@ -582,23 +582,12 @@ orchlua_process_write(lua_State *L)
 {
 	struct orch_process *self;
 	const char *buf;
-	char *processed;
 	size_t bufsz, totalsz;
 	ssize_t writesz;
 	int fd;
-	bool quoted;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	buf = luaL_checklstring(L, 2, &bufsz);
-	processed = NULL;
-	quoted = false;
-
-	processed = malloc(bufsz);
-	if (processed == NULL) {
-		luaL_pushfail(L);
-		lua_pushstring(L, strerror(ENOMEM));
-		return (2);
-	}
 
 	fd = self->termctl;
 	totalsz = 0;
@@ -611,14 +600,12 @@ orchlua_process_write(lua_State *L)
 
 			luaL_pushfail(L);
 			lua_pushstring(L, strerror(err));
-			free(processed);
 			return (2);
 		}
 
 		totalsz += writesz;
 	}
 
-	free(processed);
 	lua_pushnumber(L, totalsz);
 	return (1);
 }

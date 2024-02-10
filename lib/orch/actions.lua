@@ -191,6 +191,7 @@ actions.defined = {
 	write = {
 		init = function(action, args)
 			action.value = args[1]
+			action.cfg = args[2]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
@@ -198,7 +199,7 @@ actions.defined = {
 				error("Script did not spawn process prior to writing")
 			end
 
-			assert(current_process:write(action.value))
+			assert(current_process:write(action.value, action.cfg))
 			return true
 		end,
 	},

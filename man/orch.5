@@ -284,7 +284,7 @@ blocks.
 The default timeout at script start is 10 seconds.
 .Pp
 This directive is processed immediately.
-.It Fn write "str"
+.It Fn write "str" "cfg"
 Write
 .Fa str
 to stdin of the spawned process.
@@ -316,6 +316,36 @@ This directive is enqueued, not processed immediately.
 Execution does not continue to the next command until the
 .Fa str
 has been completely written.
+.Pp
+The
+.Fa cfg
+argument is a table of configuration items for the current send.
+The following elements are supported:
+.Bl -tag -width indent
+.It Va rate
+The rate at which to send
+.Fa str .
+This is specified as a table with, at a minimum, a
+.Va bytes
+item to describe how many bytes to send in a single batch.
+.Nm
+also accepts a
+.Va delay
+item to describe how long to wait in between each batch, in seconds.
+As with the
+.Fn sleep
+function, fractional seconds are supported.
+With a
+.Va delay
+of 0,
+.Nm
+will still call into
+.Fn sleep
+with no delay.
+With no
+.Va delay ,
+.Nm
+will send each batch with no delay in between them.
 .El
 .Sh BLOCK PRIMITIVES
 .Ss Match Blocks

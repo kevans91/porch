@@ -121,7 +121,7 @@ function Process:raw(is_raw)
 	self.is_raw = is_raw
 	return prev_raw
 end
-function Process:write(data)
+function Process:write(data, cfg)
 	if not self.is_raw then
 		-- Convert ^[A-Z] -> cntrl sequence
 		local quoted = false
@@ -156,7 +156,34 @@ function Process:write(data)
 	if self.log then
 		self.log:write(data)
 	end
-	return self._process:write(data)
+
+	local bytes, delay
+	if cfg and cfg.rate then
+		local rate = cfg.rate
+
+		bytes = rate.bytes
+		delay = rate.delay
+	end
+
+	if bytes ~= nil and bytes > 0 then
+		local sent = 0
+		local total = #data
+
+		while sent < total do
+			local bound = math.min(total, sent + bytes)
+
+			assert(self._process:write(data:sub(sent + 1, bound)))
+			sent = bound
+
+			if delay and sent < total then
+				core.sleep(delay)
+			end
+		end
+
+		return sent
+	else
+		return assert(self._process:write(data))
+	end
 end
 function Process:close()
 	assert(self._process:close())
