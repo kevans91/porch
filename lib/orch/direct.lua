@@ -16,10 +16,10 @@ direct.defaults = {
 }
 
 local direct_ctx = context:new()
-function direct_ctx:execute(callback)
+function direct_ctx.execute(_, callback)
 	callback()
 end
-function direct_ctx:fail(action, contents)
+function direct_ctx:fail(_, contents)
 	if self.fail_handler then
 		self.fail_handler(contents)
 	end
