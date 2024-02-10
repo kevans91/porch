@@ -5,6 +5,7 @@
 --
 
 local core = require("orch.core")
+local direct = require("orch.direct")
 local scripter = require("orch.scripter")
 local orch = {}
 
@@ -20,6 +21,10 @@ orch.env = scripter.env
 -- indicates that the script's directory should be added to PATH, and `command`
 -- (table) to indicate the argv of a process to spawn before running the script.
 orch.run_script = scripter.run_script
+
+-- spawn(cmd...): spawn the given command, returning a process that may be
+-- manipulated as needed.
+orch.spawn = direct.spawn
 
 -- Reset all of the state; this largely means resetting the scripting bits, as
 -- a user of this lib won't really need to reset anything.

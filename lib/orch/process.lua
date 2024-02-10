@@ -105,7 +105,11 @@ function Process:release()
 	return self._process:release()
 end
 function Process:read(func, timeout)
-	return self._process:read(func, timeout)
+	if timeout then
+		return self._process:read(func, timeout)
+	else
+		return self._process:read(func)
+	end
 end
 function Process:raw(text)
 	return self._process:raw(text)

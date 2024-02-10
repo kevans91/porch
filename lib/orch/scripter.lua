@@ -412,6 +412,15 @@ local extra_actions = {
 			os.exit(action.code)
 		end,
 	},
+	fail = {
+		init = function(action, args)
+			action.callback = args[1]
+		end,
+		execute = function(action)
+			action.ctx.fail_callback = action.callback
+			return true
+		end,
+	},
 	match = {
 		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",

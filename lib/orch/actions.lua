@@ -82,15 +82,6 @@ actions.defined = {
 			return true
 		end,
 	},
-	fail = {
-		init = function(action, args)
-			action.callback = args[1]
-		end,
-		execute = function(action)
-			action.ctx.fail_callback = action.callback
-			return true
-		end,
-	},
 	raw = {
 		init = function(action, args)
 			action.value = args[1]
