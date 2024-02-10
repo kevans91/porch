@@ -477,6 +477,16 @@ local extra_actions = {
 			return false
 		end,
 	},
+	sleep = {
+		allow_direct = true,
+		init = function(action, args)
+			action.duration = args[1]
+		end,
+		execute = function(action)
+			assert(core.sleep(action.duration))
+			return true
+		end,
+	},
 }
 
 -- Valid config options:
