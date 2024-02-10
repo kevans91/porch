@@ -53,6 +53,10 @@ function MatchBuffer:refill(action, timeout)
 			return true
 		end
 
+		if self.process.log then
+			self.process.log:write(input)
+		end
+
 		self.buffer = self.buffer .. input
 		if type(action) == "table" then
 			return self:_matches(action)
@@ -111,20 +115,34 @@ function Process:read(func, timeout)
 		return self._process:read(func)
 	end
 end
-function Process:raw(text)
-	return self._process:raw(text)
+function Process:raw(is_raw)
+	self.is_raw = is_raw
+	return self._process:raw(is_raw)
 end
 function Process:write(data)
+	if self.log then
+		self.log:write(data)
+	end
 	return self._process:write(data)
 end
 function Process:close()
 	assert(self._process:close())
 
+	-- Flush output, close everything out
+	self:logfile(nil)
 	self._process = nil
 	self.term = nil
 	return true
 end
 -- Our own special salt
+function Process:logfile(file)
+	if self.log then
+		self.log:flush()
+		self.log:close()
+	end
+
+	self.log = file
+end
 function Process:match(action)
 	local buffer = self.buffer
 	if not buffer:match(action) then
