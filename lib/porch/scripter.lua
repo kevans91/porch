@@ -19,6 +19,12 @@ local CTX_CALLBACK = 3
 
 local current_ctx
 
+-- Configuration keys valid for an individual pattern specified to a match
+local match_pattern_valid_cfg = {
+	callback = true,
+}
+
+-- Configuration keys valid for a single match statement
 local match_valid_cfg = {
 	callback = true,
 	timeout = true,
@@ -423,17 +429,52 @@ local extra_actions = {
 	},
 	match = {
 		print_diagnostics = function(action)
+			local ppat = ""
+			local first = true
+
+			for pattern in pairs(action.patterns) do
+				if not first then
+					ppat = ppat .. "|"
+				end
+
+				ppat = ppat .. pattern
+			end
+
 			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
-			    action.src, action.line, action.pattern))
+			    action.src, action.line, ppat))
 		end,
 		init = function(action, args)
 			local pattern = args[1]
 
-			action.pattern = pattern
 			action.timeout = action.ctx.timeout
+			if type(pattern) == "table" then
+				-- The table version allows any of the patterns
+				-- to trigger this match, while also allowing
+				for pat, cfg in pairs(pattern) do
+					if type(cfg) == "function" then
+						cfg = { callback = cfg }
+						pattern[pat] = cfg
+					end
 
-			if action.matcher.compile then
-				action.pattern_obj = action.matcher.compile(pattern)
+					for k in pairs(cfg) do
+						if not match_pattern_valid_cfg[k] then
+							error(k .. " is not a valid pattern cfg field")
+						end
+					end
+					if action.matcher.compile then
+						cfg._compiled = action.matcher.compile(pattern)
+					end
+				end
+
+				action.patterns = pattern
+			else
+				local patterns = { [pattern] = {} }
+
+				if action.matcher.compile then
+					patterns[pattern]._compiled = action.matcher.compile(pattern)
+				end
+
+				action.patterns = patterns
 			end
 
 			local function set_cfg(cfg)

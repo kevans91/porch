@@ -44,13 +44,14 @@ function DirectProcess:match(pattern, matcher)
 	matcher = matcher or matchers.available.default
 
 	local action = actions.MatchAction:new("match")
+	local patterns = { [pattern] = {} }
 	action.timeout = self.timeout
-	action.pattern = pattern
 	action.matcher = matcher
 
 	if matcher.compile then
-		action.pattern_obj = action.matcher.compile(pattern)
+		patterns[pattern]._compiled = action.matcher.compile(pattern)
 	end
+	action.patterns = patterns
 
 	return self._process:match(action)
 end

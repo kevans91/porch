@@ -46,9 +46,40 @@ function MatchAction:dump(level)
 	end
 end
 function MatchAction:matches(buffer)
-	local matcher_arg = self.pattern_obj or self.pattern
+	local first, last, cb
+	local len
 
-	return self.matcher.match(matcher_arg, buffer)
+	for pattern, def in pairs(self.patterns) do
+		local matcher_arg = def._compiled or pattern
+
+		-- We use the earliest and longest match, rather than the first to
+		-- match, to provide predictable semantics.  If any more control than
+		-- that is desired, it should be split up into multiple distinct matches
+		-- or, in a scripter context, switched to a one() block.
+		local tfirst, tlast = self.matcher.match(matcher_arg, buffer)
+		if not tfirst then
+			goto next
+		end
+
+		if len and tfirst > first then
+			-- Earlier matches take precedence.
+			goto next
+		end
+
+		local tlen = tlast - tfirst
+		if tfirst == first and tlen <= len then
+			-- Longer matches take precedence.  If we have two
+			-- patterns that managed to result in the same match,
+			-- then we arbitrarily choose the first one we noticed.
+			goto next
+		end
+
+		first, last, cb = tfirst, tlast, def.callback
+		len = tlen
+::next::
+	end
+
+	return first, last, cb
 end
 
 actions.MatchAction = MatchAction

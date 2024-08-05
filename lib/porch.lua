@@ -28,7 +28,10 @@ porch.run_script = scripter.run_script
 porch.sleep = core.sleep
 
 -- spawn(cmd...): spawn the given command, returning a process that may be
--- manipulated as needed.
+-- manipulated as needed.  This is the primary interface we expose to users of
+-- the lib; most of the things one would do with the scripting interface are
+-- broken out via methods on the DirectProcess instead to provide a more
+-- object-oriented feel.
 porch.spawn = direct.spawn
 
 -- Reset all of the state; this largely means resetting the scripting bits, as

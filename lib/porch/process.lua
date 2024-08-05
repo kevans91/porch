@@ -18,7 +18,7 @@ function MatchBuffer:new(process, ctx)
 	return obj
 end
 function MatchBuffer:_matches(action)
-	local first, last = action:matches(self.buffer)
+	local first, last, callback = action:matches(self.buffer)
 
 	if not first then
 		return false
@@ -29,8 +29,9 @@ function MatchBuffer:_matches(action)
 	self.buffer = self.buffer:sub(last + 1)
 
 	-- Return value is not significant, ignored.
-	if action.callback then
-		self.ctx:execute(action.callback)
+	callback = callback or action.callback
+	if callback then
+		self.ctx:execute(callback)
 	end
 
 	return true
