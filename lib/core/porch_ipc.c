@@ -13,57 +13,57 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "orch.h"
-#include "orch_lib.h"
+#include "porch.h"
+#include "porch_lib.h"
 
-struct orch_ipc_header {
+struct porch_ipc_header {
 	size_t			 size;
-	enum orch_ipc_tag	 tag;
+	enum porch_ipc_tag	 tag;
 };
 
-struct orch_ipc_msg {
-	struct orch_ipc_header		 hdr;
+struct porch_ipc_msg {
+	struct porch_ipc_header		 hdr;
 	/* Non-wire contents between hdr and data */
 	_Alignas(max_align_t) unsigned char	 data[];
 };
 
 /*
  * We'll start making a distinction between things that need the size of an
- * orch_ipc_msg and things that need the size we would see on the wire.  The
- * header contains the latter, but the orch_ipc_msg may have more contents that
+ * porch_ipc_msg and things that need the size we would see on the wire.  The
+ * header contains the latter, but the porch_ipc_msg may have more contents that
  * are used for internal book-keeping.
  */
 #define	IPC_MSG_SIZE(payloadsz)	\
-	(sizeof(struct orch_ipc_msg) + payloadsz)
+	(sizeof(struct porch_ipc_msg) + payloadsz)
 #define	IPC_MSG_HDR_SIZE(payloadsz)	\
-	(sizeof(struct orch_ipc_header) + payloadsz)
+	(sizeof(struct porch_ipc_header) + payloadsz)
 
 #define	IPC_MSG_PAYLOAD_SIZE(msg)	\
 	((msg)->hdr.size - sizeof(msg->hdr))
 
-struct orch_ipc_msgq {
-	struct orch_ipc_msg	*msg;
-	struct orch_ipc_msgq	*next;
+struct porch_ipc_msgq {
+	struct porch_ipc_msg	*msg;
+	struct porch_ipc_msgq	*next;
 };
 
-struct orch_ipc_register {
-	orch_ipc_handler	*handler;
+struct porch_ipc_register {
+	porch_ipc_handler	*handler;
 	void			*cookie;
 };
 
-struct orch_ipc {
-	struct orch_ipc_register	 callbacks[IPC_LAST - 1];
-	struct orch_ipc_msgq		*head;
-	struct orch_ipc_msgq		*tail;
+struct porch_ipc {
+	struct porch_ipc_register	 callbacks[IPC_LAST - 1];
+	struct porch_ipc_msgq		*head;
+	struct porch_ipc_msgq		*tail;
 	int				 sockfd;
 };
 
-static int orch_ipc_drain(orch_ipc_t);
-static int orch_ipc_pop(orch_ipc_t, struct orch_ipc_msg **);
-static int orch_ipc_poll(orch_ipc_t, bool *);
+static int porch_ipc_drain(porch_ipc_t);
+static int porch_ipc_pop(porch_ipc_t, struct porch_ipc_msg **);
+static int porch_ipc_poll(porch_ipc_t, bool *);
 
 int
-orch_ipc_close(orch_ipc_t ipc)
+porch_ipc_close(porch_ipc_t ipc)
 {
 	int error;
 
@@ -75,14 +75,14 @@ orch_ipc_close(orch_ipc_t ipc)
 		shutdown(ipc->sockfd, SHUT_WR);
 
 		/*
-		 * orch_ipc_drain() should hit EOF then close the socket.  This
-		 * will just drain the socket, a follow-up orch_ipc_pop() will
+		 * porch_ipc_drain() should hit EOF then close the socket.  This
+		 * will just drain the socket, a follow-up porch_ipc_pop() will
 		 * drain the read queue and invoke callbacks.
 		 */
 		while (ipc->sockfd != -1 && error == 0) {
-			orch_ipc_wait(ipc, NULL);
+			porch_ipc_wait(ipc, NULL);
 
-			error = orch_ipc_drain(ipc);
+			error = porch_ipc_drain(ipc);
 		}
 
 		if (ipc->sockfd != -1) {
@@ -95,7 +95,7 @@ orch_ipc_close(orch_ipc_t ipc)
 	 * We may have hit EOF at an inopportune time, just cope with it
 	 * and free the queue.
 	 */
-	error = orch_ipc_pop(ipc, NULL);
+	error = porch_ipc_pop(ipc, NULL);
 	assert(ipc->head == NULL);
 
 	free(ipc);
@@ -103,10 +103,10 @@ orch_ipc_close(orch_ipc_t ipc)
 	return (error);
 }
 
-orch_ipc_t
-orch_ipc_open(int fd)
+porch_ipc_t
+porch_ipc_open(int fd)
 {
-	orch_ipc_t hdl;
+	porch_ipc_t hdl;
 
 	hdl = malloc(sizeof(*hdl));
 	if (hdl == NULL)
@@ -119,16 +119,16 @@ orch_ipc_open(int fd)
 }
 
 bool
-orch_ipc_okay(orch_ipc_t ipc)
+porch_ipc_okay(porch_ipc_t ipc)
 {
 
 	return (ipc->sockfd >= 0);
 }
 
-struct orch_ipc_msg *
-orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
+struct porch_ipc_msg *
+porch_ipc_msg_alloc(enum porch_ipc_tag tag, size_t payloadsz, void **payload)
 {
-	struct orch_ipc_msg *msg;
+	struct porch_ipc_msg *msg;
 	size_t msgsz;
 
 	assert(payloadsz >= 0);
@@ -149,12 +149,12 @@ orch_ipc_msg_alloc(enum orch_ipc_tag tag, size_t payloadsz, void **payload)
 }
 
 void *
-orch_ipc_msg_payload(struct orch_ipc_msg *msg, size_t *odatasz)
+porch_ipc_msg_payload(struct porch_ipc_msg *msg, size_t *odatasz)
 {
 	size_t datasz = IPC_MSG_PAYLOAD_SIZE(msg);
 
 	/*
-	 * orch_ipc_drain() should have rejected negative payload indications.
+	 * porch_ipc_drain() should have rejected negative payload indications.
 	 */
 	assert(datasz >= 0);
 	if (odatasz != NULL)
@@ -164,30 +164,30 @@ orch_ipc_msg_payload(struct orch_ipc_msg *msg, size_t *odatasz)
 	return (msg + 1);
 }
 
-enum orch_ipc_tag
-orch_ipc_msg_tag(struct orch_ipc_msg *msg)
+enum porch_ipc_tag
+porch_ipc_msg_tag(struct porch_ipc_msg *msg)
 {
 
 	return (msg->hdr.tag);
 }
 
 void
-orch_ipc_msg_free(struct orch_ipc_msg *msg)
+porch_ipc_msg_free(struct porch_ipc_msg *msg)
 {
 
 	free(msg);
 }
 
 static int
-orch_ipc_drain(orch_ipc_t ipc)
+porch_ipc_drain(porch_ipc_t ipc)
 {
-	struct orch_ipc_header hdr;
-	struct orch_ipc_msg *msg;
-	struct orch_ipc_msgq *msgq;
+	struct porch_ipc_header hdr;
+	struct porch_ipc_msg *msg;
+	struct porch_ipc_msgq *msgq;
 	ssize_t readsz;
 	size_t off, resid;
 
-	if (!orch_ipc_okay(ipc))
+	if (!porch_ipc_okay(ipc))
 		return (0);
 
 	for (;;) {
@@ -236,7 +236,7 @@ orch_ipc_drain(orch_ipc_t ipc)
 					return (-1);
 				}
 
-				if (orch_ipc_poll(ipc, NULL) == -1) {
+				if (porch_ipc_poll(ipc, NULL) == -1) {
 					free(msg);
 					return (-1);
 				}
@@ -275,11 +275,11 @@ eof:
 }
 
 static int
-orch_ipc_pop(orch_ipc_t ipc, struct orch_ipc_msg **omsg)
+porch_ipc_pop(porch_ipc_t ipc, struct porch_ipc_msg **omsg)
 {
-	struct orch_ipc_register *reg;
-	struct orch_ipc_msgq *msgq;
-	struct orch_ipc_msg *msg;
+	struct porch_ipc_register *reg;
+	struct porch_ipc_msgq *msgq;
+	struct porch_ipc_msg *msg;
 	int error;
 
 	error = 0;
@@ -338,26 +338,26 @@ orch_ipc_pop(orch_ipc_t ipc, struct orch_ipc_msg **omsg)
 }
 
 int
-orch_ipc_recv(orch_ipc_t ipc, struct orch_ipc_msg **omsg)
+porch_ipc_recv(porch_ipc_t ipc, struct porch_ipc_msg **omsg)
 {
-	struct orch_ipc_msg *rcvmsg;
+	struct porch_ipc_msg *rcvmsg;
 	int error;
 
-	if (orch_ipc_drain(ipc) != 0)
+	if (porch_ipc_drain(ipc) != 0)
 		return (-1);
 
 	rcvmsg = NULL;
-	error = orch_ipc_pop(ipc, &rcvmsg);
+	error = porch_ipc_pop(ipc, &rcvmsg);
 	if (error == 0)
 		*omsg = rcvmsg;
 	return (error);
 }
 
 int
-orch_ipc_register(orch_ipc_t ipc, enum orch_ipc_tag tag,
-    orch_ipc_handler *handler, void *cookie)
+porch_ipc_register(porch_ipc_t ipc, enum porch_ipc_tag tag,
+    porch_ipc_handler *handler, void *cookie)
 {
-	struct orch_ipc_register *reg = &ipc->callbacks[tag - 1];
+	struct porch_ipc_register *reg = &ipc->callbacks[tag - 1];
 
 	reg->handler = handler;
 	reg->cookie = cookie;
@@ -365,13 +365,13 @@ orch_ipc_register(orch_ipc_t ipc, enum orch_ipc_tag tag,
 }
 
 int
-orch_ipc_send(orch_ipc_t ipc, struct orch_ipc_msg *msg)
+porch_ipc_send(porch_ipc_t ipc, struct porch_ipc_msg *msg)
 {
 	ssize_t writesz;
 	size_t off, resid;
 
 retry:
-	if (orch_ipc_drain(ipc) != 0)
+	if (porch_ipc_drain(ipc) != 0)
 		return (-1);
 
 	writesz = write(ipc->sockfd, &msg->hdr, sizeof(msg->hdr));
@@ -402,18 +402,18 @@ retry:
 }
 
 int
-orch_ipc_send_nodata(orch_ipc_t ipc, enum orch_ipc_tag tag)
+porch_ipc_send_nodata(porch_ipc_t ipc, enum porch_ipc_tag tag)
 {
-	struct orch_ipc_msg msg = { 0 };
+	struct porch_ipc_msg msg = { 0 };
 
 	msg.hdr.tag = tag;
 	msg.hdr.size = IPC_MSG_HDR_SIZE(0);
 
-	return (orch_ipc_send(ipc, &msg));
+	return (porch_ipc_send(ipc, &msg));
 }
 
 static int
-orch_ipc_poll(orch_ipc_t ipc, bool *eof_seen)
+porch_ipc_poll(porch_ipc_t ipc, bool *eof_seen)
 {
 	fd_set rfd;
 	int error;
@@ -438,7 +438,7 @@ orch_ipc_poll(orch_ipc_t ipc, bool *eof_seen)
 }
 
 int
-orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
+porch_ipc_wait(porch_ipc_t ipc, bool *eof_seen)
 {
 
 	/*
@@ -448,5 +448,5 @@ orch_ipc_wait(orch_ipc_t ipc, bool *eof_seen)
 	if (ipc->head != NULL)
 		return (0);
 
-	return (orch_ipc_poll(ipc, eof_seen));
+	return (porch_ipc_poll(ipc, eof_seen));
 }

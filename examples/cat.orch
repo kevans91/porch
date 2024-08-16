@@ -1,4 +1,4 @@
--- Executed like `./orch -f cat.orch -- cat` -- this one won't spawn anything
+-- Executed like `./porch -f cat.orch -- cat` -- this one won't spawn anything
 -- itself, so it must be done on the command line.
 
 -- We get released on first match anyways, so this doesn't need to be called:

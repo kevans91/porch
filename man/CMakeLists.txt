@@ -1,7 +1,7 @@
 
 set(MANSECTIONS 1 5)
 
-set(MAN1	orch.1)
+set(MAN1	porch.1)
 set(MAN5	orch.5)
 
 foreach(sect IN LISTS MANSECTIONS)

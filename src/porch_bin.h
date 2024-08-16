@@ -8,5 +8,5 @@
 
 #include <lua.h>
 
-/* orch_interp.c */
-int orch_interp(const char *, const char *, int, const char * const []);
+/* porch_interp.c */
+int porch_interp(const char *, const char *, int, const char * const []);

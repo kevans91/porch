@@ -1,4 +1,4 @@
-#!/usr/bin/env -S orch -f
+#!/usr/bin/env -S porch -f
 spawn("cat")
 
 -- What we write to cat(1) should come straight back to us.

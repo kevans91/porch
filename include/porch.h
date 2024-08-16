@@ -12,8 +12,8 @@
 
 #include <lua.h>
 
-#define	ORCHLUA_MODNAME	"orch.core"
-#define	ORCHTTY_MODNAME	"orch.tty"
+#define	PORCHLUA_MODNAME	"porch.core"
+#define	PORCHTTY_MODNAME	"porch.tty"
 
 /* sys/cdefs.h */
 #ifndef __unused
@@ -24,7 +24,7 @@
 	__attribute__((__format__ (__printf__, fmtarg, firstvararg)))
 #endif
 
-/* orch_compat.c */
+/* porch_compat.c */
 #ifdef __linux__
 size_t strlcpy(char * __restrict, const char * __restrict, size_t);
 size_t strlcat(char * __restrict, const char * __restrict, size_t);
@@ -34,6 +34,6 @@ size_t strlcat(char * __restrict, const char * __restrict, size_t);
 int tcsetsid(int, int);
 #endif
 
-/* orch_lua.c */
-int luaopen_orch_core(lua_State *);
-int luaopen_orch_tty(lua_State *);
+/* porch_lua.c */
+int luaopen_porch_core(lua_State *);
+int luaopen_porch_tty(lua_State *);

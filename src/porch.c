@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "orch.h"
-#include "orch_bin.h"
+#include "porch.h"
+#include "porch_bin.h"
 
 #ifndef __dead2
 #define	__dead2	__attribute__((noreturn))
@@ -56,6 +56,6 @@ main(int argc, char *argv[])
 	 * simplify things.  If we didn't, then the script just needs to make sure
 	 * that it spawns something before a match/one block.
 	 */
-	return (orch_interp(scriptf, invoke_path, argc,
+	return (porch_interp(scriptf, invoke_path, argc,
 	    (const char * const *)argv));
 }

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(orch)
+project(porch)
 
 find_package("Lua")
 
@@ -13,20 +13,20 @@ set(LUA_MODLIBDIR "lib/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 set(LUA_MODSHAREDIR "share/lua/${LUA_VERSION_MAJOR}.${LUA_VERSION_MINOR}"
 	CACHE PATH "Path to install lua modules into")
 if(IS_ABSOLUTE "${LUA_MODSHAREDIR}")
-	set(ORCHLUA_PATH "${LUA_MODSHAREDIR}"
-		CACHE PATH "Path to install orch.lua into")
+	set(PORCHLUA_PATH "${LUA_MODSHAREDIR}"
+		CACHE PATH "Path to install porch.lua into")
 else()
-	set(ORCHLUA_PATH "${CMAKE_INSTALL_PREFIX}/${LUA_MODSHAREDIR}"
-		CACHE PATH "Path to install orch.lua into")
+	set(PORCHLUA_PATH "${CMAKE_INSTALL_PREFIX}/${LUA_MODSHAREDIR}"
+		CACHE PATH "Path to install porch.lua into")
 endif()
-set(ORCHLUA_BINDIR "bin"
-	CACHE PATH "Path to install orch(1) into")
-set(ORCHLUA_EXAMPLESDIR "share/examples/${CMAKE_PROJECT_NAME}"
+set(PORCHLUA_BINDIR "bin"
+	CACHE PATH "Path to install porch(1) into")
+set(PORCHLUA_EXAMPLESDIR "share/examples/${CMAKE_PROJECT_NAME}"
 	CACHE PATH "Path to install .orch examples into")
 
 option(EXAMPLES "Install examples" ON)
 option(MANPAGES "Install manpages" ON)
-option(BUILD_DRIVER "Build the orch(1) driver" ON)
+option(BUILD_DRIVER "Build the porch(1) driver" ON)
 
 set(warnings "-Wall -Wextra -Werror")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

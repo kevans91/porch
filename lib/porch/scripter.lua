@@ -4,12 +4,12 @@
 -- SPDX-License-Identifier: BSD-2-Clause
 --
 
-local core = require("orch.core")
+local core = require("porch.core")
 
-local context = require("orch.context")
-local actions = require("orch.actions")
-local matchers = require("orch.matchers")
-local process = require("orch.process")
+local context = require("porch.context")
+local actions = require("porch.actions")
+local matchers = require("porch.matchers")
+local process = require("porch.process")
 local tty = core.tty
 local scripter = {env = {}}
 
@@ -299,7 +299,7 @@ local function grab_caller(level)
 end
 
 -- Bits available to the sandbox; scripter.env functions are directly exposed,
--- and may be added to via orch.env.
+-- and may be added to via porch.env.
 function scripter.env.hexdump(str)
 	if current_ctx:state() == CTX_QUEUE then
 		error("hexdump may only be called in a non-queue context")
@@ -554,8 +554,8 @@ function scripter.run_script(scriptfile, config)
 		current_env[name] = generate_handler(name, def)
 	end
 
-	-- Note that the orch(1) driver will setup alter_path == true; scripts
-	-- importing orch.lua are expected to be more explicit.
+	-- Note that the porch(1) driver will setup alter_path == true; scripts
+	-- importing porch.lua are expected to be more explicit.
 	include_file(script_ctx, scriptfile, config and config.alter_path, current_env)
 	--current_ctx.match_ctx_stack:dump()
 

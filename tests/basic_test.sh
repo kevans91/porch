@@ -1,26 +1,26 @@
 #!/bin/sh
 
 scriptdir=$(dirname $(realpath "$0"))
-if [ -n "$ORCHBIN" ]; then
-	orchbin="$ORCHBIN"
+if [ -n "$PORCHBIN" ]; then
+	porchbin="$PORCHBIN"
 else
-	orchbin="$scriptdir/../src/orch"
-	if [ ! -x "$orchbin" ]; then
-		orchbin="$(which orch)"
+	porchbin="$scriptdir/../src/porch"
+	if [ ! -x "$porchbin" ]; then
+		porchbin="$(which porch)"
 	fi
 fi
-if [ ! -x "$orchbin" ]; then
-	1>&2 echo "Failed to find a usable orch binary"
+if [ ! -x "$porchbin" ]; then
+	1>&2 echo "Failed to find a usable porch binary"
 	exit 1
 fi
 
-orchdir="$(dirname "$orchbin")"
+porchdir="$(dirname "$porchbin")"
 
-if [ -n "$ORCHLUA_PATH" ]; then
-	cd "$ORCHLUA_PATH"
+if [ -n "$PORCHLUA_PATH" ]; then
+	cd "$PORCHLUA_PATH"
 fi
 
-1>&2 echo "Using binary: $orchbin"
+1>&2 echo "Using binary: $porchbin"
 
 fails=0
 testid=1
@@ -76,9 +76,9 @@ for f in "$@" ;do
 
 	start=$(date +"%s")
 	if [ -x "$testf" ]; then
-		env PATH="$orchdir":"$PATH" "$testf"
+		env PATH="$porchdir":"$PATH" "$testf"
 	else
-		"$orchbin" -f "$testf" -- $spawn
+		"$porchbin" -f "$testf" -- $spawn
 	fi
 	rc="$?"
 	end=$(date +"%s")

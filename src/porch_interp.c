@@ -11,16 +11,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "orch.h"
-#include "orch_bin.h"
+#include "porch.h"
+#include "porch_bin.h"
 
 #include <lauxlib.h>
 #include <lualib.h>
 
-static const char orchlua_path[] = ORCHLUA_PATH;
+static const char porchlua_path[] = PORCHLUA_PATH;
 
 static const char *
-orch_interp_script(const char *orch_invoke_path)
+porch_interp_script(const char *porch_invoke_path)
 {
 	static char buf[MAXPATHLEN];
 
@@ -28,29 +28,29 @@ orch_interp_script(const char *orch_invoke_path)
 	if (buf[0] == '\0') {
 		const char *path;
 
-		path = getenv("ORCHLUA_PATH");
+		path = getenv("PORCHLUA_PATH");
 		if (path != NULL && (path[0] == '\0' || path[0] != '/')) {
 			fprintf(stderr,
-			    "Ignoring empty or relative ORCHLUA_PATH in the environment ('%s')\n",
+			    "Ignoring empty or relative PORCHLUA_PATH in the environment ('%s')\n",
 			    path);
 			path = NULL;
 		}
 
 		/* Fallback to what's built-in, if no env override. */
 		if (path == NULL)
-			path = orchlua_path;
+			path = porchlua_path;
 
-		/* If ORCHLUA_PATH is empty, it's in the same path as our binary. */
+		/* If PORCHLUA_PATH is empty, it's in the same path as our binary. */
 		if (path[0] == '\0') {
 			char *slash;
 
-			if (realpath(orch_invoke_path, buf) == NULL)
-				err(1, "realpath %s", orch_invoke_path);
+			if (realpath(porch_invoke_path, buf) == NULL)
+				err(1, "realpath %s", porch_invoke_path);
 
 			/* buf now a path to our binary, strip it. */
 			slash = strrchr(buf, '/');
 			if (slash == NULL)
-				errx(1, "failed to resolve orch binary path");
+				errx(1, "failed to resolve porch binary path");
 
 			slash++;
 			assert(*slash != '\0');
@@ -59,14 +59,14 @@ orch_interp_script(const char *orch_invoke_path)
 			strlcpy(buf, path, sizeof(buf));
 		}
 
-		strlcat(buf, "/orch.lua", sizeof(buf));
+		strlcat(buf, "/porch.lua", sizeof(buf));
 	}
 
 	return (&buf[0]);
 }
 
 static int
-orch_interp_error(lua_State *L)
+porch_interp_error(lua_State *L)
 {
 	const char *err;
 
@@ -79,7 +79,7 @@ orch_interp_error(lua_State *L)
 }
 
 int
-orch_interp(const char *scriptf, const char *orch_invoke_path,
+porch_interp(const char *scriptf, const char *porch_invoke_path,
     int argc, const char * const argv[])
 {
 	lua_State *L;
@@ -93,14 +93,14 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 	luaL_openlibs(L);
 
 	/* As well as our internal library */
-	luaL_requiref(L, ORCHLUA_MODNAME, luaopen_orch_core, 0);
+	luaL_requiref(L, PORCHLUA_MODNAME, luaopen_porch_core, 0);
 	lua_pop(L, 1);
 
-	if (luaL_dofile(L, orch_interp_script(orch_invoke_path)) != LUA_OK) {
-		status = orch_interp_error(L);
+	if (luaL_dofile(L, porch_interp_script(porch_invoke_path)) != LUA_OK) {
+		status = porch_interp_error(L);
 	} else {
 		/*
-		 * orch table is now at the top of stack, fetch run_script()
+		 * porch table is now at the top of stack, fetch run_script()
 		 * and call it.  run_script(scriptf[, config])
 		 */
 		lua_getfield(L, -1, "run_script");
@@ -127,7 +127,7 @@ orch_interp(const char *scriptf, const char *orch_invoke_path,
 		if (lua_pcall(L, 2, 1, 0) == LUA_OK)
 			status = lua_toboolean(L, -1) ? 0 : 1;
 		else
-			status = orch_interp_error(L);
+			status = porch_interp_error(L);
 	}
 
 	lua_close(L);

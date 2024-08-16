@@ -7,5 +7,5 @@ build
 *.full
 *.gz
 .depend*
-orch
+porch
 ktrace.out

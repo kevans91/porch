@@ -4,10 +4,10 @@
 -- SPDX-License-Identifier: BSD-2-Clause
 --
 
-local core = require("orch.core")
+local core = require("porch.core")
 
-local matchers = require("orch.matchers")
-local process = require("orch.process")
+local matchers = require("porch.matchers")
+local process = require("porch.process")
 local tty = core.tty
 
 local actions = {}

@@ -1,4 +1,4 @@
-name: Lint orch.lua
+name: Lint porch.lua
 on:
   push:
     branches: ['**']

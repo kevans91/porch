@@ -1,4 +1,4 @@
-name: Build orch
+name: Build porch
 on:
   push:
     branches: ['**']
@@ -44,7 +44,7 @@ jobs:
         run: |
           mkdir build
           cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..
-      - name: build orch(1)
+      - name: build porch(1)
         run: make -C build
       - name: Run self-tests
         run: make -C build check

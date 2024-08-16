@@ -1,4 +1,4 @@
-#!/usr/bin/env -S orch -f
+#!/usr/bin/env -S porch -f
 
 -- On the same machine, open up `nc -l 9999` and play with it.
 spawn("nc", "localhost", "9999")

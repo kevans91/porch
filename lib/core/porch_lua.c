@@ -23,8 +23,8 @@
 #include <regex.h>
 #include <unistd.h>
 
-#include "orch.h"
-#include "orch_lib.h"
+#include "porch.h"
+#include "porch_lib.h"
 
 #ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
@@ -40,24 +40,24 @@
 #define	O_PATH	0
 #endif
 
-#define	ORCHLUA_PROCESSHANDLE	"orchlua_process"
-#define	ORCHLUA_REGEXHANDLE	"orchlua_regex_t"
+#define	ORCHLUA_PROCESSHANDLE	"porchlua_process"
+#define	ORCHLUA_REGEXHANDLE	"porchlua_regex_t"
 
-static struct orchlua_cfg {
+static struct porchlua_cfg {
 	int			 dirfd;
 	bool			 initialized;
-} orchlua_cfg = {
+} porchlua_cfg = {
 	.dirfd = -1,
 	.initialized = false,
 };
 
-static int orchlua_add_execpath(const char *);
+static int porchlua_add_execpath(const char *);
 
 /*
  * Not exported
  */
 static int
-orchlua_close(lua_State *L)
+porchlua_close(lua_State *L)
 {
 	luaL_Stream *p;
 	int ret;
@@ -68,11 +68,11 @@ orchlua_close(lua_State *L)
 }
 
 static int
-orchlua_open_init(const char *filename, const char **script, bool alter_path)
+porchlua_open_init(const char *filename, const char **script, bool alter_path)
 {
 
-	assert(!orchlua_cfg.initialized);
-	assert(orchlua_cfg.dirfd == -1);
+	assert(!porchlua_cfg.initialized);
+	assert(porchlua_cfg.dirfd == -1);
 
 	/* stdin */
 	if (strcmp(filename, "-") == 0) {
@@ -99,29 +99,29 @@ orchlua_open_init(const char *filename, const char **script, bool alter_path)
 			return (ENOMEM);
 
 		if (alter_path)
-			orchlua_add_execpath(scriptroot);
+			porchlua_add_execpath(scriptroot);
 
-		orchlua_cfg.dirfd = open(scriptroot,
+		porchlua_cfg.dirfd = open(scriptroot,
 		    O_DIRECTORY | O_PATH | O_CLOEXEC);
-		if (orchlua_cfg.dirfd == -1)
+		if (porchlua_cfg.dirfd == -1)
 			err(1, "open: %s", fpath);
 	}
 
-	orchlua_cfg.initialized = true;
+	porchlua_cfg.initialized = true;
 	return (0);
 }
 
 static int
-orchlua_reset(lua_State *L)
+porchlua_reset(lua_State *L)
 {
 
-	if (orchlua_cfg.initialized) {
-		if (orchlua_cfg.dirfd >= 0) {
-			close(orchlua_cfg.dirfd);
-			orchlua_cfg.dirfd = -1;
+	if (porchlua_cfg.initialized) {
+		if (porchlua_cfg.dirfd >= 0) {
+			close(porchlua_cfg.dirfd);
+			porchlua_cfg.dirfd = -1;
 		}
 
-		orchlua_cfg.initialized = false;
+		porchlua_cfg.initialized = false;
 	}
 
 	lua_pushboolean(L, 1);
@@ -129,7 +129,7 @@ orchlua_reset(lua_State *L)
 }
 
 static int
-orchlua_open(lua_State *L)
+porchlua_open(lua_State *L)
 {
 	luaL_Stream *p;
 	const char *filename, *script;
@@ -142,16 +142,16 @@ orchlua_open(lua_State *L)
 	script = NULL;
 
 	/* First open() sets up the sandbox state. */
-	if (!orchlua_cfg.initialized) {
+	if (!porchlua_cfg.initialized) {
 		int error;
 
-		error = orchlua_open_init(filename, &script, alter_path);
+		error = porchlua_open_init(filename, &script, alter_path);
 		if (error != 0) {
 			luaL_pushfail(L);
 			lua_pushstring(L, strerror(error));
 			return (true);
 		}
-	} else if (orchlua_cfg.dirfd == -1) {
+	} else if (porchlua_cfg.dirfd == -1) {
 		luaL_pushfail(L);
 		lua_pushstring(L,
 		    "No sandbox granted (script opened from stdin)");
@@ -161,7 +161,7 @@ orchlua_open(lua_State *L)
 	}
 
 	fd = -1;
-	if (orchlua_cfg.dirfd == -1) {
+	if (porchlua_cfg.dirfd == -1) {
 		assert(script == filename);
 		fd = dup(STDIN_FILENO);
 		if (fd == -1)
@@ -169,12 +169,12 @@ orchlua_open(lua_State *L)
 	}
 
 	p = (luaL_Stream *)lua_newuserdata(L, sizeof(*p));
-	p->closef = &orchlua_close;
+	p->closef = &porchlua_close;
 	p->f = NULL;
 	luaL_setmetatable(L, LUA_FILEHANDLE);
 
 	if (fd == -1)
-		fd = openat(orchlua_cfg.dirfd, script, O_RDONLY | O_CLOEXEC);
+		fd = openat(porchlua_cfg.dirfd, script, O_RDONLY | O_CLOEXEC);
 	if (fd != -1)
 		p->f = fdopen(fd, "r");
 
@@ -193,7 +193,7 @@ orchlua_open(lua_State *L)
 }
 
 static int
-orchlua_regcomp(lua_State *L)
+porchlua_regcomp(lua_State *L)
 {
 	const char *pattern;
 	regex_t *regex;
@@ -221,7 +221,7 @@ orchlua_regcomp(lua_State *L)
 }
 
 static int
-orchlua_sleep(lua_State *L)
+porchlua_sleep(lua_State *L)
 {
 	lua_Number duration;
 	struct timespec rtp;
@@ -252,7 +252,7 @@ orchlua_sleep(lua_State *L)
 }
 
 static int
-orchlua_time(lua_State *L)
+porchlua_time(lua_State *L)
 {
 	struct timespec tv;
 
@@ -263,14 +263,14 @@ orchlua_time(lua_State *L)
 }
 
 static int
-orchlua_child_error(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
+porchlua_child_error(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
     void *cookie)
 {
-	struct orch_process *proc = cookie;
+	struct porch_process *proc = cookie;
 	const char *childstr;
 	size_t datasz;
 
-	childstr = orch_ipc_msg_payload(msg, &datasz);
+	childstr = porch_ipc_msg_payload(msg, &datasz);
 	if (datasz != 0)
 		fprintf(stderr, "CHILD ERROR: %.*s\n", (int)datasz, childstr);
 	proc->error = true;
@@ -278,9 +278,9 @@ orchlua_child_error(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
 }
 
 static int
-orchlua_spawn(lua_State *L)
+porchlua_spawn(lua_State *L)
 {
-	struct orch_process *proc;
+	struct porch_process *proc;
 	const char **argv;
 	int argc;
 
@@ -310,9 +310,9 @@ orchlua_spawn(lua_State *L)
 
 	/*
 	 * Note that the one uservalue allowed by Lua < 5.4 is already consumed
-	 * by the process buffer, so we can't allocate the orch_term for it up
+	 * by the process buffer, so we can't allocate the porch_term for it up
 	 * front.  We'll just allocate it if the module requests it, and will
-	 * not attach it to the proc -- orch.lua will just have to manage its
+	 * not attach it to the proc -- porch.lua will just have to manage its
 	 * lifetime appropriately.
 	 */
 	proc = lua_newuserdata(L, sizeof(*proc));
@@ -325,7 +325,7 @@ orchlua_spawn(lua_State *L)
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 
-	if (orch_spawn(argc, argv, proc, &orchlua_child_error) != 0) {
+	if (porch_spawn(argc, argv, proc, &porchlua_child_error) != 0) {
 		int serrno = errno;
 
 		free(argv);
@@ -340,8 +340,8 @@ orchlua_spawn(lua_State *L)
 	return (1);
 }
 
-#define	REG_SIMPLE(n)	{ #n, orchlua_ ## n }
-static const struct luaL_Reg orchlib[] = {
+#define	REG_SIMPLE(n)	{ #n, porchlua_ ## n }
+static const struct luaL_Reg porchlib[] = {
 	REG_SIMPLE(open),
 	REG_SIMPLE(regcomp),
 	REG_SIMPLE(reset),
@@ -352,13 +352,13 @@ static const struct luaL_Reg orchlib[] = {
 };
 
 static void
-orchlua_process_close_alarm(int signo __unused)
+porchlua_process_close_alarm(int signo __unused)
 {
 	/* XXX Ignored, just don't terminate us. */
 }
 
 static bool
-orchlua_process_killed(struct orch_process *self, int *signo)
+porchlua_process_killed(struct porch_process *self, int *signo)
 {
 
 	assert(self->pid != 0);
@@ -375,16 +375,16 @@ orchlua_process_killed(struct orch_process *self, int *signo)
 }
 
 static int
-orchlua_process_close(lua_State *L)
+porchlua_process_close(lua_State *L)
 {
-	struct orch_process *self;
+	struct porch_process *self;
 	pid_t wret;
 	int sig;
 	bool failed;
 
 	failed = false;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if (self->pid != 0 && orchlua_process_killed(self, &sig) && sig != 0) {
+	if (self->pid != 0 && porchlua_process_killed(self, &sig) && sig != 0) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "spawned process killed with signal '%d'", sig);
 		return (2);
@@ -392,7 +392,7 @@ orchlua_process_close(lua_State *L)
 
 	if (self->pid != 0) {
 		struct sigaction sigalrm = {
-			.sa_handler = orchlua_process_close_alarm,
+			.sa_handler = porchlua_process_close_alarm,
 		};
 
 		sigaction(SIGALRM, &sigalrm, NULL);
@@ -418,7 +418,7 @@ again:
 		self->pid = 0;
 	}
 
-	orch_ipc_close(self->ipc);
+	porch_ipc_close(self->ipc);
 	self->ipc = NULL;
 
 	if (self->termctl != -1)
@@ -440,11 +440,11 @@ again:
  * hit EOF, or a fail, error pair otherwise.
  */
 static int
-orchlua_process_read(lua_State *L)
+porchlua_process_read(lua_State *L)
 {
 	char buf[LINE_MAX];
 	fd_set rfd;
-	struct orch_process *self;
+	struct porch_process *self;
 	struct timeval tv, *tvp;
 	time_t start, now;
 	ssize_t readsz;
@@ -551,7 +551,7 @@ orchlua_process_read(lua_State *L)
 				close(self->termctl);
 				self->termctl = -1;
 
-				if (orchlua_process_killed(self, &signo) && signo != 0) {
+				if (porchlua_process_killed(self, &signo) && signo != 0) {
 					luaL_pushfail(L);
 					lua_pushfstring(L,
 						"spawned process killed with signal '%d'", signo);
@@ -578,9 +578,9 @@ orchlua_process_read(lua_State *L)
 }
 
 static int
-orchlua_process_write(lua_State *L)
+porchlua_process_write(lua_State *L)
 {
-	struct orch_process *self;
+	struct porch_process *self;
 	const char *buf;
 	size_t bufsz, totalsz;
 	ssize_t writesz;
@@ -611,15 +611,15 @@ orchlua_process_write(lua_State *L)
 }
 
 static int
-orchlua_process_release(lua_State *L)
+porchlua_process_release(lua_State *L)
 {
-	struct orch_process *self;
+	struct porch_process *self;
 	int error;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 
-	error = orch_release(self->ipc);
-	orch_ipc_close(self->ipc);
+	error = porch_release(self->ipc);
+	porch_ipc_close(self->ipc);
 	self->ipc = NULL;
 
 	if (error != 0) {
@@ -637,9 +637,9 @@ orchlua_process_release(lua_State *L)
 }
 
 static int
-orchlua_process_released(lua_State *L)
+porchlua_process_released(lua_State *L)
 {
-	struct orch_process *self;
+	struct porch_process *self;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	lua_pushboolean(L, self->released);
@@ -647,15 +647,15 @@ orchlua_process_released(lua_State *L)
 }
 
 static int
-orchlua_process_term_set(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
+porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
     void *cookie)
 {
-	struct orch_term *term = cookie;
+	struct porch_term *term = cookie;
 	struct termios *child_termios;
 	struct termios *parent_termios = &term->term;
 	size_t datasz;
 
-	child_termios = orch_ipc_msg_payload(msg, &datasz);
+	child_termios = porch_ipc_msg_payload(msg, &datasz);
 	if (child_termios == NULL || datasz != sizeof(*child_termios)) {
 		errno = EINVAL;
 		return (-1);
@@ -668,16 +668,16 @@ orchlua_process_term_set(orch_ipc_t ipc __unused, struct orch_ipc_msg *msg,
 }
 
 static int
-orchlua_process_term(lua_State *L)
+porchlua_process_term(lua_State *L)
 {
-	struct orch_term sterm;
-	struct orch_ipc_msg *cmsg;
-	struct orch_process *self;
+	struct porch_term sterm;
+	struct porch_ipc_msg *cmsg;
+	struct porch_process *self;
 	int error, retvals;
 
 	retvals = 0;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if (!orch_ipc_okay(self->ipc)) {
+	if (!porch_ipc_okay(self->ipc)) {
 		luaL_pushfail(L);
 		lua_pushstring(L, "process already released");
 		return (2);
@@ -689,7 +689,7 @@ orchlua_process_term(lua_State *L)
 
 	sterm.proc = self;
 	sterm.initialized = false;
-	orch_ipc_register(self->ipc, IPC_TERMIOS_SET, orchlua_process_term_set,
+	porch_ipc_register(self->ipc, IPC_TERMIOS_SET, porchlua_process_term_set,
 	    &sterm);
 
 	/*
@@ -697,18 +697,18 @@ orchlua_process_term(lua_State *L)
 	 * there shouldn't be anything in the queue.  We'll just fire this off,
 	 * and wait for a response to become ready.
 	 */
-	if ((error = orch_ipc_send_nodata(self->ipc,
+	if ((error = porch_ipc_send_nodata(self->ipc,
 	    IPC_TERMIOS_INQUIRY)) != 0) {
 		error = errno;
 		goto out;
 	}
 
-	if (orch_ipc_wait(self->ipc, NULL) == -1) {
+	if (porch_ipc_wait(self->ipc, NULL) == -1) {
 		error = errno;
 		goto out;
 	}
 
-	if (orch_ipc_recv(self->ipc, &cmsg) != 0) {
+	if (porch_ipc_recv(self->ipc, &cmsg) != 0) {
 		error = errno;
 		goto out;
 	}
@@ -716,9 +716,9 @@ orchlua_process_term(lua_State *L)
 	if (cmsg != NULL) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "unexpected message type '%d'",
-		    orch_ipc_msg_tag(cmsg));
+		    porch_ipc_msg_tag(cmsg));
 
-		orch_ipc_msg_free(cmsg);
+		porch_ipc_msg_free(cmsg);
 		cmsg = NULL;
 
 		retvals = 2;
@@ -730,11 +730,11 @@ orchlua_process_term(lua_State *L)
 		goto out;
 	}
 
-	retvals = orchlua_tty_alloc(L, &sterm, &self->term);
+	retvals = porchlua_tty_alloc(L, &sterm, &self->term);
 
 out:
 	/* Deallocate the slot */
-	orch_ipc_register(self->ipc, IPC_TERMIOS_SET, NULL, NULL);
+	porch_ipc_register(self->ipc, IPC_TERMIOS_SET, NULL, NULL);
 	if (error != 0 && retvals == 0) {
 		luaL_pushfail(L);
 		lua_pushstring(L, strerror(error));
@@ -746,17 +746,17 @@ out:
 }
 
 static int
-orchlua_process_eof(lua_State *L)
+porchlua_process_eof(lua_State *L)
 {
-	struct orch_process *self;
+	struct porch_process *self;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	lua_pushboolean(L, self->eof);
 	return (1);
 }
 
-#define	PROCESS_SIMPLE(n)	{ #n, orchlua_process_ ## n }
-static const luaL_Reg orchlua_process[] = {
+#define	PROCESS_SIMPLE(n)	{ #n, porchlua_process_ ## n }
+static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(close),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),
@@ -767,10 +767,10 @@ static const luaL_Reg orchlua_process[] = {
 	{ NULL, NULL },
 };
 
-static const luaL_Reg orchlua_process_meta[] = {
+static const luaL_Reg porchlua_process_meta[] = {
 	{ "__index", NULL },	/* Set during registration */
-	{ "__gc", orchlua_process_close },
-	{ "__close", orchlua_process_close },
+	{ "__gc", porchlua_process_close },
+	{ "__close", porchlua_process_close },
 	{ NULL, NULL },
 };
 
@@ -778,17 +778,17 @@ static void
 register_process_metatable(lua_State *L)
 {
 	luaL_newmetatable(L, ORCHLUA_PROCESSHANDLE);
-	luaL_setfuncs(L, orchlua_process_meta, 0);
+	luaL_setfuncs(L, porchlua_process_meta, 0);
 
-	luaL_newlibtable(L, orchlua_process);
-	luaL_setfuncs(L, orchlua_process, 0);
+	luaL_newlibtable(L, porchlua_process);
+	luaL_setfuncs(L, porchlua_process, 0);
 	lua_setfield(L, -2, "__index");
 
 	lua_pop(L, 1);
 }
 
 static int
-orchlua_regex_error(lua_State *L, regex_t *self, int error)
+porchlua_regex_error(lua_State *L, regex_t *self, int error)
 {
 	char errbuf[64];
 
@@ -800,7 +800,7 @@ orchlua_regex_error(lua_State *L, regex_t *self, int error)
 }
 
 static int
-orchlua_regex_find(lua_State *L)
+porchlua_regex_find(lua_State *L)
 {
 	const char *subject;
 	regex_t *self;
@@ -817,7 +817,7 @@ orchlua_regex_find(lua_State *L)
 			return (1);
 		}
 
-		return (orchlua_regex_error(L, self, error));
+		return (porchlua_regex_error(L, self, error));
 	}
 
 	/*
@@ -831,7 +831,7 @@ orchlua_regex_find(lua_State *L)
 }
 
 static int
-orchlua_regex_close(lua_State *L)
+porchlua_regex_close(lua_State *L)
 {
 	regex_t *self;
 
@@ -840,16 +840,16 @@ orchlua_regex_close(lua_State *L)
 	return (0);
 }
 
-#define	REGEX_SIMPLE(n)	{ #n, orchlua_regex_ ## n }
-static const luaL_Reg orchlua_regex[] = {
+#define	REGEX_SIMPLE(n)	{ #n, porchlua_regex_ ## n }
+static const luaL_Reg porchlua_regex[] = {
 	REGEX_SIMPLE(find),
 	{ NULL, NULL },
 };
 
-static const luaL_Reg orchlua_regex_meta[] = {
+static const luaL_Reg porchlua_regex_meta[] = {
 	{ "__index", NULL },	/* Set during registration */
-	{ "__gc", orchlua_regex_close },
-	{ "__close", orchlua_regex_close },
+	{ "__gc", porchlua_regex_close },
+	{ "__close", porchlua_regex_close },
 	{ NULL, NULL },
 };
 
@@ -857,17 +857,17 @@ static void
 register_regex_metatable(lua_State *L)
 {
 	luaL_newmetatable(L, ORCHLUA_REGEXHANDLE);
-	luaL_setfuncs(L, orchlua_regex_meta, 0);
+	luaL_setfuncs(L, porchlua_regex_meta, 0);
 
-	luaL_newlibtable(L, orchlua_regex);
-	luaL_setfuncs(L, orchlua_regex, 0);
+	luaL_newlibtable(L, porchlua_regex);
+	luaL_setfuncs(L, porchlua_regex, 0);
 	lua_setfield(L, -2, "__index");
 
 	lua_pop(L, 1);
 }
 
 static int
-orchlua_add_execpath(const char *path)
+porchlua_add_execpath(const char *path)
 {
 	const char *curpath;
 	char *newpath;
@@ -891,15 +891,15 @@ orchlua_add_execpath(const char *path)
 }
 
 /*
- * Available: functions above, orch_impl.script, orch_impl.script_root
+ * Available: functions above, porch_impl.script, porch_impl.script_root
  */
 int
-luaopen_orch_core(lua_State *L)
+luaopen_porch_core(lua_State *L)
 {
 
-	luaL_newlib(L, orchlib);
+	luaL_newlib(L, porchlib);
 
-	orchlua_setup_tty(L);
+	porchlua_setup_tty(L);
 
 	register_process_metatable(L);
 	register_regex_metatable(L);

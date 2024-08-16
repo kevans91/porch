@@ -20,8 +20,8 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "orch.h"
-#include "orch_lib.h"
+#include "porch.h"
+#include "porch_lib.h"
 
 #ifdef __OpenBSD__
 #define	POSIX_OPENPT_FLAGS	(O_RDWR | O_NOCTTY)
@@ -43,20 +43,20 @@
 extern char **environ;
 
 /* Parent */
-static int orch_newpt(void);
+static int porch_newpt(void);
 
 /* Child */
-static pid_t orch_newsess(orch_ipc_t);
-static void orch_usept(orch_ipc_t, pid_t, int, struct termios *);
-static void orch_child_error(orch_ipc_t, const char *, ...) __printflike(2, 3);
-static void orch_exec(orch_ipc_t, int, const char *[], struct termios *);
+static pid_t porch_newsess(porch_ipc_t);
+static void porch_usept(porch_ipc_t, pid_t, int, struct termios *);
+static void porch_child_error(porch_ipc_t, const char *, ...) __printflike(2, 3);
+static void porch_exec(porch_ipc_t, int, const char *[], struct termios *);
 
 /* Both */
-static int orch_wait(orch_ipc_t);
+static int porch_wait(porch_ipc_t);
 
 int
-orch_spawn(int argc, const char *argv[], struct orch_process *p,
-    orch_ipc_handler *child_error_handler)
+porch_spawn(int argc, const char *argv[], struct porch_process *p,
+    porch_ipc_handler *child_error_handler)
 {
 	int cmdsock[2];
 	pid_t pid, sess;
@@ -81,37 +81,37 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p,
 		err(1, "fcntl");
 #endif
 
-	p->termctl = orch_newpt();
+	p->termctl = porch_newpt();
 
 	pid = fork();
 	if (pid == -1) {
 		err(1, "fork");
 	} else if (pid == 0) {
 		struct termios t;
-		orch_ipc_t ipc;
+		porch_ipc_t ipc;
 
 		/* Child */
 		close(cmdsock[0]);
-		ipc = orch_ipc_open(cmdsock[1]);
+		ipc = porch_ipc_open(cmdsock[1]);
 		if (ipc == NULL) {
 			close(cmdsock[1]);
 			fprintf(stderr, "child out of memory\n");
 			_exit(1);
 		}
 
-		sess = orch_newsess(ipc);
+		sess = porch_newsess(ipc);
 
-		orch_usept(ipc, sess, p->termctl, &t);
+		porch_usept(ipc, sess, p->termctl, &t);
 		assert(p->termctl >= 0);
 		close(p->termctl);
 		p->termctl = -1;
 
-		orch_exec(ipc, argc, argv, &t);
+		porch_exec(ipc, argc, argv, &t);
 	}
 
 	p->released = false;
 	p->pid = pid;
-	p->ipc = orch_ipc_open(cmdsock[0]);
+	p->ipc = porch_ipc_open(cmdsock[0]);
 
 	/* Parent */
 	close(cmdsock[1]);
@@ -132,35 +132,35 @@ orch_spawn(int argc, const char *argv[], struct orch_process *p,
 		return (-1);
 	}
 
-	orch_ipc_register(p->ipc, IPC_ERROR, child_error_handler, p);
+	porch_ipc_register(p->ipc, IPC_ERROR, child_error_handler, p);
 
 	/*
 	 * Stalls until the tty is configured, completely side step races from
 	 * script writing to the tty before, e.g., echo is disabled.
 	 */
-	return (orch_wait(p->ipc));
+	return (porch_wait(p->ipc));
 }
 
 static int
-orch_wait(orch_ipc_t ipc)
+porch_wait(porch_ipc_t ipc)
 {
-	struct orch_ipc_msg *msg;
+	struct porch_ipc_msg *msg;
 	bool stop = false;
 
 	while (!stop) {
-		if (orch_ipc_wait(ipc, &stop) == -1)
+		if (porch_ipc_wait(ipc, &stop) == -1)
 			return (-1);
 		else if (stop)
 			break;
 
-		if (orch_ipc_recv(ipc, &msg) != 0)
+		if (porch_ipc_recv(ipc, &msg) != 0)
 			return (-1);
 		if (msg == NULL)
 			continue;
 
-		stop = orch_ipc_msg_tag(msg) == IPC_RELEASE;
+		stop = porch_ipc_msg_tag(msg) == IPC_RELEASE;
 
-		orch_ipc_msg_free(msg);
+		porch_ipc_msg_free(msg);
 		msg = NULL;
 	}
 
@@ -168,16 +168,16 @@ orch_wait(orch_ipc_t ipc)
 }
 
 int
-orch_release(orch_ipc_t ipc)
+porch_release(porch_ipc_t ipc)
 {
 
-	return (orch_ipc_send_nodata(ipc, IPC_RELEASE));
+	return (porch_ipc_send_nodata(ipc, IPC_RELEASE));
 }
 
 static void
-orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
+porch_child_error(porch_ipc_t ipc, const char *fmt, ...)
 {
-	struct orch_ipc_msg *errmsg;
+	struct porch_ipc_msg *errmsg;
 	char *str, *msgstr;
 	va_list ap;
 	int sz;
@@ -188,7 +188,7 @@ orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
 		goto out;
 	va_end(ap);
 
-	errmsg = orch_ipc_msg_alloc(IPC_ERROR, sz + 1, (void **)&msgstr);
+	errmsg = porch_ipc_msg_alloc(IPC_ERROR, sz + 1, (void **)&msgstr);
 	if (errmsg == NULL)
 		goto out;
 
@@ -197,25 +197,25 @@ orch_child_error(orch_ipc_t ipc, const char *fmt, ...)
 	free(str);
 	str = NULL;
 
-	orch_ipc_send(ipc, errmsg);
+	porch_ipc_send(ipc, errmsg);
 
 out:
-	orch_ipc_msg_free(errmsg);
+	porch_ipc_msg_free(errmsg);
 	free(str);
-	orch_ipc_close(ipc);
+	porch_ipc_close(ipc);
 	_exit(1);
 }
 
 static int
-orch_child_termios_inquiry(orch_ipc_t ipc, struct orch_ipc_msg *inmsg __unused,
+porch_child_termios_inquiry(porch_ipc_t ipc, struct porch_ipc_msg *inmsg __unused,
     void *cookie)
 {
-	struct orch_ipc_msg *msg;
+	struct porch_ipc_msg *msg;
 	struct termios *child_termios = cookie, *parent_termios;
 	int error, serr;
 
 	/* Send term attributes back over the wire. */
-	msg = orch_ipc_msg_alloc(IPC_TERMIOS_SET, sizeof(*child_termios),
+	msg = porch_ipc_msg_alloc(IPC_TERMIOS_SET, sizeof(*child_termios),
 	    (void **)&parent_termios);
 	if (msg == NULL) {
 		errno = EINVAL;
@@ -224,23 +224,23 @@ orch_child_termios_inquiry(orch_ipc_t ipc, struct orch_ipc_msg *inmsg __unused,
 
 	memcpy(parent_termios, child_termios, sizeof(*child_termios));
 
-	error = orch_ipc_send(ipc, msg);
+	error = porch_ipc_send(ipc, msg);
 	serr = errno;
 
-	orch_ipc_msg_free(msg);
+	porch_ipc_msg_free(msg);
 	if (error != 0)
 		errno = serr;
 	return (error);
 }
 
 static int
-orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
+porch_child_termios_set(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 {
 	struct termios *updated_termios;
 	struct termios *current_termios = cookie;
 	size_t datasz;
 
-	updated_termios = orch_ipc_msg_payload(msg, &datasz);
+	updated_termios = porch_ipc_msg_payload(msg, &datasz);
 	if (updated_termios == NULL || datasz != sizeof(*updated_termios)) {
 		errno = EINVAL;
 		return (-1);
@@ -253,13 +253,13 @@ orch_child_termios_set(orch_ipc_t ipc, struct orch_ipc_msg *msg, void *cookie)
 	memcpy(current_termios, updated_termios, sizeof(*updated_termios));
 
 	if (tcsetattr(STDIN_FILENO, TCSANOW, current_termios) == -1)
-		orch_child_error(ipc, "tcsetattr");
+		porch_child_error(ipc, "tcsetattr");
 
-	return (orch_ipc_send_nodata(ipc, IPC_TERMIOS_ACK));
+	return (porch_ipc_send_nodata(ipc, IPC_TERMIOS_ACK));
 }
 
 static void
-orch_exec(orch_ipc_t ipc, int argc __unused, const char *argv[],
+porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
     struct termios *t)
 {
 	int error;
@@ -271,12 +271,12 @@ orch_exec(orch_ipc_t ipc, int argc __unused, const char *argv[],
 	 * - IPC_TERMIOS_INQUIRY: sent our terminal attributes back over.
 	 * - IPC_TERMIOS_SET: update our terminal attributes
 	 */
-	orch_ipc_register(ipc, IPC_TERMIOS_INQUIRY, orch_child_termios_inquiry,
+	porch_ipc_register(ipc, IPC_TERMIOS_INQUIRY, porch_child_termios_inquiry,
 	    t);
-	orch_ipc_register(ipc, IPC_TERMIOS_SET, orch_child_termios_set, t);
+	porch_ipc_register(ipc, IPC_TERMIOS_SET, porch_child_termios_set, t);
 
 	/* Let the script commence. */
-	if (orch_release(ipc) != 0)
+	if (porch_release(ipc) != 0)
 		_exit(1);
 
 	/*
@@ -288,8 +288,8 @@ orch_exec(orch_ipc_t ipc, int argc __unused, const char *argv[],
 	 * For now this is just a simple int, in the future it may grow a more
 	 * extensive protocol so that the script can, e.g., reconfigure the tty.
 	 */
-	error = orch_wait(ipc);
-	orch_ipc_close(ipc);
+	error = porch_wait(ipc);
+	porch_ipc_close(ipc);
 
 	if (error != 0)
 		_exit(1);
@@ -300,7 +300,7 @@ orch_exec(orch_ipc_t ipc, int argc __unused, const char *argv[],
 }
 
 static int
-orch_newpt(void)
+porch_newpt(void)
 {
 	int newpt;
 
@@ -321,36 +321,36 @@ orch_newpt(void)
 }
 
 static pid_t
-orch_newsess(orch_ipc_t ipc)
+porch_newsess(porch_ipc_t ipc)
 {
 	pid_t sess;
 
 	sess = setsid();
 	if (sess == -1)
-		orch_child_error(ipc, "setsid");
+		porch_child_error(ipc, "setsid");
 
 	return (sess);
 }
 
 static void
-orch_usept(orch_ipc_t ipc, pid_t sess, int termctl, struct termios *t)
+porch_usept(porch_ipc_t ipc, pid_t sess, int termctl, struct termios *t)
 {
 	const char *name;
 	int target;
 
 	name = ptsname(termctl);
 	if (name == NULL)
-		orch_child_error(ipc, "ptsname: %s", strerror(errno));
+		porch_child_error(ipc, "ptsname: %s", strerror(errno));
 
 	target = open(name, O_RDWR);
 	if (target == -1)
-		orch_child_error(ipc, "open %s: %s", name, strerror(errno));
+		porch_child_error(ipc, "open %s: %s", name, strerror(errno));
 
 	if (tcsetsid(target, sess) == -1)
-		orch_child_error(ipc, "tcsetsid");
+		porch_child_error(ipc, "tcsetsid");
 
 	if (tcgetattr(target, t) == -1)
-		orch_child_error(ipc, "tcgetattr");
+		porch_child_error(ipc, "tcgetattr");
 
 	/* XXX Accept mask, buffering? */
 	dup2(target, STDIN_FILENO);

@@ -16,7 +16,7 @@ set(core_INCDIRS
 	"${LUA_INCLUDE_DIR}")
 
 target_include_directories(core PRIVATE ${core_INCDIRS})
-# orch(1) will link against the static lib
+# porch(1) will link against the static lib
 target_include_directories(core_static PRIVATE ${core_INCDIRS})
 
 target_link_libraries(core "${LUA_LIBRARIES}")
@@ -29,4 +29,4 @@ target_compile_options(core PUBLIC -fno-sanitize=all)
 target_link_options(core PUBLIC -fno-sanitize=all)
 
 install(TARGETS core
-	DESTINATION "${LUA_MODLIBDIR}/orch")
+	DESTINATION "${LUA_MODLIBDIR}/porch")
