@@ -663,6 +663,7 @@ porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
 
 	memcpy(parent_termios, child_termios, sizeof(*child_termios));
 	term->initialized = true;
+	term->winsz_valid = false;
 
 	return (0);
 }

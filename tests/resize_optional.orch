@@ -1,0 +1,25 @@
+spawn("resized.sh")
+match "ready"
+
+enqueue(function()
+	local w, h = assert(size())
+
+	assert(w == 0, "width is wrong, expected 0 got " .. w)
+	assert(h == 0, "height is wrong, expected 0 got " .. h)
+
+	w, h = size(nil, h + 80)
+
+	assert(w == 0, "width is wrong, expected 0 got " .. w)
+	assert(h == 80, "height is wrong, expected 80 got " .. h)
+end)
+
+match "resized"
+
+enqueue(function()
+	local w, h = size(25)
+	assert(w == 25, "width is wrong, expected 25 got " .. w)
+	assert(h == 80, "height is wrong, expected 80 got " .. h)
+end)
+
+write "^C"
+match "2"

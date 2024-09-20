@@ -1,0 +1,30 @@
+spawn("resized.sh")
+match "ready"
+
+enqueue(function()
+	local w, h = assert(size())
+
+	-- pty sizes start at 0 when we spawn off.
+	assert(w == 0, "width is wrong, expected 0 got " .. w)
+	assert(h == 0, "height is wrong, expected 0 got " .. h)
+
+	w, h = size(w + 25, h + 80)
+
+	-- Make sure that it's returning the *new* width and height when we set
+	-- them.
+	assert(w == 25, "width is wrong, expected 25 got " .. w)
+	assert(h == 80, "height is wrong, expected 80 got " .. h)
+
+	-- And not setting anything should still return the current dimensions.
+	w, h = size()
+	assert(w == 25, "width is wrong, expected 25 got " .. w)
+	assert(h == 80, "height is wrong, expected 80 got " .. h)
+	w, h = size(nil, nil)
+	assert(w == 25, "width is wrong, expected 25 got " .. w)
+	assert(h == 80, "height is wrong, expected 80 got " .. h)
+end)
+
+match "resized"
+write "^C"
+
+match "1"

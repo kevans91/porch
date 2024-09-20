@@ -319,10 +319,76 @@ err:
 	return (2);
 }
 
+static int
+porchlua_term_size(lua_State *L)
+{
+	struct porch_term *self;
+	lua_Number val;
+	bool fetching;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_TERMHANDLE);
+	if (!self->winsz_valid) {
+		if (ioctl(self->proc->termctl, TIOCGWINSZ, &self->winsz) != 0) {
+			int error = errno;
+
+			luaL_pushfail(L);
+			lua_pushstring(L, strerror(error));
+			return (2);
+		}
+
+		self->winsz_valid = true;
+	}
+
+	/*
+	 * If size doesn't have both width and height arguments, it simply
+	 * return the current size.
+	 */
+	fetching = lua_isnoneornil(L, 2) && lua_isnoneornil(L, 3);
+	if (!fetching) {
+			if (!lua_isnoneornil(L, 2)) {
+				val = luaL_checknumber(L, 2);
+				if (val < 0 || val > USHRT_MAX) {
+					luaL_pushfail(L);
+					lua_pushfstring(L, "width out of bounds: %llu\n",
+					    (uint64_t)val);
+					return (2);
+				}
+
+				self->winsz.ws_col = val;
+			}
+
+			if (!lua_isnoneornil(L, 3)) {
+				val = luaL_checknumber(L, 3);
+				if (val < 0 || val > USHRT_MAX) {
+					luaL_pushfail(L);
+					lua_pushfstring(L, "height out of bounds: %llu\n",
+					    (uint64_t)val);
+					return (2);
+				}
+
+				self->winsz.ws_row = val;
+			}
+
+			if (ioctl(self->proc->termctl, TIOCSWINSZ, &self->winsz) != 0) {
+				int error = errno;
+
+				luaL_pushfail(L);
+				lua_pushstring(L, strerror(error));
+				return (2);
+			}
+	}
+
+	lua_pushnumber(L, self->winsz.ws_col);
+	lua_pushnumber(L, self->winsz.ws_row);
+
+	return (2);
+}
+
 #define	ORCHTERM_SIMPLE(n) { #n, porchlua_term_ ## n }
 static const luaL_Reg porchlua_term[] = {
 	ORCHTERM_SIMPLE(fetch),
 	ORCHTERM_SIMPLE(update),
+	ORCHTERM_SIMPLE(size),
 	{ NULL, NULL },
 };
 

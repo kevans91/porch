@@ -376,6 +376,12 @@ function scripter.env.matcher(val)
 	return true
 end
 
+function scripter.env.size(w, h)
+	local current_process = current_ctx.process
+
+	return current_process.term:size(w, h)
+end
+
 function scripter.env.timeout(val)
 	if val == nil or val < 0 then
 		error("Timeout must be >= 0")

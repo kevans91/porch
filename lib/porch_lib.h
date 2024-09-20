@@ -7,6 +7,7 @@
 #pragma once
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <stdbool.h>
 #include <termios.h>
@@ -53,8 +54,10 @@ struct porch_process {
 
 struct porch_term {
 	struct termios		term;
+	struct winsize		winsz;
 	struct porch_process	*proc;
 	bool			initialized;
+	bool			winsz_valid;
 };
 
 struct porchlua_tty_cntrl {
