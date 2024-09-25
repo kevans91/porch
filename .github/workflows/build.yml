@@ -34,7 +34,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update --quiet || true
-          sudo apt-get -yq --no-install-suggests --no-install-recommends install cmake liblua${{ matrix.lua }}-dev
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install cmake liblua${{ matrix.lua }}-dev lua${{ matrix.lua }}
       - name: install system packages (macOS)
         if: runner.os == 'macOS'
         run: |

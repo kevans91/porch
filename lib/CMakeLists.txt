@@ -7,6 +7,9 @@ file(GLOB lua_SOURCES
 	"${CMAKE_CURRENT_SOURCE_DIR}/*.lua"
 	"${CMAKE_CURRENT_SOURCE_DIR}/porch/*.lua")
 
+add_custom_target(libs
+	DEPENDS core)
+
 add_custom_target(lint
 	COMMAND echo LINTING FOR LUA 5.3
 	COMMAND luacheck --std=lua53 ${lua_SOURCES}
