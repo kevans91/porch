@@ -40,6 +40,9 @@ function DirectProcess:new(cmd, ctx)
 
 	return pwrap
 end
+function DirectProcess:close()
+	return self._process:close()
+end
 function DirectProcess:match(pattern, matcher)
 	matcher = matcher or matchers.available.default
 
