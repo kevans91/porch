@@ -47,13 +47,22 @@ function DirectProcess:match(pattern, matcher)
 	matcher = matcher or matchers.available.default
 
 	local action = actions.MatchAction:new("match")
-	local patterns = { [pattern] = {} }
+	local patterns
+
+	if type(pattern) == "table" then
+		patterns = pattern
+	else
+		patterns = { [pattern] = {} }
+	end
 	action.timeout = self.timeout
 	action.matcher = matcher
 
 	if matcher.compile then
-		patterns[pattern]._compiled = action.matcher.compile(pattern)
+		for pat, v in pairs(patterns) do
+			v._compiled = action.matcher.compile(pat)
+		end
 	end
+
 	action.patterns = patterns
 
 	return self._process:match(action)
