@@ -1,14 +1,13 @@
 #!/bin/sh
 
 loop=1
+caught=0
 
 trap 'echo resized; caught=$((caught + 1))' WINCH
 trap 'loop=0' INT
 
 # Release the hounds now that the signal handler is setup.
 echo "ready"
-
-caught=0
 
 while [ "$loop" -ne 0 ]; do
 	sleep 1

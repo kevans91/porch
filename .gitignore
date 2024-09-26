@@ -2,6 +2,7 @@ build
 .*.swp
 *.o
 *.bak
+*.orig
 *.core
 *.debug
 *.full
