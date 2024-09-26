@@ -78,6 +78,32 @@ porch_interp_error(lua_State *L)
 	return (1);
 }
 
+static void
+porch_setup_pkgpath(lua_State *L)
+{
+	const char *pkg_path, *env_path;
+
+	/*
+	 * If PORCHLUA_PATH is specified in the environment, we need to also add
+	 * it to package.path to get our scripts from there.  We can't do
+	 * anything about the C modules that we statically compiled in, though.
+	 */
+	env_path = getenv("PORCHLUA_PATH");
+	if (env_path == NULL || env_path[0] == '\0' || env_path[0] != '/')
+		return;
+
+	lua_getglobal(L, "package");
+	lua_getfield(L, -1, "path");
+
+	pkg_path = lua_tostring(L, -1);
+
+	lua_pushfstring(L, "%s/?.lua;%s", env_path, pkg_path);
+	lua_setfield(L, -3, "path");
+
+	/* Pop both the package table, and the original package.path value. */
+	lua_pop(L, 2);
+}
+
 int
 porch_interp(const char *scriptf, const char *porch_invoke_path,
     int argc, const char * const argv[])
@@ -91,6 +117,8 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 
 	/* Open lua's standard library */
 	luaL_openlibs(L);
+
+	porch_setup_pkgpath(L);
 
 	/* As well as our internal library */
 	luaL_requiref(L, PORCHLUA_MODNAME, luaopen_porch_core, 0);
