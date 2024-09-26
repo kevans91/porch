@@ -1,16 +1,17 @@
 spawn("resized.sh")
 match "ready"
 
+local function assert_size(aw, ah, ew, eh)
+	assert(aw == ew, "width is wrong, expected " .. ew .. " got " .. aw)
+	assert(ah == eh, "height is wrong, expected " .. aw .. " got " .. ah)
+end
+
 enqueue(function()
 	local w, h = assert(size())
+	assert_size(w, h, 0, 0)
 
-	assert(w == 0, "width is wrong, expected 0 got " .. w)
-	assert(h == 0, "height is wrong, expected 0 got " .. h)
-
-	w, h = size(nil, h + 80)
-
-	assert(w == 0, "width is wrong, expected 0 got " .. w)
-	assert(h == 80, "height is wrong, expected 80 got " .. h)
+	w, h = size(nil, 80)
+	assert_size(w, h, 0, 80)
 end)
 
 match "resized"
@@ -21,5 +22,6 @@ enqueue(function()
 	assert(h == 80, "height is wrong, expected 80 got " .. h)
 end)
 
+match "resized"
 write "^C"
 match "2"

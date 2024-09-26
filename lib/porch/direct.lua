@@ -34,6 +34,7 @@ function DirectProcess:new(cmd, ctx)
 
 	pwrap._process = process:new(cmd, ctx)
 	pwrap.ctx = ctx
+	pwrap.term = pwrap._process.term
 	pwrap.timeout = direct.defaults.timeout
 
 	ctx.process = pwrap._process
