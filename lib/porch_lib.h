@@ -50,6 +50,7 @@ struct porch_process {
 	bool			 eof;
 	bool			 buffered;
 	bool			 error;
+	bool			 draining;
 };
 
 struct porch_term {

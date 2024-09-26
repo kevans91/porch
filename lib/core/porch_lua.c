@@ -320,7 +320,7 @@ porchlua_spawn(lua_State *L)
 	proc->term = NULL;
 	proc->status = 0;
 	proc->pid = 0;
-	proc->buffered = proc->eof = proc->released = false;
+	proc->buffered = proc->eof = proc->released = proc->draining = false;
 	proc->error = false;
 
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
@@ -374,19 +374,44 @@ porchlua_process_killed(struct porch_process *self, int *signo)
 	return (true);
 }
 
+static void
+porchlua_process_drain(lua_State *L, struct porch_process *self)
+{
+
+	/*
+	 * Caller should have failed gracefully if the lua bits didn't set us up
+	 * right.
+	 */
+	assert(lua_gettop(L) >= 2);
+
+	/*
+	 * Make a copy of the drain function, we may need to call it multiple times.
+	 */
+	self->draining = true;
+	lua_pushvalue(L, -1);
+	lua_call(L, 0, 0);
+	self->draining = false;
+}
+
 static int
 porchlua_process_close(lua_State *L)
 {
 	struct porch_process *self;
 	pid_t wret;
 	int sig;
-	bool failed;
+	bool hasdrain, failed;
 
 	failed = false;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	if (self->pid != 0 && porchlua_process_killed(self, &sig) && sig != 0) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "spawned process killed with signal '%d'", sig);
+		return (2);
+	}
+
+	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "missing drain callback");
 		return (2);
 	}
 
@@ -397,11 +422,32 @@ porchlua_process_close(lua_State *L)
 
 		sigaction(SIGALRM, &sigalrm, NULL);
 
-		/* XXX Configurable? */
-		alarm(5);
 		sig = SIGINT;
 again:
-		kill(self->pid, sig);
+		if (kill(self->pid, sig) == -1)
+			warn("kill %d", sig);
+
+		/* XXX Configurable? */
+		if (sig != SIGKILL)
+			alarm(5);
+		if (sig == SIGKILL) {
+			/*
+			 * Once we've sent SIGKILL, we're tired of it; just drop the pty and
+			 * anything that might've been added to the buffer after our SIGINT.
+			 */
+			if (self->termctl != -1) {
+				close(self->termctl);
+				self->termctl = -1;
+			}
+		} else {
+			/*
+			 * Some systems (e.g., Darwin/XNU) will wait for us to drain the tty
+			 * when the controlling process exits.  We'll do that before we
+			 * attempt to signal it, just in case.
+			 */
+			porchlua_process_drain(L, self);
+		}
+
 		wret = waitpid(self->pid, &self->status, 0);
 		alarm(0);
 		if (wret != self->pid) {
@@ -492,8 +538,14 @@ porchlua_process_read(lua_State *L)
 				tv.tv_sec = timeout - (now - start);
 			}
 
-			continue;
-		} else if (ret == -1) {
+			if (!self->draining)
+				continue;
+
+			/* Timeout */
+			ret = 0;
+		}
+
+		if (ret == -1) {
 			int err = errno;
 
 			luaL_pushfail(L);
@@ -551,7 +603,8 @@ porchlua_process_read(lua_State *L)
 				close(self->termctl);
 				self->termctl = -1;
 
-				if (porchlua_process_killed(self, &signo) && signo != 0) {
+				if (!self->draining && porchlua_process_killed(self, &signo) &&
+				    signo != 0) {
 					luaL_pushfail(L);
 					lua_pushfstring(L,
 						"spawned process killed with signal '%d'", signo);

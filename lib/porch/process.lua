@@ -61,7 +61,7 @@ function MatchBuffer:refill(action, timeout)
 		self.buffer = self.buffer .. input
 		if type(action) == "table" then
 			return self:_matches(action)
-		else
+		elseif action then
 			assert(type(action) == "function")
 
 			return action()
@@ -203,7 +203,13 @@ function Process:write(data, cfg)
 	return sent
 end
 function Process:close()
-	assert(self._process:close())
+	local function procdrain()
+		if not self.buffer.eof then
+			self.buffer:refill()
+		end
+	end
+
+	assert(self._process:close(procdrain))
 
 	-- Flush output, close everything out
 	self:logfile(nil)
