@@ -34,6 +34,9 @@ porch.sleep = core.sleep
 -- object-oriented feel.
 porch.spawn = direct.spawn
 
+-- Expose the tty module so that direct scripts can access, e.g., defined lflags.
+porch.tty = core.tty
+
 -- Reset all of the state; this largely means resetting the scripting bits, as
 -- a user of this lib won't really need to reset anything.
 function porch.reset()
