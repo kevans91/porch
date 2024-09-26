@@ -50,6 +50,11 @@ local function porchloader(modname)
 	return loadc, openfunc
 end
 
-package.searchers[#package.searchers + 1] = porchloader
+-- We take care to insert our searcher first, otherwise the default set may find
+-- system libs before it finds our build products.
+for i = #package.searchers, 1, -1 do
+	package.searchers[i + 1] = package.searchers[i]
+end
+package.searchers[1] = porchloader
 
 return ltest
