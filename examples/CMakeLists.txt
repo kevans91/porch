@@ -1,6 +1,7 @@
 
 set(EXAMPLES
 	cat.orch
+	cat-multi.orch
 	nc.orch
 )
 
