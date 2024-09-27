@@ -204,9 +204,15 @@ function Process:write(data, cfg)
 end
 function Process:close()
 	local function procdrain()
-		if not self.buffer.eof then
-			self.buffer:refill()
+		-- It's imperative that we not try to drain a process that
+		-- hasn't been started yet; there won't be anything pending
+		-- anyways, and trying to release it may end up catching us a
+		-- SIGPIPE.
+		if self.buffer.eof or not self._process:released() then
+			return
 		end
+
+		self.buffer:refill()
 	end
 
 	assert(self._process:close(procdrain))

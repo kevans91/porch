@@ -69,7 +69,7 @@ for f in "$@" ;do
 			continue
 		fi
 		;;
-	spawn_*)
+	spawn_*|resize_*)
 		spawn=""
 		;;
 	esac
