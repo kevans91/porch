@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 
@@ -258,6 +258,68 @@ porch_child_termios_set(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie
 	return (porch_ipc_send_nodata(ipc, IPC_TERMIOS_ACK));
 }
 
+static int
+porch_clearenv(void)
+{
+#if (defined(__FreeBSD__) && __FreeBSD_version >= 1400041) || defined(__linux__)
+	return (clearenv());
+#else
+	extern char **environ;
+
+	while (*environ != NULL) {
+		const char *envp = *environ;
+		char *eq, *name;
+
+		eq = strchr(envp, '=');
+		assert(eq != NULL);
+
+		name = strndup(envp, eq - envp);
+		if (name == NULL)
+			return (-1);
+
+		unsetenv(name);
+		free(name);
+	}
+
+	return (0);
+#endif
+}
+
+static int
+porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+{
+	struct porch_env *penv;
+	size_t envsz;
+
+	penv = porch_ipc_msg_payload(msg, &envsz);
+	if (penv == NULL || envsz < sizeof(*penv)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	if (penv->clear && porch_clearenv() != 0)
+		return (-1);
+
+	if (penv->setsz != 0) {
+		const char *env, *last;
+		size_t idx = 0;
+
+		last = &penv->envstr[penv->setsz];
+		env = &penv->envstr[0];
+		while (env < last) {
+			char *cp;
+
+			cp = strdup(env);
+			if (cp == NULL)
+				_exit(1);
+			putenv(cp);
+			env = strchr(env, '\0') + 1;
+		}
+	}
+
+	return (porch_ipc_send_nodata(ipc, IPC_ENV_ACK));
+}
+
 static void
 porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
     struct termios *t)
@@ -274,6 +336,7 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 	porch_ipc_register(ipc, IPC_TERMIOS_INQUIRY, porch_child_termios_inquiry,
 	    t);
 	porch_ipc_register(ipc, IPC_TERMIOS_SET, porch_child_termios_set, t);
+	porch_ipc_register(ipc, IPC_ENV_SETUP, porch_child_env_setup, NULL);
 
 	/* Let the script commence. */
 	if (porch_release(ipc) != 0)

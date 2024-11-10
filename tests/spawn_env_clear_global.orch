@@ -1,0 +1,23 @@
+timeout(3)
+
+-- Check that clearing globals works.  If it did, then we can observe the BAZ
+-- we set being present but, e.g., USER is gone.
+spawn("openv")
+
+enqueue(function()
+	local path = getenv("PATH")
+
+	clearenv()
+	setenv("PATH", path)
+end)
+
+setenv("BAZ", "BAR")
+
+match "BAZ="
+
+fail(function()
+	exit(0)
+end)
+
+match "PORCHTESTS="
+exit(1)

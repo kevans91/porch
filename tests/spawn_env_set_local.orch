@@ -1,0 +1,16 @@
+timeout(3)
+
+-- Check that setting an environment variable at only the program level works.
+-- We know it worked if the change doesn't persist across spawns.
+spawn("openv")
+
+setenv("BAZ", "BAR", true)
+match "BAZ="
+
+spawn("openv")
+fail(function()
+	exit(0)
+end)
+
+match "BAZ="
+exit(1)

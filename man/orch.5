@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd September 19, 2024
+.Dd November 11, 2024
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -79,6 +79,12 @@ is merged into the current configuration.
 Currently, the only recognized configuration items are those described for the
 .Fn write
 function.
+.It Fn clearenv "local"
+Clear the environment.
+If
+.Fa local
+is truthy, then the environment is only cleared for the most recent
+.Fn spawn .
 .It Fn debug "string"
 Writes
 .Fa string
@@ -137,6 +143,15 @@ The
 function is not available as a direct child of a
 .Fn one
 block.
+.It Fn getenv "key"
+Get the value of
+.Fa key
+from the current environment.
+.Pp
+This directive is always processed immediately and may not be used in a queued
+context.
+.Fn getenv
+is expected to mostly be used for debugging purposes.
 .It Fn hexdump "string"
 Writes an
 .Xr hd 1
@@ -236,6 +251,19 @@ table's keys correspond to supported characters, e.g.,
 and the associated values are all truthy to indicate that they are supported.
 .Pp
 This directive is enqueued, not processed immediately.
+.It Fn setenv "key" "value" "local" , Fn setenv "table" "local"
+Set the environment variable
+.Fa key
+to
+.Va value
+in the environment.
+If
+.Fa local
+is truthy, then the value is only set for the most recent
+.Fn spawn .
+The
+.Fa table
+variant may be used to set multiple environment variables at once.
 .It Fn size "width" "height"
 Set or get the size of the terminal associated with the process.
 If at least one of

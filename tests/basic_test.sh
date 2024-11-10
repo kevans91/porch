@@ -1,5 +1,6 @@
 #!/bin/sh
 
+
 scriptdir=$(dirname $(realpath "$0"))
 if [ -n "$PORCHBIN" ]; then
 	porchbin="$PORCHBIN"
@@ -20,7 +21,15 @@ if [ -n "$PORCHLUA_PATH" ]; then
 	cd "$PORCHLUA_PATH"
 fi
 
+# For convenience, to guarantee that we have an env var to search for
+export PORCHTESTS=yes
+
+1>&2 echo "=========="
 1>&2 echo "Using binary: $porchbin"
+1>&2 echo "++ ENVIRONMENT"
+1>&2 env
+1>&2 echo "++"
+1>&2 echo "=========="
 
 fails=0
 testid=1

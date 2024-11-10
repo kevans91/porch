@@ -5,6 +5,7 @@
 --
 
 local core = require("porch.core")
+local env = require("porch.env")
 local tty = core.tty
 
 local MatchBuffer = {}
@@ -93,6 +94,7 @@ function Process:new(cmd, ctx)
 	pwrap.cfg = {}
 	pwrap.ctx = ctx
 	pwrap.is_raw = false
+	pwrap.env = env:new(ctx.env)
 
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
@@ -109,7 +111,11 @@ function Process:released()
 	return self._process:released()
 end
 function Process:release()
-	return self._process:release()
+	local penv
+	if self.env:dirty() then
+		penv = self.env
+	end
+	return self._process:release(penv)
 end
 function Process:read(func, timeout)
 	if timeout then

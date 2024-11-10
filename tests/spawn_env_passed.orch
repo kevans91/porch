@@ -3,4 +3,4 @@
 -- if nothing else is done.
 spawn("openv")
 
-match "USER="
+match "PORCHTESTS="

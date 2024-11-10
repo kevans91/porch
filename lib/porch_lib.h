@@ -34,7 +34,16 @@ enum porch_ipc_tag {
 	IPC_TERMIOS_INQUIRY,	/* Parent -> Child */
 	IPC_TERMIOS_SET,	/* Bidirectional */
 	IPC_TERMIOS_ACK,	/* Child -> Parent */
+	IPC_ENV_SETUP,		/* Parent -> Child */
+	IPC_ENV_ACK,		/* Child -> Parent */
 	IPC_LAST,
+};
+
+struct porch_env {
+	size_t			 setsz;
+	size_t			 unsetsz;
+	bool			 clear;
+	char			 envstr[];
 };
 
 struct porch_process {

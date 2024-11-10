@@ -249,6 +249,87 @@ actions.defined = {
 			return true
 		end,
 	},
+	-- Environment handling
+	clearenv = {
+		-- clearenv([local])
+		allow_direct = true,
+		init = function(action, args)
+			action.global = not args[1]
+		end,
+		execute = function(action)
+			local env
+			local current_process = action.ctx.process
+
+			if action.global then
+				env = action.ctx.env
+			elseif current_process then
+				if current_process:released() then
+					error("clearenv() called after process release")
+				end
+				env = current_process.env
+			else
+				error("clearenv(true) called before process spawned.")
+			end
+
+			env:clear()
+			return true
+		end,
+	},
+	getenv = {
+		-- getenv(k)
+		only_direct = true,
+		init = function(action, args)
+			action.key = args[1]
+		end,
+		execute = function(action)
+			local env
+			local current_process = action.ctx.process
+
+			if current_process then
+				env = current_process.env
+			else
+				env = action.ctx.env
+			end
+
+			return env[action.key]
+		end,
+	},
+	setenv = {
+		-- setenv(k, v[, local]) or setenv(kvtable[, local])
+		allow_direct = true,
+		init = function(action, args)
+			local k, v = args[1], args[2]
+
+			if type(k) == "table" then
+				action.env = k
+				action.global = not v
+			else
+				action.env = { [k] = v }
+				action.global = not args[3]
+			end
+
+		end,
+		execute = function(action)
+			local env
+			local current_process = action.ctx.process
+
+			if action.global then
+				env = action.ctx.env
+			elseif current_process then
+				if current_process:released() then
+					error("setenv() called after process release")
+				end
+				env = current_process.env
+			else
+				error("setenv(..., true) called before process spawned.")
+			end
+
+			for k, v in pairs(action.env) do
+				env[k] = v
+			end
+			return true
+		end,
+	},
 }
 
 return actions

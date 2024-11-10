@@ -1,0 +1,17 @@
+-- Check that we can set global environment variables, and that setting one var
+-- multiple times will take the later value.
+spawn("openv")
+
+setenv("BAZ", "BAR")
+setenv("BAZ", "LATEST")
+
+setenv("FOO", "XYZ")
+
+match "BAZ=LATEST"
+match "FOO=XYZ"
+
+spawn("openv")
+
+-- Should persist across spawns
+match "BAZ=LATEST"
+match "FOO=XYZ"

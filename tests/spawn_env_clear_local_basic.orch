@@ -1,0 +1,22 @@
+timeout(3)
+
+-- Check that clearing at the local spawn level works
+spawn("openv")
+
+enqueue(function()
+	local path = getenv("PATH")
+
+	clearenv(true)
+	setenv("PATH", path, true)
+end)
+
+setenv("BAZ", "BAR", true)
+
+match "BAZ="
+
+fail(function()
+	exit(0)
+end)
+
+match "PORCHTESTS="
+exit(1)

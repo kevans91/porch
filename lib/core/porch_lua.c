@@ -663,6 +663,92 @@ porchlua_process_write(lua_State *L)
 	return (1);
 }
 
+static bool
+porchlua_do_env(lua_State *L, struct porch_process *self, int index)
+{
+	struct porch_env *penv;
+	struct porch_ipc_msg *msg;
+	const char *setstr, *unsetstr;
+	size_t envsz, setsz, unsetsz;
+	int error;
+	bool clear = false;
+
+	/* Push the "expand" method */
+	lua_getfield(L, index, "expand");
+	lua_pushvalue(L, index);
+	lua_call(L, 1, 3);
+
+	clear = lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	/* Remaining: unset @ -1, set @ -2 */
+	unsetstr = lua_tolstring(L, -1, &unsetsz);
+	setstr = lua_tolstring(L, -2, &setsz);
+
+	if (setsz > 0 && setstr[setsz - 1] != '\0') {
+		luaL_pushfail(L);
+		lua_pushstring(L, "Malformed env string");
+		return (2);
+	}
+
+	assert(setsz != 0 || unsetsz != 0 || clear);
+
+	envsz = sizeof(*penv) + setsz + unsetsz;
+	msg = porch_ipc_msg_alloc(IPC_ENV_SETUP, envsz, (void **)&penv);
+	if (msg == NULL) {
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(ENOMEM));
+		return (2);
+	}
+
+	penv->clear = clear;
+	penv->setsz = setsz;
+	penv->unsetsz = unsetsz;
+	if (setsz > 0)
+		memcpy(&penv->envstr[0], setstr, setsz);
+	if (unsetsz > 0)
+		memcpy(&penv->envstr[setsz], unsetstr, unsetsz);
+	lua_pop(L, 2);
+
+	error = porch_ipc_send(self->ipc, msg);
+	if (error != 0)
+		error = errno;
+
+	porch_ipc_msg_free(msg);
+	msg = NULL;
+	if (error != 0)
+		goto err;
+
+	/* Wait for the ack */
+	if (porch_ipc_wait(self->ipc, NULL) == -1) {
+		error = errno;
+		goto err;
+	}
+
+	if (porch_ipc_recv(self->ipc, &msg) != 0) {
+		error = errno;
+		goto err;
+	} else if (msg == NULL) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "unknown unexpected message received");
+		return (2);
+	} else if (porch_ipc_msg_tag(msg) != IPC_ENV_ACK) {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "unexpected message type '%d'",
+		    porch_ipc_msg_tag(msg));
+		porch_ipc_msg_free(msg);
+		return (2);
+	}
+
+	porch_ipc_msg_free(msg);
+	return (0);
+
+err:
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(errno));
+	return (2);
+}
+
 static int
 porchlua_process_release(lua_State *L)
 {
@@ -670,6 +756,14 @@ porchlua_process_release(lua_State *L)
 	int error;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+
+	if (lua_istable(L, 2)) {
+		int ret;
+
+		ret = porchlua_do_env(L, self, 2);
+		if (ret != 0)
+			return (ret);
+	}
 
 	error = porch_release(self->ipc);
 	porch_ipc_close(self->ipc);
