@@ -575,11 +575,13 @@ function scripter.run_script(scriptfile, config)
 
 			state = current_ctx:state()
 			if state ~= CTX_QUEUE then
-				if not def.allow_direct then
+				if not def.allow_direct and not def.only_direct then
 					error(name .. " may not be called in a direct context")
 				end
 
 				return action:execute()
+			elseif def.only_direct then
+				error(name .. " may only be called in a direct context")
 			end
 
 			-- Defaults to true if unset.
