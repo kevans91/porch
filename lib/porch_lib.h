@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <termios.h>
@@ -118,11 +119,15 @@ extern const struct porchlua_tty_mode porchlua_cntrl_modes[];
 extern const struct porchlua_tty_mode porchlua_local_modes[];
 
 static inline int
-porch_lua_ipc_send_acked(lua_State *L, struct porch_process *proc,
-    struct porch_ipc_msg *msg, enum porch_ipc_tag ack_type)
+porch_lua_ipc_send_acked_payload(lua_State *L, struct porch_process *proc,
+    struct porch_ipc_msg **msgp, enum porch_ipc_tag ack_type, size_t *payloadsz,
+    void **payload)
 {
+	struct porch_ipc_msg *msg;
 	int error;
 
+	assert((payloadsz != NULL) == (payload != NULL));
+	msg = *msgp;
 	error = porch_ipc_send(proc->ipc, msg);
 	if (error != 0)
 		error = errno;
@@ -157,10 +162,63 @@ porch_lua_ipc_send_acked(lua_State *L, struct porch_process *proc,
 		return (2);
 	}
 
-	porch_ipc_msg_free(msg);
+	if (payloadsz == NULL) {
+		/* If we don't have a payload, we can tap out now. */
+		*msgp = NULL;
+		porch_ipc_msg_free(msg);
+	} else {
+		/*
+		 * Otherwise, we extract the payload details and return the
+		 * message that they came from for the caller to free at their
+		 * own leisure.
+		 */
+		*msgp = msg;
+		*payload = porch_ipc_msg_payload(msg, payloadsz);
+	}
+
 	return (0);
 err:
 	luaL_pushfail(L);
 	lua_pushstring(L, strerror(errno));
 	return (2);
+}
+
+static inline int
+porch_lua_ipc_send_acked(lua_State *L, struct porch_process *proc,
+    struct porch_ipc_msg *msg, enum porch_ipc_tag ack_type)
+{
+
+	return (porch_lua_ipc_send_acked_payload(L, proc, &msg, ack_type, NULL,
+	    NULL));
+}
+
+static inline int
+porch_lua_ipc_send_acked_errno(lua_State *L, struct porch_process *proc,
+    struct porch_ipc_msg *msg, enum porch_ipc_tag ack_type)
+{
+	int error, *errorp;
+	size_t psize;
+
+	error = porch_lua_ipc_send_acked_payload(L, proc, &msg, ack_type,
+	    &psize, (void **)&errorp);
+	if (error != 0)
+		return (error);
+
+	if (psize != sizeof(*errorp)) {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "expected payload of '%zu' bytes, got '%zu'",
+		    sizeof(*errorp), psize);
+		porch_ipc_msg_free(msg);
+		return (2);
+	}
+
+	error = *errorp;
+	porch_ipc_msg_free(msg);
+
+	if (error != 0) {
+		errno = error;
+		return (-1);
+	}
+
+	return (0);
 }
