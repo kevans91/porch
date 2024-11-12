@@ -29,6 +29,13 @@ usage(const char *name, int error)
 	exit(error);
 }
 
+static void __dead2
+version(void)
+{
+	printf("porch v%s\n", PORCH_VERSION);
+	exit(0);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -36,13 +43,15 @@ main(int argc, char *argv[])
 	const char *scriptf = "-";	/* stdin */
 	int ch;
 
-	while ((ch = getopt(argc, argv, "f:h")) != -1) {
+	while ((ch = getopt(argc, argv, "f:hV")) != -1) {
 		switch (ch) {
 		case 'f':
 			scriptf = optarg;
 			break;
 		case 'h':
 			usage(invoke_path, 0);
+		case 'V':
+			version();
 		default:
 			usage(invoke_path, 1);
 		}

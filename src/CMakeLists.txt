@@ -1,6 +1,7 @@
 
 file(GLOB porch_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
+add_compile_definitions(PORCH_VERSION="${CMAKE_PROJECT_VERSION}")
 add_compile_definitions(PORCHLUA_PATH="${PORCHLUA_PATH}")
 
 add_executable(porch ${porch_SOURCES})
