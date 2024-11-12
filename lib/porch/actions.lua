@@ -99,6 +99,21 @@ actions.defined = {
 			return true
 		end,
 	},
+	chdir = {
+		init = function(action, args)
+			action.dir = args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			if not current_process then
+				error("chdir() called before process spawned.")
+			end
+
+			current_process:chdir(action.dir)
+			return true
+		end,
+	},
 	eof = {
 		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: eof not observed\n",

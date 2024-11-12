@@ -107,6 +107,9 @@ function Process:new(cmd, ctx)
 	return pwrap
 end
 -- Proxied through to the wrapped process
+function Process:chdir(dir)
+	return assert(self._process:chdir(dir))
+end
 function Process:released()
 	return self._process:released()
 end

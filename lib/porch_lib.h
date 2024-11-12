@@ -38,6 +38,8 @@ enum porch_ipc_tag {
 	IPC_TERMIOS_ACK,	/* Child -> Parent */
 	IPC_ENV_SETUP,		/* Parent -> Child */
 	IPC_ENV_ACK,		/* Child -> Parent */
+	IPC_CHDIR,		/* Parent -> Child */
+	IPC_CHDIR_ACK,		/* Child -> Parent */
 	IPC_LAST,
 };
 

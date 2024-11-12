@@ -394,6 +394,43 @@ porchlua_process_drain(lua_State *L, struct porch_process *self)
 }
 
 static int
+porchlua_process_chdir(lua_State *L)
+{
+	struct porch_ipc_msg *msg;
+	struct porch_process *self;
+	const char *dir;
+	void *mdir;
+	size_t dirsz;
+	int error;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	dir = lua_tolstring(L, 2, &dirsz);
+	if (!porch_ipc_okay(self->ipc)) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "process already released");
+		return (2);
+	}
+
+	msg = porch_ipc_msg_alloc(IPC_CHDIR, dirsz + 1, &mdir);
+	if (msg == NULL)
+		goto err;
+
+	memcpy(mdir, dir, dirsz);
+	error = porch_lua_ipc_send_acked_errno(L, self, msg, IPC_CHDIR_ACK);
+	if (error < 0)
+		goto err;
+	else if (error > 0)
+		return (error);
+
+	lua_pushboolean(L, 1);
+	return (1);
+err:
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(errno));
+	return (2);
+}
+
+static int
 porchlua_process_close(lua_State *L)
 {
 	struct porch_process *self;
@@ -868,6 +905,7 @@ porchlua_process_eof(lua_State *L)
 
 #define	PROCESS_SIMPLE(n)	{ #n, porchlua_process_ ## n }
 static const luaL_Reg porchlua_process[] = {
+	PROCESS_SIMPLE(chdir),
 	PROCESS_SIMPLE(close),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),

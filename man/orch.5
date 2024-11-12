@@ -79,6 +79,14 @@ is merged into the current configuration.
 Currently, the only recognized configuration items are those described for the
 .Fn write
 function.
+.It Fn chdir
+Change the directory of the program most recently spawned.
+This must be called after
+.Fn spawn
+and before the process is releeased.
+There is currently no way to persistly
+.Xr chdir 2
+for every spawned process.
 .It Fn clearenv "local"
 Clear the environment.
 If

@@ -320,6 +320,33 @@ porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 	return (porch_ipc_send_nodata(ipc, IPC_ENV_ACK));
 }
 
+static int
+porch_child_chdir(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+{
+	const char *dir;
+	size_t dirsz;
+	int error, *errorp;
+
+	dir = porch_ipc_msg_payload(msg, &dirsz);
+	if (dir == NULL || dirsz == 0) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	error = 0;
+	if (chdir(dir) != 0)
+		error = errno;
+
+	msg = porch_ipc_msg_alloc(IPC_CHDIR_ACK, sizeof(error),
+	    (void **)&errorp);
+
+	*errorp = error;
+	error = porch_ipc_send(ipc, msg);
+	porch_ipc_msg_free(msg);
+
+	return (error);
+}
+
 static void
 porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
     struct termios *t)
@@ -337,6 +364,7 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 	    t);
 	porch_ipc_register(ipc, IPC_TERMIOS_SET, porch_child_termios_set, t);
 	porch_ipc_register(ipc, IPC_ENV_SETUP, porch_child_env_setup, NULL);
+	porch_ipc_register(ipc, IPC_CHDIR, porch_child_chdir, NULL);
 
 	/* Let the script commence. */
 	if (porch_release(ipc) != 0)
