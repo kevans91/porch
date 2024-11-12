@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <errno.h>
 #include <stdbool.h>
 #include <termios.h>
 
@@ -115,3 +116,51 @@ extern const struct porchlua_tty_mode porchlua_input_modes[];
 extern const struct porchlua_tty_mode porchlua_output_modes[];
 extern const struct porchlua_tty_mode porchlua_cntrl_modes[];
 extern const struct porchlua_tty_mode porchlua_local_modes[];
+
+static inline int
+porch_lua_ipc_send_acked(lua_State *L, struct porch_process *proc,
+    struct porch_ipc_msg *msg, enum porch_ipc_tag ack_type)
+{
+	int error;
+
+	error = porch_ipc_send(proc->ipc, msg);
+	if (error != 0)
+		error = errno;
+
+	porch_ipc_msg_free(msg);
+	msg = NULL;
+
+	if (error != 0) {
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(error));
+		return (2);
+	}
+
+	/* Wait for ack */
+	if (porch_ipc_wait(proc->ipc, NULL) == -1) {
+		error = errno;
+		goto err;
+	}
+
+	if (porch_ipc_recv(proc->ipc, &msg) != 0) {
+		error = errno;
+		goto err;
+	} else if (msg == NULL) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "unknown unexpected message received");
+		return (2);
+	} else if (porch_ipc_msg_tag(msg) != ack_type) {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "unexpected message type '%d'",
+		    porch_ipc_msg_tag(msg));
+		porch_ipc_msg_free(msg);
+		return (2);
+	}
+
+	porch_ipc_msg_free(msg);
+	return (0);
+err:
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(errno));
+	return (2);
+}

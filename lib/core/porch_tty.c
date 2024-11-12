@@ -275,48 +275,12 @@ porchlua_term_update(lua_State *L)
 	}
 
 	memcpy(msgterm, &self->term, sizeof(self->term));
-	error = porch_ipc_send(self->proc->ipc, msg);
+	error = porch_lua_ipc_send_acked(L, self->proc, msg, IPC_TERMIOS_ACK);
 	if (error != 0)
-		error = errno;
-
-	porch_ipc_msg_free(msg);
-	msg = NULL;
-
-	if (error != 0) {
-		luaL_pushfail(L);
-		lua_pushstring(L, strerror(error));
-		return (2);
-	}
-
-	/* Wait for ack */
-	if (porch_ipc_wait(self->proc->ipc, NULL) == -1) {
-		error = errno;
-		goto err;
-	}
-
-	if (porch_ipc_recv(self->proc->ipc, &msg) != 0) {
-		error = errno;
-		goto err;
-	} else if (msg == NULL) {
-		luaL_pushfail(L);
-		lua_pushstring(L, "unknown unexpected message received");
-		return (2);
-	} else if (porch_ipc_msg_tag(msg) != IPC_TERMIOS_ACK) {
-		luaL_pushfail(L);
-		lua_pushfstring(L, "unexpected message type '%d'",
-		    porch_ipc_msg_tag(msg));
-		porch_ipc_msg_free(msg);
-		return (2);
-	}
-
-	porch_ipc_msg_free(msg);
+		return (error);
 
 	lua_pushboolean(L, 1);
 	return (1);
-err:
-	luaL_pushfail(L);
-	lua_pushstring(L, strerror(errno));
-	return (2);
 }
 
 static int
