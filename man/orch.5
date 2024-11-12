@@ -199,6 +199,87 @@ An alias for the
 .Dq lua
 matcher.
 .El
+.It Fn raw "boolean"
+Changes the raw
+.Fn write
+state on the process.
+.It Fn release
+Releases a spawned process for execution.
+This is done implicitly when a
+.Fn match
+block is first encountered.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn setenv "key" "value" "local" , Fn setenv "table" "local"
+Set the environment variable
+.Fa key
+to
+.Va value
+in the environment.
+If
+.Fa local
+is truthy, then the value is only set for the most recent
+.Fn spawn .
+The
+.Fa table
+variant may be used to set multiple environment variables at once.
+.It Fn size "width" "height"
+Set or get the size of the terminal associated with the process.
+If at least one of
+.Fa width
+or
+.Fa height
+are not nil, then
+.Fn size
+will resize that dimension of the window.
+The new current size of the window is always returned.
+.Pp
+The window will start off on a fresh spawn with a width and height of 0.
+The size of the window is never persisted across processes.
+.Pp
+This directive is always processed immediately, and thus should always be used
+in either an
+.Fn enqueue
+or
+fail context.
+.It Fn sleep "duration"
+Sleeps for at least the specified
+.Fa duration ,
+in seconds.
+Fractional seconds are supported.
+As implemented,
+.Nm
+may delay execution for a little longer than the specified
+.Fa duration ,
+but not for any less time.
+.Pp
+This directive is enqueued, not processed immediately unless it's called from
+within a failure handler.
+.It Fn spawn "..."
+Spawns a new process.
+The arguments to
+.Fn spawn
+are in the traditional argv style.
+They may either be specified directly as arguments to the function, or they may
+instead be constructed as a single table.
+.Nm
+will execute a standard
+.Ev PATH
+search via
+.Xr execvp 3 .
+Note that the script's directory is added to
+.Ev PATH
+before execution begins.
+The spawned process will inherit the running environment.
+.Pp
+If the process cannot be spawned, then
+.Nm
+will exit.
+Note that only one process at a time may be matched against.
+If a new process is spawned, then the previous process will be killed and
+subsequent matches will be against the new process.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn stty "field" "set" "unset"
 Change the specified
 .Fa field
@@ -249,87 +330,6 @@ The
 table's keys correspond to supported characters, e.g.,
 .Dq tty.cc.VEOF ,
 and the associated values are all truthy to indicate that they are supported.
-.Pp
-This directive is enqueued, not processed immediately.
-.It Fn setenv "key" "value" "local" , Fn setenv "table" "local"
-Set the environment variable
-.Fa key
-to
-.Va value
-in the environment.
-If
-.Fa local
-is truthy, then the value is only set for the most recent
-.Fn spawn .
-The
-.Fa table
-variant may be used to set multiple environment variables at once.
-.It Fn size "width" "height"
-Set or get the size of the terminal associated with the process.
-If at least one of
-.Fa width
-or
-.Fa height
-are not nil, then
-.Fn size
-will resize that dimension of the window.
-The new current size of the window is always returned.
-.Pp
-The window will start off on a fresh spawn with a width and height of 0.
-The size of the window is never persisted across processes.
-.Pp
-This directive is always processed immediately, and thus should always be used
-in either an
-.Fn enqueue
-or
-fail context.
-.It Fn raw "boolean"
-Changes the raw
-.Fn write
-state on the process.
-.It Fn release
-Releases a spawned process for execution.
-This is done implicitly when a
-.Fn match
-block is first encountered.
-.Pp
-This directive is enqueued, not processed immediately.
-.It Fn sleep "duration"
-Sleeps for at least the specified
-.Fa duration ,
-in seconds.
-Fractional seconds are supported.
-As implemented,
-.Nm
-may delay execution for a little longer than the specified
-.Fa duration ,
-but not for any less time.
-.Pp
-This directive is enqueued, not processed immediately unless it's called from
-within a failure handler.
-.It Fn spawn "..."
-Spawns a new process.
-The arguments to
-.Fn spawn
-are in the traditional argv style.
-They may either be specified directly as arguments to the function, or they may
-instead be constructed as a single table.
-.Nm
-will execute a standard
-.Ev PATH
-search via
-.Xr execvp 3 .
-Note that the script's directory is added to
-.Ev PATH
-before execution begins.
-The spawned process will inherit the running environment.
-.Pp
-If the process cannot be spawned, then
-.Nm
-will exit.
-Note that only one process at a time may be matched against.
-If a new process is spawned, then the previous process will be killed and
-subsequent matches will be against the new process.
 .Pp
 This directive is enqueued, not processed immediately.
 .It Fn timeout "val"
