@@ -436,7 +436,7 @@ porchlua_process_close(lua_State *L)
 	struct porch_process *self;
 	pid_t wret;
 	int sig;
-	bool hasdrain, failed;
+	bool failed;
 
 	failed = false;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
@@ -560,7 +560,9 @@ porchlua_process_read(lua_State *L)
 
 	/* Crude */
 	if (tvp != NULL)
-			start = now = time(NULL);
+		start = now = time(NULL);
+	else
+		start = now = timeout = 0;
 	while ((tvp == NULL || now - start < timeout) && !self->error) {
 		FD_SET(fd, &rfd);
 		ret = select(fd + 1, &rfd, NULL, NULL, tvp);
