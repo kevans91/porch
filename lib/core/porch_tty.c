@@ -13,9 +13,6 @@
 #include "porch.h"
 #include "porch_lib.h"
 
-#include <lua.h>
-#include <lauxlib.h>
-
 #define	ORCHLUA_TERMHANDLE	"porch_term"
 
 #define	CNTRL_ENTRY(c, m)	{ c, #c, m }

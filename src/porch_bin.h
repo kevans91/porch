@@ -6,7 +6,5 @@
 
 #pragma once
 
-#include <lua.h>
-
 /* porch_interp.c */
 int porch_interp(const char *, const char *, int, const char * const []);
