@@ -55,7 +55,7 @@ blocks.
 imports only some parts of the Lua standard library for use in the
 .Ar scriptfile ,
 to minimize the chance of being able to conduct actions that are inherently
-incompatible with the queueing model that scripts are executed with.
+incompatible with the queuing model that scripts are executed with.
 Currently, only the
 .Fn assert
 and
@@ -102,7 +102,7 @@ with
 .Dq DEBUG:
 prepended and a newline appended to it.
 .Pp
-This directive is enqueued, not processed immediately unless it's called from
+This directive is enqueued, not processed immediately unless it is called from
 within a failure handler.
 .It Fn enqueue "function"
 Add
@@ -110,7 +110,7 @@ Add
 to the queue to be executed in script order.
 If
 .Fn enqueue
-is used in a context that doesn't execute the queue, such as from another
+is used in a context that does not execute the queue, such as from another
 enqueued callback or from a failure context, then it will immediately call the
 function instead of enqueueing it.
 .It Fn eof "timeout"
@@ -128,7 +128,7 @@ Exit with the designed
 .Fa status
 code.
 .Pp
-This directive is enqueued, not processed immediately unless it's called from
+This directive is enqueued, not processed immediately unless it is called from
 within a failure handler.
 .It Fn fail "function"
 Sets up a failure handler.
@@ -188,7 +188,7 @@ matcher, which interprets match patterns as lua patterns and executes them
 accordingly.
 Note that Lua string processing still applies for every pattern matcher.
 e.g.,
-.Dq \\\\r
+.Dq \er
 will be interpreted as a carriage return for these non-default pattern matchers.
 .Pp
 The following matcher options are available:
@@ -261,7 +261,7 @@ may delay execution for a little longer than the specified
 .Fa duration ,
 but not for any less time.
 .Pp
-This directive is enqueued, not processed immediately unless it's called from
+This directive is enqueued, not processed immediately unless it is called from
 within a failure handler.
 .It Fn spawn "..."
 Spawns a new process.
@@ -370,8 +370,7 @@ done by
 For example, if one wants to send a literal
 .Dq "^D"
 in non-raw mode, then
-.\" This isn't not ironic at all.
-.Dq "\\\\\\\\^D"
+.Dq "\e\e^D"
 is the correct sequence to do so.
 The first backslash escapes the second backslash, then
 .Nm
@@ -411,6 +410,7 @@ With no
 .Va delay ,
 .Nm
 will send each batch with no delay in between them.
+.El
 .El
 .Sh BLOCK PRIMITIVES
 .Ss Match Blocks
@@ -488,7 +488,7 @@ blocks that it contains.
 If some blocks have shorter timeouts than others, then
 .Nm
 will timeout after the shortest timeout it sees in the block at the time.
-If the shorter timeout block still doesn't match, it will be removed from
+If the shorter timeout block still does not match, it will be removed from
 consideration and we will wait up until the next shortest timeout would have
 expired.
 That is, a match will not be granted if the matching output comes in after the
@@ -507,7 +507,7 @@ timeout(3)
 -- match against.
 match "Hello"
 
--- You're also welcome to do this, if it feels more natural to you:
+-- You are also welcome to do this, if it feels more natural to you:
 match("t")
 
 -- This is effectively ignored since the only match block after it specifies an
@@ -515,7 +515,7 @@ match("t")
 -- it would use a one second timeout by default.
 timeout(1)
 
--- This one will fail to match, but we've configured a higher timeout than the
+-- This one will fail to match, but we have configured a higher timeout than the
 -- global timeout we configured above (one second).
 match "Friend" {
 	timeout = 5,
@@ -571,7 +571,7 @@ write "One\\r"
 
 -- These might feel a little bit awkward
 one(function()
-	-- This match block will end up used because it's specified first.
+	-- This match block will end up used because it is specified first.
 	match "ne" {
 		callback = function()
 			debug("This one will be called.")
