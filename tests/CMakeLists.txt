@@ -28,4 +28,4 @@ add_custom_target(check-install
 	WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 	DEPENDS check-setup)
 
-add_custom_target(check DEPENDS check-cli check-lib)
+add_custom_target(check DEPENDS check-cli check-lib check-man)
