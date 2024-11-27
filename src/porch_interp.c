@@ -137,6 +137,10 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 		/* config */
 		lua_createtable(L, 0, 1);
 
+		/* config.allow_exit */
+		lua_pushboolean(L, 1);
+		lua_setfield(L, -2, "allow_exit");
+
 		/* config.alter_path */
 		lua_pushboolean(L, 1);
 		lua_setfield(L, -2, "alter_path");
@@ -152,8 +156,8 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 			lua_setfield(L, -2, "command");
 		}
 
-		if (lua_pcall(L, 2, 1, 0) == LUA_OK)
-			status = lua_toboolean(L, -1) ? 0 : 1;
+		if (lua_pcall(L, 2, 2, 0) == LUA_OK && !lua_isnil(L, -2))
+			status = lua_toboolean(L, -2) ? 0 : 1;
 		else
 			status = porch_interp_error(L);
 	}

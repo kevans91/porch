@@ -421,7 +421,7 @@ local extra_actions = {
 			action.code = args[1]
 		end,
 		execute = function(action)
-			os.exit(action.code)
+			error({type = "exit", code = action.code})
 		end,
 	},
 	fail = {
@@ -537,6 +537,7 @@ local extra_actions = {
 }
 
 -- Valid config options:
+--   * allow_exit: boolean, allow a script to exit the process (default: false)
 --   * alter_path: boolean, add script's directory to $PATH (default: false)
 --   * command: argv table to pass to spawn
 function scripter.run_script(scriptfile, config)
@@ -613,7 +614,7 @@ function scripter.run_script(scriptfile, config)
 	end
 
 	if current_ctx.match_ctx_stack:empty() then
-		error("script did not define any actions")
+		return nil, "script did not define any actions"
 	end
 
 	-- To run the script, we'll grab the back of the context stack and process
@@ -621,11 +622,28 @@ function scripter.run_script(scriptfile, config)
 	while not done do
 		local run_ctx = current_ctx.match_ctx_stack:back()
 
-		if run_ctx:process() then
+		local ok, res = pcall(run_ctx.process, run_ctx)
+		if not ok then
+			-- res is an error object
+			if type(res) == "table" and res.type == "exit" then
+				assert(res.code ~= nil, "exit without return value")
+
+				if config and config.allow_exit then
+					os.exit(res.code)
+				end
+
+				return res.code
+			end
+
+			-- Bubble the error object back up to the caller.
+			return nil, res
+		end
+
+		if res then
 			current_ctx.match_ctx_stack:remove(run_ctx)
 			done = current_ctx.match_ctx_stack:empty()
 		elseif run_ctx:error() then
-			return false
+			return nil, "match error"
 		end
 	end
 
