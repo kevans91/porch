@@ -6,6 +6,7 @@
 
 local core = require("porch.core")
 local direct = require("porch.direct")
+local matchers = require("porch.matchers")
 local scripter = require("porch.scripter")
 local porch = {}
 
@@ -13,6 +14,10 @@ local porch = {}
 -- A user of this library may add to the porch.env before calling
 -- porch.run_script() and see their changes in the script's environment.
 porch.env = scripter.env
+
+-- Matchers available to the direct user.  The currently implemented matchers
+-- available in matchers.available[] are: lua (default), plain, posix.
+porch.matchers = matchers
 
 -- run_script(scriptfile[, config]): run `scriptfile` as a .porch script, with
 -- an optional configuration table that may be supplied.
