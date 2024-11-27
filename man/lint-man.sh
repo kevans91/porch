@@ -20,7 +20,7 @@ rc=0
 igorf=$(mktemp)
 trap 'rc=$?; rm -f "$igorf"; exit $rc' EXIT
 
-for page in man/man[0-9]/*.[0-9]; do
+for page in man/man*/*; do
 	if ! mandoc -Tlint -Wstyle "$page"; then
 		rc=1
 		1>&2 echo "ERROR: $page: mandoc -Tlint"

@@ -1,0 +1,181 @@
+.\"
+.\" Copyright (c) 2024, Kyle Evans <kevans@FreeBSD.org>
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.Dd November 23, 2024
+.Dt PORCH 3lua
+.Os
+.Sh NAME
+.Nm porch
+.Nd Lua library for
+.Xr porch 1
+.Sh SYNOPSIS
+.Bd -literal
+local porch = require('porch')
+.Ed
+.Pp
+.Bl -tag -width XXXX -compact
+.It Dv porch.env[ Ns So PROGNAME Sc ] = Sq bc
+.It Dv ok, err = porch.run_script(scriptfile[, config Ns ])
+.It Dv porch.reset()
+.It Dv porch.sleep(seconds)
+.It Dv porch.tty.iflag
+.It Dv porch.tty.oflag
+.It Dv porch.tty.cflag
+.It Dv porch.tty.lflag
+.It Dv porch.tty.cc
+.It Dv process = porch.spawn(argv0 Ns [, Ns argv...])
+.It Dv process.match(pattern[, matcher Ns ])
+.It Dv process.eof()
+.It Dv process.cfg(cfg)
+.It Dv process.chdir(dir)
+.It Dv process.close()
+.It Dv process.log(logfile)
+.It Dv process.raw(bool)
+.It Dv process.release()
+.It Dv process.stty(field[, set[, unset Ns ]])
+.It Dv process.write(text[, cfg Ns ])
+.It Dv process.clearenv([local])
+.It Dv process.getenv(key)
+.It Dv process.setenv(key, value[, local Ns ])
+.El
+.Sh DESCRIPTION
+The
+.Nm
+module is the lua interface to the
+.Xr porch 1
+program.
+The
+.Nm
+module exposes the following members directly:
+.Bl -tag -width XXXX
+.It Dv porch.env[ Ns So PROGNAME Sc ] = Sq bc
+Sets the global
+.Dv PROGNAME
+in the scripted environment.
+There is no limitation to what the caller may provide in the environment, it is
+expected that its main use will be to offer targeted methods to break out of
+the limited
+.Dq sandbox
+that the script runs in.
+.It Dv porch.run_script(scriptfile[, config Ns ])
+Run the script described by
+.Ar scriptfile .
+The caller may pass either a filename or an already-opened file stream.
+The
+.Dv porch.run_script
+function will return true if the script ran to completion without error, nil and
+an error if the script encountered a fatal error, or the value passed to the
+.Dv exit
+function that is provided in the scripted environment.
+.It Dv porch.reset()
+Completely resets the scripter state.
+This closes any process that may still be open, removes all actions specified by
+the current script, and resets the global timeout.
+The script file is only open long enough to read the script, so it does not need
+to be closed at reset time.
+.Pp
+This happens at the beginning of the
+.Dv porch.run_script
+call, but one may want to release all resources held by
+.Nm
+after completion if it is not expected to be used again.
+.It Dv porch.sleep(seconds)
+Sleep for at least the requested number of seconds.
+This is only exported because it is implemented for internal use, and some users
+could find it helpful to not need to import it from elsewhere.
+.It Dv process = porch.spawn(argv0 Ns [, Ns argv...])
+Spawns a new process described by the argument vector provided.
+This is an alternative to using
+.Dv porch.run_script ,
+as most of the same functionality available to
+.Xr orch 5
+scripts is also exposed via the
+.Dv process
+object.
+The
+.Dv argv0
+name is subject to a standard
+.Ev PATH
+search, unless the name contains a
+.Dq /
+character.
+.Pp
+See the below table for a description of the methods available for the
+.Dv process .
+.El
+.Pp
+The
+.Dv porch.tty
+table exposes various tty options for the current system:
+.Bl -bullet
+.It
+.Dv porch.tty.iflag
+.It
+.Dv porch.tty.oflag
+.It
+.Dv porch.tty.cflag
+.It
+.Dv porch.tty.lflag
+.It
+.Dv porch.tty.cc
+.El
+.Pp
+All of these are tables that map names to values that may be provided to the
+.Dv stty()
+function of a process.
+See your platform's termios documentation for more information on what the
+values represent.
+Only the
+.Dv lflag
+and
+.Dv cc
+tables are populated at the moment.
+.Pp
+The following process operations are available on the object returned by
+.Dv porch.spawn :
+.Bl -tag -width XXXX
+.It Dv process.match(pattern[, matcher Ns ])
+Attempts to match
+.Dv pattern
+with the given
+.Dv matcher ,
+which defaults to the Lua pattern matcher.
+Other matchers can be pulled from the
+.Dv porch.matchers.available
+table, which has the following keys:
+.Bl -bullet
+.It
+.Dv lua
+(default)
+.It
+.Dv plain
+.It
+.Dv posix
+(EREs)
+.El
+.It Dv process.eof()
+.It Dv process.cfg(cfg)
+.It Dv process.chdir(dir)
+.It Dv process.close()
+.It Dv process.log(logfile)
+.It Dv process.raw(bool)
+.It Dv process.release()
+.It Dv process.stty(field[, set[, unset Ns ]])
+.It Dv process.write(text[, cfg Ns ])
+.It Dv process.clearenv([local])
+.It Dv process.getenv(key)
+.It Dv process.setenv(key, value[, local Ns ])
+.El
+.Pp
+All of these functions operate as described in
+.Xr orch 5 ,
+unless otherwise-indicated inline above.
+.\".Sh EXAMPLES
+.Sh SEE ALSO
+.Xr porch 1 ,
+.Xr orch 5
+.Sh AUTHORS
+.An Kyle Evans
+.Aq kevans@FreeBSD.org

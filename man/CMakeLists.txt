@@ -1,7 +1,8 @@
 
-set(MANSECTIONS 1 5)
+set(MANSECTIONS 1 3lua 5)
 
 set(MAN1	porch.1)
+set(MAN3lua	porch.3lua)
 set(MAN5	orch.5)
 
 foreach(sect IN LISTS MANSECTIONS)
