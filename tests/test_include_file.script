@@ -1,0 +1,13 @@
+-- orch(1) script in disguise
+exit(9)
+
+-- We'll run this test three distinct times:
+--
+-- 1.) Include the file by name
+-- 2.) Include the file after pre-opening it
+-- 3.) Include the file after pre-opening it and skipping two lines
+--
+-- The third case should hit this exit instead, while the other two hit the
+-- above case.
+
+exit(18)

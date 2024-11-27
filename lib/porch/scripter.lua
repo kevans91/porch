@@ -281,8 +281,8 @@ local function include_file(ctx, file, alter_path, env)
 	local f = assert(core.open(file, alter_path))
 	local chunk = f:read("l")
 
-	if not chunk then
-		error(file .. " appears to be empty!")
+	if type(chunk) ~= "string" then
+		error(tostring(file) .. " appears to be empty!")
 	end
 
 	if chunk:match("^#!") then
@@ -293,7 +293,7 @@ local function include_file(ctx, file, alter_path, env)
 	end
 
 	chunk = chunk .. assert(f:read("a"))
-	local func = assert(load(chunk, "@" .. file, "t", env))
+	local func = assert(load(chunk, "@" .. tostring(file), "t", env))
 
 	assert(f:close())
 	return ctx:execute(func)

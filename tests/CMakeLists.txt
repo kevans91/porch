@@ -2,7 +2,8 @@ file(GLOB test_files
 	${CMAKE_CURRENT_SOURCE_DIR}/my_cat
 	${CMAKE_CURRENT_SOURCE_DIR}/*.lua
 	${CMAKE_CURRENT_SOURCE_DIR}/*.orch
-	${CMAKE_CURRENT_SOURCE_DIR}/*.sh)
+	${CMAKE_CURRENT_SOURCE_DIR}/*.sh
+	${CMAKE_CURRENT_SOURCE_DIR}/*.script)
 add_custom_target(check-setup
 	COMMAND cp ${test_files} ${CMAKE_CURRENT_BINARY_DIR})
 

@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#define	_FILE_OFFSET_BITS	64	/* Linux ino64 */
+
 #include <sys/param.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -131,41 +133,60 @@ porchlua_reset(lua_State *L)
 static int
 porchlua_open(lua_State *L)
 {
-	luaL_Stream *p;
+	luaL_Stream *op, *p;
 	const char *filename, *script;
 	int fd, rvals;
 	bool alter_path;
 
 	rvals = 1;
-	filename = luaL_checkstring(L, 1);
+	if (lua_type(L, 1) == LUA_TUSERDATA) {
+		filename = NULL;
+		op = (luaL_Stream *)luaL_checkudata(L, 1, LUA_FILEHANDLE);
+	} else {
+		filename = luaL_checkstring(L, 1);
+		op = NULL;
+	}
 	alter_path = lua_toboolean(L, 2);
 	script = NULL;
 
-	/* First open() sets up the sandbox state. */
-	if (!porchlua_cfg.initialized) {
-		int error;
+	/*
+	 * First open() sets up the sandbox state if we're running from a
+	 * filename.  If we're not, we don't have a sandbox.  It would probably
+	 * be nice to provide an API for the direct user to cope with that.
+	 */
+	if (filename != NULL) {
+		if (!porchlua_cfg.initialized) {
+			int error;
 
-		error = porchlua_open_init(filename, &script, alter_path);
-		if (error != 0) {
+			error = porchlua_open_init(filename, &script, alter_path);
+			if (error != 0) {
+				luaL_pushfail(L);
+				lua_pushstring(L, strerror(error));
+				return (true);
+			}
+		} else if (porchlua_cfg.dirfd == -1) {
 			luaL_pushfail(L);
-			lua_pushstring(L, strerror(error));
-			return (true);
+			lua_pushstring(L,
+			    "No sandbox granted (script opened from stdin)");
+			return (2);
+		} else {
+			script = filename;
 		}
-	} else if (porchlua_cfg.dirfd == -1) {
-		luaL_pushfail(L);
-		lua_pushstring(L,
-		    "No sandbox granted (script opened from stdin)");
-		return (2);
-	} else {
-		script = filename;
 	}
 
 	fd = -1;
-	if (porchlua_cfg.dirfd == -1) {
-		assert(script == filename);
-		fd = dup(STDIN_FILENO);
+	if (filename != NULL) {
+		if (porchlua_cfg.dirfd == -1) {
+			assert(script == filename);
+			fd = dup(STDIN_FILENO);
+			if (fd == -1)
+				return (luaL_fileresult(L, 0, "stdin"));
+		}
+	} else {
+		assert(op != NULL);
+		fd = dup(fileno(op->f));
 		if (fd == -1)
-			return (luaL_fileresult(L, 0, "stdin"));
+			return (luaL_fileresult(L, 0, NULL));
 	}
 
 	p = (luaL_Stream *)lua_newuserdata(L, sizeof(*p));
@@ -183,10 +204,25 @@ porchlua_open(lua_State *L)
 	 * to use luaL_fileresult() for success because this particular API
 	 * returns a file handle.
 	 */
-	if (p->f == NULL)
+	if (p->f == NULL) {
 		rvals = luaL_fileresult(L, 0, filename);
-	else
+	} else {
 		rvals = 1;
+		if (op != NULL) {
+			off_t foff;
+
+			/*
+			 * Restore the stream position for the file that we
+			 * copied, if we can.
+			 */
+			foff = ftello(op->f);
+			if (foff == (off_t)-1)
+				foff = 0;
+			if (foff != 0)
+				fseeko(p->f, foff, SEEK_SET);
+		}
+	}
+
 	if (script != filename)
 		free((void *)(uintptr_t)script);
 	return (rvals);
