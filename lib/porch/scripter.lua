@@ -535,6 +535,27 @@ local extra_actions = {
 			return true
 		end,
 	},
+	spawn = {
+		init = function(action, args)
+			action.cmd = args
+
+			if type(action.cmd[1]) == "table" then
+				if #action.cmd > 1 then
+					error("spawn: bad mix of table and additional arguments")
+				end
+				action.cmd = table.unpack(action.cmd)
+			end
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process then
+				assert(current_process:close())
+			end
+
+			action.ctx.process = process:new(action.cmd, action.ctx)
+			return true
+		end,
+	},
 }
 
 -- Valid config options:
