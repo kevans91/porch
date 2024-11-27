@@ -295,6 +295,7 @@ local function include_file(ctx, file, alter_path, env)
 	chunk = chunk .. assert(f:read("a"))
 	local func = assert(load(chunk, "@" .. file, "t", env))
 
+	assert(f:close())
 	return ctx:execute(func)
 end
 
