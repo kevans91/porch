@@ -77,11 +77,22 @@ for name, def in pairs(actions.defined) do
 
 		action.ctx = pwrap.ctx
 
+		local ok, res
+
 		if def.init then
-			def.init(action, args)
+			ok, res = pcall(def.init, action, args)
+			if not ok then
+				return nil, res
+			end
 		end
 
-		return action:execute()
+		ok, res = pcall(action.execute, action)
+		if not ok then
+			-- res is the error object
+			return nil, res
+		end
+
+		return res
 	end
 end
 
