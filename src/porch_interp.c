@@ -135,7 +135,7 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 		lua_pushstring(L, scriptf);
 
 		/* config */
-		lua_createtable(L, 0, 1);
+		lua_createtable(L, 0, 3);
 
 		/* config.allow_exit */
 		lua_pushboolean(L, 1);
