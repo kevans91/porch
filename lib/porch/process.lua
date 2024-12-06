@@ -89,6 +89,29 @@ function Process:new(cmd, ctx)
 	local pwrap = setmetatable({}, self)
 	self.__index = self
 
+	if ctx.remote then
+		-- Prefix the command with the remote configuration
+		if not ctx.remote["rsh"] then
+			error("rsh required for remote host spec")
+		end
+
+		local rsh_cmd = ctx.remote["rsh"]
+		local full_cmd = {}
+		for i = 1, #rsh_cmd do
+			full_cmd[i] = rsh_cmd[i]
+		end
+
+		-- Append the host, if it's set
+		if ctx.remote["host"] then
+			full_cmd[#full_cmd + 1] = ctx.remote["host"]
+		end
+
+		for i = 1, #cmd do
+			full_cmd[#full_cmd + 1] = cmd[i]
+		end
+
+		cmd = full_cmd
+	end
 	pwrap._process = assert(core.spawn(table.unpack(cmd)))
 	pwrap.buffer = MatchBuffer:new(pwrap, ctx)
 	pwrap.cfg = {}

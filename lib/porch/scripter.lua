@@ -558,10 +558,63 @@ local extra_actions = {
 	},
 }
 
+local function cmd_split(cmd)
+	local words = {}
+	local cmdword = ""
+	local escaped, quote
+	local idx = 1
+
+	while idx <= #cmd do
+		local chr = cmd:sub(idx, idx)
+		idx = idx + 1
+
+		if escaped then
+			cmdword = cmdword .. chr
+			escaped = false
+		elseif chr == "\\" then
+			escaped = true
+		elseif not quote and chr == " " or chr == "\t" then
+			words[#words + 1] = cmdword
+			cmdword = ""
+		elseif chr == "\"" or chr == "'" then
+			if quote then
+				-- Is it the same quote?
+				if chr ~= quote then
+					-- Add it to the word
+					cmdword = cmdword .. chr
+				else
+					-- Terminating the quote, we could still
+					-- have more word after this, so we
+					-- effectively just strip the quote
+					-- character and move on.
+					quote = nil
+				end
+			else
+				quote = chr
+			end
+		else
+			-- Any other character just gets added to the current
+			-- word.
+			cmdword = cmdword .. chr
+		end
+	end
+
+	if quote then
+		error("unterminated <" .. quote .. "> in cmd string <" .. cmd .. ">")
+	end
+
+	if #cmdword > 0 then
+		words[#words + 1] = cmdword
+	end
+
+	return words
+end
+
 -- Valid config options:
 --   * allow_exit: boolean, allow a script to exit the process (default: false)
 --   * alter_path: boolean, add script's directory to $PATH (default: false)
 --   * command: argv table to pass to spawn
+--   * remote: table, { rsh: string (command), host: string }
 function scripter.run_script(scriptfile, config)
 	local done
 
@@ -630,6 +683,15 @@ function scripter.run_script(scriptfile, config)
 	-- importing porch.lua are expected to be more explicit.
 	include_file(script_ctx, scriptfile, config and config.alter_path, current_env)
 	--current_ctx.match_ctx_stack:dump()
+
+	-- We have to get remote["rsh"] sorted out before we can spawn any
+	-- commands, since we'll need to prefix the command appropriately.
+	if config and config.remote then
+		current_ctx.remote = {
+			host = config.remote["host"],
+			rsh = cmd_split(config.remote["rsh"]),
+		}
+	end
 
 	if config and config.command then
 		current_ctx.process = process:new(config.command, current_ctx)
