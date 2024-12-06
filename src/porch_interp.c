@@ -145,15 +145,36 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 		lua_pushboolean(L, 1);
 		lua_setfield(L, -2, "alter_path");
 
-		if (argc > 0) {
-			/* config.command */
-			lua_createtable(L, argc, 0);
-			for (int i = 0; i < argc; i++) {
-				lua_pushstring(L, argv[i]);
-				lua_rawseti(L, -2, i + 1);
+		switch (porch_mode) {
+		case PMODE_REMOTE:
+			/* config.remote */
+			lua_createtable(L, 0, 2);
+
+			if (argc == 1 && argv[0][0] != '\0') {
+				/* config.remote[host] */
+				lua_pushstring(L, argv[0]);
+				lua_setfield(L, -2, "host");
 			}
 
-			lua_setfield(L, -2, "command");
+			/* config.remote[rsh] */
+			lua_pushstring(L, porch_rsh);
+			lua_setfield(L, -2, "rsh");
+
+			lua_setfield(L, -2, "remote");
+			break;
+		case PMODE_LOCAL:
+			if (argc > 0) {
+				/* config.command */
+				lua_createtable(L, argc, 0);
+				for (int i = 0; i < argc; i++) {
+					lua_pushstring(L, argv[i]);
+					lua_rawseti(L, -2, i + 1);
+				}
+
+				lua_setfield(L, -2, "command");
+			}
+
+			break;
 		}
 
 		if (lua_pcall(L, 2, 2, 0) == LUA_OK && !lua_isnil(L, -2))

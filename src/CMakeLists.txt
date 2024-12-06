@@ -12,3 +12,9 @@ target_link_libraries(porch core_static "${LUA_LIBRARIES}")
 
 install(TARGETS porch
 	DESTINATION "${PORCHLUA_BINDIR}")
+
+# Create some symlinks
+add_custom_command(TARGET porch POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E create_symlink porch rporch)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rporch"
+	DESTINATION "${PORCHLUA_BINDIR}")

@@ -3,11 +3,12 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd January 21, 2024
+.Dd December 5, 2024
 .Dt PORCH 1
 .Os
 .Sh NAME
-.Nm porch
+.Nm porch ,
+.Nm rporch
 .Nd Utility to orchestrate command line tools
 .Sh SYNOPSIS
 .Nm
@@ -15,6 +16,11 @@
 .Op Ar command Op Ar argument ..
 .Nm
 .Op Fl h
+.Pp
+.Nm rporch
+.Op Fl e Ar rsh
+.Op Fl f Ar scriptfile
+.Op Ar host
 .Sh DESCRIPTION
 The
 .Nm
@@ -42,7 +48,10 @@ for more detail on
 .Nm
 scripts.
 .Pp
-The following options are available:
+The following options are available for both
+.Nm
+and
+.Nm rporch :
 .Bl -tag -width indent
 .It Fl f Ar scriptfile
 Uses the named
@@ -57,6 +66,16 @@ to read the script from stdin, and is the default behavior.
 Show a usage statement.
 .El
 .Pp
+The following options are available for
+.Nm rporch
+only:
+.Bl -tag -width indent
+.It Fl e Ar rsh
+Execute the specified
+.Ar rsh
+program when spawning a command.
+.El
+.Pp
 If a
 .Ar command
 is specified, then
@@ -64,6 +83,31 @@ is specified, then
 will spawn it before executing the specified
 .Ar scriptfile .
 Execution will still be stalled until released, as described above.
+.Pp
+The
+.Nm rporch
+program is used to execute the
+.Ar scriptfile
+against programs on a remote host.
+The script is still primarily run on the executing host, but any spawned
+commands will be executed via the remote shell specified, in order of
+preference, by either the
+.Fl e
+argument or the
+.Ev PORCH_RSH
+environment variable.
+If neither of these are set,
+.Dq ssh
+will be used.
+The specified rsh string will be subjected to word-splitting, and some naive
+quote handling will be employed.
+.Sh ENVIRONMENT
+.Bl -tag -width indent
+.It Ev PORCH_RSH
+The remote shell progran to use for
+.Nm rporch
+connections.
+.El
 .Sh EXIT STATUS
 The
 .Nm

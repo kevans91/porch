@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "porch.h"
@@ -14,6 +15,12 @@
 #ifndef __dead2
 #define	__dead2	__attribute__((noreturn))
 #endif
+
+static const char *porch_shortopts = "f:hV";
+static const char *rporch_shortopts = "e:f:hV";
+
+enum porch_mode porch_mode = PMODE_LOCAL;
+const char *porch_rsh;
 
 static void __dead2
 usage(const char *name, int error)
@@ -25,7 +32,16 @@ usage(const char *name, int error)
 	else
 		f = stderr;
 
-	fprintf(f, "usage: %s [-f file] [command [argument ...]]\n", name);
+	switch (porch_mode) {
+	case PMODE_REMOTE:
+		fprintf(f, "usage: %s [-e rsh] [-f file] [host]\n", name);
+		break;
+	case PMODE_LOCAL:
+		fprintf(f, "usage: %s [-f file] [command [argument ...]]\n",
+		    name);
+		break;
+	}
+
 	exit(error);
 }
 
@@ -39,12 +55,31 @@ version(void)
 int
 main(int argc, char *argv[])
 {
-	const char *invoke_path = argv[0];
+	const char *invoke_base, *invoke_path = argv[0];
 	const char *scriptf = "-";	/* stdin */
+	const char *shortopts = porch_shortopts;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "f:hV")) != -1) {
+	if (argc == 0)
+		usage("<empty>", 1);
+
+	invoke_base = strrchr(invoke_path, '/');
+	if (invoke_base != NULL)
+		invoke_base++;
+	else
+		invoke_base = invoke_path;
+
+	if (strcmp(invoke_base, "rporch") == 0)
+		porch_mode = PMODE_REMOTE;
+
+	if (porch_mode == PMODE_REMOTE)
+		shortopts = rporch_shortopts;
+
+	while ((ch = getopt(argc, argv, shortopts)) != -1) {
 		switch (ch) {
+		case 'e':
+			porch_rsh = optarg;
+			break;
 		case 'f':
 			scriptf = optarg;
 			break;
@@ -59,6 +94,26 @@ main(int argc, char *argv[])
 
 	argc -= optind;
 	argv += optind;
+
+	if (porch_mode == PMODE_REMOTE) {
+		/*
+		 * May have a host specified to execute the script on.  We
+		 * explicitly allow no host in case the rsh script is designed
+		 * to connect to a single remote host without a host argument.
+		 * We don't allow more than one host.
+		 */
+		if (argc > 1)
+			usage(invoke_path, 1);
+
+		/*
+		 * We prefer an rsh specified via -e, but if omitted then we'll
+		 * take PORCH_RSH or default to "ssh".
+		 */
+		if (porch_rsh == NULL || porch_rsh[0] == '\0')
+			porch_rsh = getenv("PORCH_RSH");
+		if (porch_rsh == NULL || porch_rsh[0] == '\0')
+			porch_rsh = "ssh";
+	}
 
 	/*
 	 * If we have a command supplied, we'll spawn() it for the script just to
