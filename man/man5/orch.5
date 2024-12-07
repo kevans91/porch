@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd November 11, 2024
+.Dd December 6, 2024
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -207,6 +207,16 @@ An alias for the
 .Dq lua
 matcher.
 .El
+.It Fn pipe "commandstr"
+Execute the command in
+.Fa commandstr
+and pipe any output from it into the spawned process.
+Note that, unlike other actions that commands, the
+.Fn pipe
+action will only take the command as a string or a table that can be coerced
+into a command string.
+The result will be passed directly to
+.Fn io.popen .
 .It Fn raw "boolean"
 Changes the raw
 .Fn write

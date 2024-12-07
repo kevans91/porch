@@ -1,0 +1,6 @@
+
+spawn("cat")
+
+pipe("piped.sh")
+
+match "SECRET"

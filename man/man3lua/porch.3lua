@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd November 23, 2024
+.Dd December 6, 2024
 .Dt PORCH 3lua
 .Os
 .Sh NAME
@@ -32,6 +32,7 @@ local porch = require('porch')
 .It Dv process.chdir(dir)
 .It Dv process.close()
 .It Dv process.log(logfile)
+.It Dv process.pipe(commandstr)
 .It Dv process.raw(bool)
 .It Dv process.release()
 .It Dv process.stty(field[, set[, unset Ns ]])
@@ -160,6 +161,7 @@ table, which has the following keys:
 .It Dv process.chdir(dir)
 .It Dv process.close()
 .It Dv process.log(logfile)
+.It Dv process.pipe(commandstr)
 .It Dv process.raw(bool)
 .It Dv process.release()
 .It Dv process.stty(field[, set[, unset Ns ]])
