@@ -1,0 +1,14 @@
+
+spawn("ls", "-l")
+chdir("/")
+
+match "tmp"
+
+spawn("ls", "-l")
+
+fail(function()
+	exit(0)
+end)
+
+match "tmp"
+exit(1)
