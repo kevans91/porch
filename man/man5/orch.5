@@ -207,7 +207,7 @@ An alias for the
 .Dq lua
 matcher.
 .El
-.It Fn pipe "commandstr"
+.It Fn pipe "commandstr" "linefilter"
 Execute the command in
 .Fa commandstr
 and pipe any output from it into the spawned process.
@@ -217,6 +217,12 @@ action will only take the command as a string or a table that can be coerced
 into a command string.
 The result will be passed directly to
 .Fn io.popen .
+.Pp
+If a
+.Fa linefilter
+callback is passed, then every line from the given command will be ran through
+it and the result of the call written to the process instead.
+If the callback returns nil, then the line is skipped.
 .It Fn raw "boolean"
 Changes the raw
 .Fn write

@@ -165,6 +165,7 @@ actions.defined = {
 	pipe = {
 		init = function(action, args)
 			action.command = args[1]
+			action.linefilter = args[2]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
@@ -182,7 +183,13 @@ actions.defined = {
 				if not line then
 					break
 				end
-				current_process:write(line)
+
+				if action.linefilter then
+					line = action.linefilter(line)
+				end
+				if line then
+					current_process:write(line)
+				end
 			end
 
 			inpipe:close()

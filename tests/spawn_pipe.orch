@@ -2,5 +2,9 @@
 spawn("cat")
 
 pipe("piped.sh")
-
 match "SECRET"
+
+pipe("piped.sh", function(line)
+	return line:gsub("SECRET", "EXPOSED")
+end)
+match "EXPOSED "
