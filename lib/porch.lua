@@ -6,6 +6,7 @@
 
 local core = require("porch.core")
 local direct = require("porch.direct")
+local generator = require("porch.generator")
 local matchers = require("porch.matchers")
 local scripter = require("porch.scripter")
 local porch = {}
@@ -19,7 +20,11 @@ porch.env = scripter.env
 -- available in matchers.available[] are: lua (default), plain, posix.
 porch.matchers = matchers
 
--- run_script(scriptfile[, config]): run `scriptfile` as a .porch script, with
+-- generate_script(scriptfile, config): run the command described by the config
+-- and record an .orch script from the result.
+porch.generate_script = generator.generate_script
+
+-- run_script(scriptfile[, config]): run `scriptfile` as a .orch script, with
 -- an optional configuration table that may be supplied.
 --
 -- The currently recognized configuration items are `alter_path` (boolean) that
