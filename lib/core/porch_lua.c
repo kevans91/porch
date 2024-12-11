@@ -394,17 +394,21 @@ porchlua_process_close_alarm(int signo __unused)
 }
 
 static bool
-porchlua_process_killed(struct porch_process *self, int *signo)
+porchlua_process_killed(struct porch_process *self, int *signo, bool hang)
 {
+	int flags = hang ? 0 : WNOHANG;
 
 	assert(self->pid != 0);
-	if (waitpid(self->pid, &self->status, WNOHANG) != self->pid)
+	if (waitpid(self->pid, &self->status, flags) != self->pid)
 		return (false);
 
-	if (WIFSIGNALED(self->status))
-		*signo = WTERMSIG(self->status);
-	else
-		*signo = 0;
+	if (signo != NULL) {
+		if (WIFSIGNALED(self->status))
+			*signo = WTERMSIG(self->status);
+		else
+			*signo = 0;
+	}
+
 	self->pid = 0;
 
 	return (true);
@@ -476,7 +480,8 @@ porchlua_process_close(lua_State *L)
 
 	failed = false;
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if (self->pid != 0 && porchlua_process_killed(self, &sig) && sig != 0) {
+	if (self->pid != 0 && porchlua_process_killed(self, &sig, false) &&
+	    sig != 0) {
 		luaL_pushfail(L);
 		lua_pushfstring(L, "spawned process killed with signal '%d'", sig);
 		return (2);
@@ -678,7 +683,8 @@ porchlua_process_read(lua_State *L)
 				close(self->termctl);
 				self->termctl = -1;
 
-				if (!self->draining && porchlua_process_killed(self, &signo) &&
+				if (!self->draining &&
+				    porchlua_process_killed(self, &signo, false) &&
 				    signo != 0) {
 					luaL_pushfail(L);
 					lua_pushfstring(L,
