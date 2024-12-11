@@ -36,6 +36,10 @@ usage(const char *name, int error)
 	case PMODE_REMOTE:
 		fprintf(f, "usage: %s [-e rsh] [-f file] [host]\n", name);
 		break;
+	case PMODE_GENERATE:
+		fprintf(f, "usage: %s command -f file [argument ...]\n",
+		    name);
+		break;
 	case PMODE_LOCAL:
 		fprintf(f, "usage: %s [-f file] [command [argument ...]]\n",
 		    name);
@@ -56,8 +60,8 @@ int
 main(int argc, char *argv[])
 {
 	const char *invoke_base, *invoke_path = argv[0];
-	const char *scriptf = "-";	/* stdin */
-	const char *shortopts = porch_shortopts;
+	const char *scriptf;
+	const char *shortopts;
 	int ch;
 
 	if (argc == 0)
@@ -71,9 +75,21 @@ main(int argc, char *argv[])
 
 	if (strcmp(invoke_base, "rporch") == 0)
 		porch_mode = PMODE_REMOTE;
+	else if (strcmp(invoke_base, "porchgen") == 0)
+		porch_mode = PMODE_GENERATE;
 
-	if (porch_mode == PMODE_REMOTE)
+	switch (porch_mode) {
+	case PMODE_REMOTE:
 		shortopts = rporch_shortopts;
+	case PMODE_GENERATE:
+		shortopts = porch_shortopts;
+		scriptf = NULL;	/* Must be specified. */
+		break;
+	default:
+		shortopts = porch_shortopts;
+		scriptf = "-";	/* stdin */
+		break;
+	}
 
 	while ((ch = getopt(argc, argv, shortopts)) != -1) {
 		switch (ch) {
@@ -95,7 +111,8 @@ main(int argc, char *argv[])
 	argc -= optind;
 	argv += optind;
 
-	if (porch_mode == PMODE_REMOTE) {
+	switch (porch_mode) {
+	case PMODE_REMOTE:
 		/*
 		 * May have a host specified to execute the script on.  We
 		 * explicitly allow no host in case the rsh script is designed
@@ -113,6 +130,13 @@ main(int argc, char *argv[])
 			porch_rsh = getenv("PORCH_RSH");
 		if (porch_rsh == NULL || porch_rsh[0] == '\0')
 			porch_rsh = "ssh";
+		break;
+	case PMODE_GENERATE:
+		if (argc == 0 || scriptf == NULL)
+			usage(invoke_path, 1);
+		break;
+	default:
+		break;
 	}
 
 	/*

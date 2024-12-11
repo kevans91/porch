@@ -9,6 +9,7 @@
 extern enum porch_mode {
 	PMODE_LOCAL,
 	PMODE_REMOTE,
+	PMODE_GENERATE,
 } porch_mode;
 
 extern const char *porch_rsh;

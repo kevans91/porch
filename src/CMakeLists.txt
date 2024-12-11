@@ -15,6 +15,10 @@ install(TARGETS porch
 
 # Create some symlinks
 add_custom_command(TARGET porch POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E create_symlink porch rporch)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rporch"
+	COMMAND ${CMAKE_COMMAND} -E create_symlink porch porchgen
+	COMMAND ${CMAKE_COMMAND} -E create_symlink porch rporch
+)
+install(FILES
+	"${CMAKE_CURRENT_BINARY_DIR}/porchgen"
+	"${CMAKE_CURRENT_BINARY_DIR}/rporch"
 	DESTINATION "${PORCHLUA_BINDIR}")

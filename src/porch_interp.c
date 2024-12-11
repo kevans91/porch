@@ -127,12 +127,21 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 	if (luaL_dofile(L, porch_interp_script(porch_invoke_path)) != LUA_OK) {
 		status = porch_interp_error(L);
 	} else {
+		int nargs;
+
 		/*
-		 * porch table is now at the top of stack, fetch run_script()
-		 * and call it.  run_script(scriptf[, config])
+		 * porch table is now at the top of stack, fetch the appropriate
+		 * function and call it.
+		 *
+		 * porchgen: generate_script(config)
+		 * porch and rporch: run_script(scriptf[, config])
 		 */
-		lua_getfield(L, -1, "run_script");
+		if (porch_mode == PMODE_GENERATE)
+			lua_getfield(L, -1, "generate_script");
+		else
+			lua_getfield(L, -1, "run_script");
 		lua_pushstring(L, scriptf);
+		nargs = 2;	/* scriptf, config */
 
 		/* config */
 		lua_createtable(L, 0, 3);
@@ -162,6 +171,7 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 
 			lua_setfield(L, -2, "remote");
 			break;
+		case PMODE_GENERATE:
 		case PMODE_LOCAL:
 			if (argc > 0) {
 				/* config.command */
@@ -177,7 +187,7 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 			break;
 		}
 
-		if (lua_pcall(L, 2, 2, 0) == LUA_OK && !lua_isnil(L, -2))
+		if (lua_pcall(L, nargs, 2, 0) == LUA_OK && !lua_isnil(L, -2))
 			status = lua_toboolean(L, -2) ? 0 : 1;
 		else
 			status = porch_interp_error(L);
