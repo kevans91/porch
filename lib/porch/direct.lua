@@ -68,6 +68,9 @@ function DirectProcess:match(pattern, matcher)
 
 	return self._process:match(action)
 end
+function DirectProcess:proxy(...)
+	return self._process:proxy(...)
+end
 for name, def in pairs(actions.defined) do
 	-- Each of these gets a function that generates the action and then
 	-- subsequently executes it.

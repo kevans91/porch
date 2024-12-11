@@ -17,16 +17,22 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <time.h>
 #include <regex.h>
 #include <unistd.h>
 
 #include "porch.h"
 #include "porch_lib.h"
+
+#ifndef INFTIM
+#define	INFTIM	(-1)
+#endif
 
 #ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
@@ -559,6 +565,169 @@ again:
 	return (1);
 }
 
+static int
+porchlua_process_proxy_read(lua_State *L, int fd, int fn, bool *eof)
+{
+	char buf[4096];
+	ssize_t readsz;
+
+retry:
+	readsz = read(fd, buf, sizeof(buf));
+	if (readsz == -1 && errno == EINTR)
+		goto retry;
+	if (readsz == -1) {
+		int serrno = errno;
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serrno));
+		return (2);
+	}
+
+	lua_pushvalue(L, fn);
+	if (readsz == 0) {
+		*eof = true;
+		lua_pushnil(L);
+	} else {
+		lua_pushlstring(L, buf, readsz);
+	}
+
+	lua_call(L, 1, 0);
+	return (0);
+}
+
+/*
+ * proxy(file, outputfn, inputfn[, pulsefn]) -- signal that we're proxy'ing the
+ * `file` stream into the process.  Lines read from `file` will be passed into
+ * the `inputfn` for processing, and lines read from the process will be passed
+ * into the `outputfn` for processing.  This function will put the `file`
+ * stream into unbuffered mode.  The `pulsefn` will be invoked every second if
+ * there is no input or output.
+ */
+static int
+porchlua_process_proxy(lua_State *L)
+{
+	struct pollfd pfd[2];
+	struct porch_process *self;
+	luaL_Stream *p;
+	FILE *inf;
+	struct termios term;
+	int infd, outfd, ready, ret, timeout;
+	bool bailed, eof, has_pulse;
+
+	bailed = eof = false;
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	p = (luaL_Stream *)luaL_checkudata(L, 2, LUA_FILEHANDLE);
+	luaL_checktype(L, 3, LUA_TFUNCTION);	/* outputfn */
+	luaL_checktype(L, 4, LUA_TFUNCTION);	/* inputfn */
+	has_pulse = lua_gettop(L) >= 5 && !lua_isnil(L, 5);
+	if (has_pulse) {
+		luaL_checktype(L, 5, LUA_TFUNCTION);	/* pulsefn */
+		timeout = 1000;	/* pulsefn invoked every second. */
+	} else {
+		timeout = INFTIM;
+	}
+
+	inf = p->f;
+	outfd = self->termctl;
+
+	infd = dup(fileno(inf));
+	if (infd == -1) {
+		int serrno = errno;
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serrno));
+		return (2);
+	}
+
+	if (tcgetattr(infd, &term) == 0) {
+		term.c_lflag &= ~(ICANON | ISIG);
+
+		if (tcsetattr(infd, TCSANOW, &term) != 0) {
+			int serrno = errno;
+
+			luaL_pushfail(L);
+			lua_pushstring(L, strerror(serrno));
+			return (2);
+		}
+	} else if (errno != ENOTTY) {
+		int serrno = errno;
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serrno));
+		return (2);
+	}
+
+	pfd[0].fd = outfd;
+	pfd[0].events = POLLIN;
+
+	pfd[1].fd = infd;
+	pfd[1].events = POLLIN;
+
+	while (!eof) {
+		ready = poll(pfd, 2, timeout);
+		if (ready == -1 && errno == EINTR)
+			continue;
+		if (ready == -1) {
+			int serrno = errno;
+
+			luaL_pushfail(L);
+			lua_pushstring(L, strerror(serrno));
+			return (2);
+		}
+
+		if (ready == 0) {
+			assert(has_pulse);
+
+			lua_pushvalue(L, 5);
+			lua_call(L, 0, 1);
+			bailed = !lua_toboolean(L, -1);
+			lua_pop(L, 1);
+
+			if (bailed)
+				break;
+
+			continue;
+		}
+
+		if ((pfd[0].revents & POLLIN) != 0) {
+			ret = porchlua_process_proxy_read(L, outfd, 3, &eof);
+
+			if (ret > 0)
+				return (ret);
+
+			if (eof) {
+				if (self->pid == 0 ||
+				    porchlua_process_killed(self, NULL, true)) {
+					bailed = !WIFEXITED(self->status) ||
+					    WEXITSTATUS(self->status) != 0;
+				} else {
+					bailed = true;
+				}
+			}
+		}
+
+		if ((pfd[1].revents & POLLIN) != 0) {
+			ret = porchlua_process_proxy_read(L, infd, 4, &eof);
+			if (ret > 0)
+				return (ret);
+
+			if (eof)
+				bailed = true;
+		} else if (eof) {
+			/*
+			 * Signal EOF to the input function if we didn't have
+			 * any input, so that it can wrap up the script.
+			 */
+			lua_pushvalue(L, 4);
+			lua_pushnil(L);
+			lua_call(L, 1, 0);
+		}
+	}
+
+	lua_pushboolean(L, !bailed);
+	return (1);
+}
+
 /*
  * read(callback[, timeout]) -- returns true if we finished, false if we
  * hit EOF, or a fail, error pair otherwise.
@@ -951,6 +1120,7 @@ porchlua_process_eof(lua_State *L)
 static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(chdir),
 	PROCESS_SIMPLE(close),
+	PROCESS_SIMPLE(proxy),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(write),
 	PROCESS_SIMPLE(release),

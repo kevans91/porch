@@ -133,6 +133,12 @@ end
 function Process:chdir(dir)
 	return assert(self._process:chdir(dir))
 end
+function Process:proxy(...)
+	if not self:released() then
+		self:release()
+	end
+	return self._process:proxy(...)
+end
 function Process:released()
 	return self._process:released()
 end
