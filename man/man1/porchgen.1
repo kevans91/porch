@@ -1,0 +1,81 @@
+.\"
+.\" Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.Dd December 21, 2024
+.Dt PORCHGEN 1
+.Os
+.Sh NAME
+.Nm porchgen
+.Nd porch script generator
+.Sh SYNOPSIS
+.Nm
+.Fl f Ar scriptfile
+.Ar command Op Ar argument ..
+.Sh DESCRIPTION
+The
+.Nm
+utility generates an
+.Xr orch 5
+sxript based on user interaction with the spawned command.
+.Pp
+The following options are available for
+.Nm :
+.Bl -tag -width indent
+.It Fl f Ar scriptfile
+Names the
+.Ar scriptfile
+to create.
+.It Fl h
+Show a usage statement.
+.El
+.Pp
+.Nm
+operates by first spawning the requested
+.Ar command ,
+then polling for both output from the command and input from the user.
+A
+.Fn spawn
+statement is written to the
+.Ar scriptfile
+to match the
+.Ar command
+passed in.
+Output from the command is sent immediately to the user as it comes in, and
+internally recorded.
+When a line comes in from the user,
+.Nm
+records a
+.Fn match
+block from the last line of output recorded, and adds up to two previous lines
+of output in commented out
+.Fn match
+blocks for context that might have been necessary.
+A
+.Fn write
+statement is then issued for the line received before it is passed along to the
+.Ar command .
+.Pp
+Execution continues and blocks are emitted until either stdout of the command or
+stdin of
+.Nm
+reach EOF.
+.Sh EXIT STATUS
+The
+.Nm
+utility exits 0 on success, and >0 if an error occurs.
+EOF on the
+.Ar command
+stdout is considered an error if the process was signalled or exited with a
+non-zero exit code.
+EOF on stdin is currently always considered an error.
+.Sh SEE ALSO
+.Xr expect 1 ,
+.Xr porch 1 ,
+.Xr pts 4 ,
+.Xr orch 5
+.Sh AUTHORS
+.Nm
+was written by
+.An Kyle Evans Aq Mt kevans@FreeBSD.org .
