@@ -17,6 +17,7 @@
 #endif
 
 static const char *porch_shortopts = "f:hV";
+static const char *porchgen_shortopts = "f:hV";
 static const char *rporch_shortopts = "e:f:hV";
 
 enum porch_mode porch_mode = PMODE_LOCAL;
@@ -37,7 +38,7 @@ usage(const char *name, int error)
 		fprintf(f, "usage: %s [-e rsh] [-f file] [host]\n", name);
 		break;
 	case PMODE_GENERATE:
-		fprintf(f, "usage: %s command -f file [argument ...]\n",
+		fprintf(f, "usage: %s -f file command [argument ...]\n",
 		    name);
 		break;
 	case PMODE_LOCAL:
@@ -82,7 +83,7 @@ main(int argc, char *argv[])
 	case PMODE_REMOTE:
 		shortopts = rporch_shortopts;
 	case PMODE_GENERATE:
-		shortopts = porch_shortopts;
+		shortopts = porchgen_shortopts;
 		scriptf = NULL;	/* Must be specified. */
 		break;
 	default:
