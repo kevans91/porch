@@ -11,14 +11,23 @@ https://git.kevans.dev/kevans/porch, but it's additionally mirrored to
 [GitHub](https://github.com/kevans91/porch) for user-facing interactions.  Pull
 requests and Issues are open on GitHub.
 
+## Structure
+
+The project is structured as such:
+  - src: the porch(1) driver for orch(5) scripts
+  - lib: the C side of porch functionality
+  - share/lua: the Lua side of porch functionality
+  - share/examples, share/man: supporting materials
+  - tests: functional tests
+
+## Notes for porting
+
 porch(1) strives to be portable.  Currently supported platforms:
  - FreeBSD
  - OpenBSD
  - NetBSD
  - macOS
  - Linux (tested on Ubuntu only)
-
-## Notes for porting
 
 We build on all of the above platforms.  To build and actually use porch, one
 needs:
