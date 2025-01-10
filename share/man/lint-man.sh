@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ ! -d man ]; then
+if [ ! -d share/man ]; then
 	1>&2 echo "$0: must be run from the source root"
 	exit 1
 fi
@@ -12,7 +12,7 @@ elif ! command -v igor >/dev/null; then
 	exit 0
 fi
 
-MANPATH="$PWD"/man:$(manpath)
+MANPATH="$PWD"/share/man:$(manpath)
 export MANPATH
 
 rc=0
@@ -20,7 +20,7 @@ rc=0
 igorf=$(mktemp)
 trap 'rc=$?; rm -f "$igorf"; exit $rc' EXIT
 
-for page in man/man*/*; do
+for page in share/man/man*/*; do
 	if ! mandoc -Tlint -Wstyle "$page"; then
 		rc=1
 		1>&2 echo "ERROR: $page: mandoc -Tlint"

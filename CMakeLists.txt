@@ -24,7 +24,6 @@ set(PORCHLUA_BINDIR "bin"
 set(PORCHLUA_EXAMPLESDIR "share/examples/${CMAKE_PROJECT_NAME}"
 	CACHE PATH "Path to install .orch examples into")
 
-option(MANPAGES "Install manpages" ON)
 option(BUILD_DRIVER "Build the porch(1) driver" ON)
 
 set(warnings "-Wall -Wextra -Werror")
@@ -35,10 +34,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 add_subdirectory(lib)
-if(MANPAGES)
-	add_subdirectory(man)
-endif()
-
 add_subdirectory(share)
 
 if(BUILD_DRIVER)
