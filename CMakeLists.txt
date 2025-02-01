@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(porch VERSION 1.0)
+project(porch VERSION 1.1)
 
 find_package("Lua")
 
