@@ -64,3 +64,5 @@ for f in "$@"; do
 		not_ok "expected 0, exited with $rc"
 	fi
 done
+
+exit "$fails"
