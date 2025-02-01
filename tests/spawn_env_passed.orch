@@ -1,3 +1,8 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
 
 -- Simple test that the calling environment is passed through to the program
 -- if nothing else is done.

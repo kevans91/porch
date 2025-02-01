@@ -1,3 +1,9 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
 timeout(3)
 
 -- Check that clearing globals works.  If it did, then we can observe the BAZ

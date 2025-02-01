@@ -1,3 +1,9 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
 timeout(3)
 
 -- Check that clearing at the local spawn level works independent of the order.

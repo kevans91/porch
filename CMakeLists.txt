@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+
 cmake_minimum_required(VERSION 3.18)
 
 project(porch VERSION 1.1)

@@ -1,4 +1,9 @@
 #!/bin/sh
+#
+# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
 
 if [ ! -d share/man ]; then
 	1>&2 echo "$0: must be run from the source root"

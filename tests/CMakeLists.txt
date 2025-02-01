@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+
 file(GLOB test_files
 	${CMAKE_CURRENT_SOURCE_DIR}/my_cat
 	${CMAKE_CURRENT_SOURCE_DIR}/*.lua

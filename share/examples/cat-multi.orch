@@ -1,3 +1,9 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
 -- Executed like `./orch -f cat-multi.orch -- cat` -- this one won't spawn
 -- anything itself, so it must be done on the command line.
 

@@ -1,4 +1,9 @@
 #!/usr/bin/env -S porch -f
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
 
 -- On the same machine, open up `nc -l 9999` and play with it.
 spawn("nc", "localhost", "9999")

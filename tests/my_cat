@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# SPDX-License-Identifier: 0BSD
+#
 
 while read line; do
 	echo "$line"

@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+
 option(EXAMPLES "Install examples" ON)
 option(MANPAGES "Install manpages" ON)
 

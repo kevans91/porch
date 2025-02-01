@@ -1,3 +1,9 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
 timeout(3)
 
 -- We're in canonical mode, so it will be obvious if our ^D didn't get escaped

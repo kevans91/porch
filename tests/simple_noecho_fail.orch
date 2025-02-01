@@ -1,3 +1,9 @@
+--
+-- Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
 -- Our pts shouldn't be in non-canonical mode, so we shouldn't see this at all
 -- unless the tty is configured to echo.  That would invalidate a good chunk of
 -- our tests.

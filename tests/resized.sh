@@ -1,4 +1,9 @@
 #!/bin/sh
+#
+# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
 
 loop=1
 caught=0
