@@ -394,6 +394,48 @@ static const struct luaL_Reg porchlib[] = {
 };
 
 static void
+porchlua_install_signals(lua_State *L)
+{
+	const char * const *signames;
+	size_t signalcnt;
+
+	signalcnt = 0;
+	signames = porch_signames(&signalcnt);
+	assert(signalcnt != 0);
+
+	lua_newtable(L);
+	for (size_t signo = 0; signo < signalcnt; signo++) {
+		const char *signame;
+
+		/*
+		 * Signal #0 is special and we never map a name for it; for all
+		 * other signals, we'll map the name to the signal number.  Any
+		 * signals that don't have names are expected to be papered over
+		 * by the .orch script or lib user using their literal values
+		 * and losing the convenience of names.
+		 */
+		signame = signames[signo];
+		if (signo == 0 || signame == NULL)
+			continue;
+
+		/*
+		 * I suspect most platforms won't have returned a SIG prefix,
+		 * but it costs little to be flexible; this is certainly not
+		 * a hot path.
+		 */
+		if (strncmp(signame, "SIG", 3) != 0)
+			lua_pushfstring(L, "SIG%s", signame);
+		else
+			lua_pushstring(L, signame);
+		lua_pushinteger(L, signo);
+		lua_rawset(L, -3);
+	}
+
+	/* core.signals */
+	lua_setfield(L, -2, "signals");
+}
+
+static void
 porchlua_process_close_alarm(int signo __unused)
 {
 	/* XXX Ignored, just don't terminate us. */
@@ -1262,6 +1304,7 @@ luaopen_porch_core(lua_State *L)
 
 	luaL_newlib(L, porchlib);
 
+	porchlua_install_signals(L);
 	porchlua_setup_tty(L);
 
 	register_process_metatable(L);
