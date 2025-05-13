@@ -105,6 +105,9 @@ int porch_ipc_send(porch_ipc_t, struct porch_ipc_msg *);
 int porch_ipc_send_nodata(porch_ipc_t, enum porch_ipc_tag);
 int porch_ipc_wait(porch_ipc_t, bool *);
 
+/* porch_signal.c */
+const char * const *porch_signames(size_t *);
+
 /* porch_spawn.c */
 int porch_release(porch_ipc_t);
 int porch_spawn(int, const char *[], struct porch_process *, porch_ipc_handler *);
