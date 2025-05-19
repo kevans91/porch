@@ -1071,6 +1071,48 @@ porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
 }
 
 static int
+porchlua_process_signal(lua_State *L)
+{
+	struct porch_process *self;
+	int signal;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+
+	/*
+	 * We don't bother validating anything here in case they're wanting to
+	 * use a signal that we don't know about.  kill(2) can validate this
+	 * stuff better than we can.
+	 */
+	signal = luaL_checkinteger(L, 2);
+
+	if (self->ipc != NULL) {
+		/*
+		 * We don't accept signaling processes before they're released
+		 * for reasons, including because it doesn't seem useful to test
+		 * how porch(1) itself handles signals.
+		 */
+		luaL_pushfail(L);
+		lua_pushstring(L, "process not yet released");
+		return (2);
+	} else if (self->pid == 0) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "process has already terminated");
+	}
+
+	assert(self->pid > 0);
+	if (kill(self->pid, signal) != 0) {
+		int serrno = errno;
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(serrno));
+		return (2);
+	}
+
+	lua_pushboolean(L, 1);
+	return (1);
+}
+
+static int
 porchlua_process_term(lua_State *L)
 {
 	struct porch_term sterm;
@@ -1167,6 +1209,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(write),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(signal),
 	PROCESS_SIMPLE(term),
 	PROCESS_SIMPLE(eof),
 	{ NULL, NULL },
