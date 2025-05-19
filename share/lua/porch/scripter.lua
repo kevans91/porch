@@ -736,6 +736,7 @@ end
 
 -- Inherited from our environment
 scripter.env.assert = assert
+scripter.env.signals = core.signals
 scripter.env.string = string
 scripter.env.table = table
 scripter.env.tty = tty

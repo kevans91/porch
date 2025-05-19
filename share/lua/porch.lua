@@ -32,6 +32,9 @@ porch.generate_script = generator.generate_script
 -- (table) to indicate the argv of a process to spawn before running the script.
 porch.run_script = scripter.run_script
 
+-- signals: table of signal names, always with a SIG prefix.
+porch.signals = core.signals
+
 -- sleep(duration): sleep for the given duration, in seconds.  Fractional
 -- seconds are supported; core uses nanosleep(2) to implement sleep(), so this
 -- is at least somewhat high resolution.

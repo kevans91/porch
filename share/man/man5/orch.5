@@ -1,9 +1,9 @@
 .\"
-.\" Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+.\" Copyright (c) 2024, 2025 Kyle Evans <kevans@FreeBSD.org>
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd December 6, 2024
+.Dd May 18, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -266,6 +266,27 @@ in either an
 .Fn enqueue
 or
 fail context.
+.It Fn signal "signal"
+Send the specified
+.Fa signal
+to the current process.
+The process must have already been released, either implicitly or by explicit
+.Fn release ,
+prior to sending a signal.
+It is recommended to match at least one known output from the process before
+sending a signal.
+.Pp
+Signal names known on the current platform are exposed in the
+.Va signals
+table.
+The keys of this table are signal names with a
+.Dq SIG
+prefix.
+Signals not described in this table are also accepted.
+.Nm
+relies on
+.Xr kill 2
+to validate the signal for maximum flexibility.
 .It Fn sleep "duration"
 Sleeps for at least the specified
 .Fa duration ,

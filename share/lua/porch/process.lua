@@ -161,6 +161,9 @@ function Process:raw(is_raw)
 	self.is_raw = is_raw
 	return prev_raw
 end
+function Process:signal(signo)
+	return self._process:signal(signo)
+end
 function Process:write(data, cfg)
 	if not self.is_raw then
 		-- Convert ^[A-Z] -> cntrl sequence

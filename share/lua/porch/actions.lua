@@ -222,6 +222,24 @@ actions.defined = {
 			return true
 		end,
 	},
+	signal = {
+		init = function(action, args)
+			action.signo = args[1]
+		end,
+		execute = function(action)
+			local signo = action.signo
+			local current_process = action.ctx.process
+
+			if not current_process then
+				error("signal() called before process spawned.")
+			elseif not current_process:released() then
+				error("signal() called before process release")
+			end
+
+			current_process:signal(signo)
+			return true
+		end,
+	},
 	stty = {
 		init = function(action, args)
 			local field = args[1]

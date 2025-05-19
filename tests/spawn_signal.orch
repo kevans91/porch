@@ -1,0 +1,40 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+spawn("echo_prompt.sh")
+
+match ">>"
+write "Test Line\r"
+match "Test Line"
+
+match ">>"
+signal(signals.SIGINT)
+match "Interrupt"
+
+write "Test Line\r"
+match "Test"
+
+match ">>"
+signal(signals.SIGINT)
+match "Interrupt"
+
+write "Test Line\r"
+match "Test"
+
+match ">>"
+signal(signals.SIGINT)
+match "Interrupt"
+
+-- This isn't necessary on all platforms.  Two different behaviors have been
+-- observed when /bin/sh receives the trapped SIGINT during a `read`:  resume
+-- execution after the read, and replaying the read.  For implementations that
+-- do the latter, we need one more write to trigger the script to continue
+-- and re-evaluate the condition to exit.  We don't try to match() on this one,
+-- though, because the former implementations will most likely have advanced
+-- past the post-prompt echo already.
+write "Test Line\r"
+
+eof()

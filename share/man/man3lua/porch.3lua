@@ -1,9 +1,9 @@
 .\"
-.\" Copyright (c) 2024, Kyle Evans <kevans@FreeBSD.org>
+.\" Copyright (c) 2024, 2025 Kyle Evans <kevans@FreeBSD.org>
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd December 6, 2024
+.Dd May 18, 2025
 .Dt PORCH 3lua
 .Os
 .Sh NAME
@@ -19,6 +19,7 @@ local porch = require('porch')
 .It Dv porch.env[ Ns So PROGNAME Sc ] = Sq bc
 .It Dv ok, err = porch.run_script(scriptfile[, config Ns ])
 .It Dv porch.reset()
+.It Dv porch.signals
 .It Dv porch.sleep(seconds)
 .It Dv porch.tty.iflag
 .It Dv porch.tty.oflag
@@ -35,6 +36,7 @@ local porch = require('porch')
 .It Dv process.pipe(commandstr , linefilter )
 .It Dv process.raw(bool)
 .It Dv process.release()
+.It Dv process.signal(signo)
 .It Dv process.stty(field[, set[, unset Ns ]])
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
@@ -108,6 +110,13 @@ See the below table for a description of the methods available for the
 .El
 .Pp
 The
+.Dv porch.signals
+table maps signal names to their corresponding values.
+The keys to this table are signal names with a
+.Dv SIG
+prefix.
+.Pp
+The
 .Dv porch.tty
 table exposes various tty options for the current system:
 .Bl -bullet
@@ -164,6 +173,7 @@ table, which has the following keys:
 .It Dv process.pipe(commandstr , linefilter )
 .It Dv process.raw(bool)
 .It Dv process.release()
+.It Dv process.signal(signo)
 .It Dv process.stty(field[, set[, unset Ns ]])
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
