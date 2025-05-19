@@ -14,17 +14,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
         lua: [5.3, 5.4]
         include:
-          - os: ubuntu-20.04
           - os: ubuntu-22.04
+          - os: ubuntu-24.04
           - os: macos-latest
             lua: 5.4
             pkgs: cmake coreutils lua@5.4
         exclude:
-          - os: ubuntu-20.04
-            lua: 5.4
           - os: macos-latest
             lua: 5.3
     steps:
