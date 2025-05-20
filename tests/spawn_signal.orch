@@ -37,4 +37,41 @@ match "Interrupt"
 -- past the post-prompt echo already.
 write "Test Line\r"
 
-eof()
+local invoked = 0
+
+eof(nil, function(status)
+	local exit_code = assert(status:status())
+
+	assert(status:is_exited(), "Expected process exit reflected in wait status")
+	assert(exit_code == 37,
+	    "Expected exit status of 37, got " .. exit_code)
+	invoked = invoked + 1
+end)
+
+enqueue(function()
+	assert(invoked == 1,
+	    "Expected eof() callback to be invoked once here, not " .. invoked ..
+	    " time(s)")
+end)
+
+spawn("echo_prompt.sh")
+
+match ">>"
+write "Test Line\r"
+match "Test Line"
+
+signal(signals.SIGKILL)
+eof(nil, function(status)
+	local signo = assert(status:status())
+
+	assert(status:is_signaled(), "Expected process signal reflected in wait status")
+	assert(signo == signals.SIGKILL,
+	    "Expected signal " .. signals.SIGKILL .. ", got " .. signo)
+	invoked = invoked + 1
+end)
+
+enqueue(function()
+	assert(invoked == 2,
+	    "Expected eof() callback to be invoked twice here, not " .. invoked ..
+	    " time(s)")
+end)

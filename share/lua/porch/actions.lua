@@ -120,23 +120,28 @@ actions.defined = {
 		end,
 		init = function(action, args)
 			action.timeout = args[1] or action.ctx.timeout
+			action.callback = args[2]
 		end,
 		execute = function(action)
 			local ctx = action.ctx
-			local buffer = ctx.process.buffer
+			local current_process = action.ctx.process
+			local buffer = current_process.buffer
 
-			if buffer.eof then
-				return true
-			end
-
-			local function discard()
-			end
-
-			buffer:refill(discard, action.timeout)
 			if not buffer.eof then
-				if not ctx:fail(action, buffer:contents()) then
-					return false
+				local function discard()
 				end
+
+				buffer:refill(discard, action.timeout)
+				if not buffer.eof then
+					if not ctx:fail(action, buffer:contents()) then
+						return false
+					end
+				end
+			end
+
+			if action.callback then
+				local status = assert(current_process:eof())
+				action.callback(status)
 			end
 
 			return true

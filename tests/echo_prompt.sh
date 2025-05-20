@@ -8,3 +8,7 @@ while [ "$signals" -lt 3 ]; do
 	read line
 	echo "$line"
 done
+
+# Exit with some arbitrary status so that we can test the :status() method of
+# our pstatus objects.
+exit 37
