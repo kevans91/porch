@@ -12,6 +12,7 @@
 
 #include <assert.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdlib.h>
@@ -489,7 +490,7 @@ static const luaL_Reg porchlua_regex_meta[] = {
 };
 
 static void
-register_regex_metatable(lua_State *L)
+porchlua_register_regex_metatable(lua_State *L)
 {
 	luaL_newmetatable(L, ORCHLUA_REGEXHANDLE);
 	luaL_setfuncs(L, porchlua_regex_meta, 0);
@@ -538,7 +539,7 @@ luaopen_porch_core(lua_State *L)
 	porchlua_setup_tty(L);
 
 	porchlua_register_process_metatable(L);
-	register_regex_metatable(L);
+	porchlua_register_regex_metatable(L);
 
 	return (1);
 }
