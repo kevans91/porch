@@ -27,6 +27,9 @@
 #define	INFTIM	(-1)
 #endif
 
+#define	ORCHLUA_PSTATUSHANDLE	"porchlua_process_status"
+static void porchlua_register_pstatus_metatable(lua_State *L);
+
 static void
 porchlua_process_close_alarm(int signo __unused)
 {
@@ -203,9 +206,26 @@ static int
 porchlua_process_eof(lua_State *L)
 {
 	struct porch_process *self;
+	int *status;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	lua_pushboolean(L, self->eof);
+	if (!self->eof) {
+		lua_pushboolean(L, 0);
+		return (1);
+	}
+
+	/*
+	 * If we hit EOF, we'll generate a pstatus object that the caller can
+	 * either discard or pass around for examination.
+	 */
+	if (self->pid != 0)
+		(void)porchlua_process_killed(self, NULL, true);
+
+	assert(self->pid == 0);
+	status = lua_newuserdata(L, sizeof(*status));
+	*status = self->status;
+	luaL_setmetatable(L, ORCHLUA_PSTATUSHANDLE);
+
 	return (1);
 }
 
@@ -824,7 +844,100 @@ porchlua_register_process_metatable(lua_State *L)
 	luaL_newlibtable(L, porchlua_process);
 	luaL_setfuncs(L, porchlua_process, 0);
 	lua_setfield(L, -2, "__index");
-
 	lua_pop(L, 1);
+
+	porchlua_register_pstatus_metatable(L);
 }
 
+static int
+porchlua_pstatus_is_exited(lua_State *L)
+{
+	int *status;
+
+	status = luaL_checkudata(L, 1, ORCHLUA_PSTATUSHANDLE);
+	lua_pushboolean(L, WIFEXITED(*status));
+	return (1);
+}
+
+static int
+porchlua_pstatus_is_signaled(lua_State *L)
+{
+	int *status;
+
+	status = luaL_checkudata(L, 1, ORCHLUA_PSTATUSHANDLE);
+	lua_pushboolean(L, WIFSIGNALED(*status));
+	return (1);
+}
+
+static int
+porchlua_pstatus_is_stopped(lua_State *L)
+{
+	int *status;
+
+	status = luaL_checkudata(L, 1, ORCHLUA_PSTATUSHANDLE);
+	lua_pushboolean(L, WIFSTOPPED(*status));
+	return (1);
+}
+
+static int
+porchlua_pstatus_status(lua_State *L)
+{
+	int *status;
+	int retvals = 0;
+
+	status = luaL_checkudata(L, 1, ORCHLUA_PSTATUSHANDLE);
+	if (WIFEXITED(*status)) {
+		lua_pushinteger(L, WEXITSTATUS(*status));
+		retvals = 1;
+	} else if (WIFSIGNALED(*status)) {
+		lua_pushinteger(L, WTERMSIG(*status));
+		retvals = 1;
+	} else if (WIFSTOPPED(*status)) {
+		lua_pushinteger(L, WSTOPSIG(*status));
+		retvals = 1;
+	} else {
+		luaL_pushfail(L);
+		lua_pushfstring(L, "unable to extract status from wait status: %x",
+		    *status);
+		retvals = 2;
+	}
+
+	return (retvals);
+}
+
+static int
+porchlua_pstatus_raw_status(lua_State *L)
+{
+	int *status;
+
+	status = luaL_checkudata(L, 1, ORCHLUA_PSTATUSHANDLE);
+	lua_pushinteger(L, *status);
+	return (1);
+}
+
+#define	PSTATUS_SIMPLE(n)	{ #n, porchlua_pstatus_ ## n }
+static const luaL_Reg porchlua_pstatus[] = {
+	PSTATUS_SIMPLE(is_exited),
+	PSTATUS_SIMPLE(is_signaled),
+	PSTATUS_SIMPLE(is_stopped),
+	PSTATUS_SIMPLE(status),
+	PSTATUS_SIMPLE(raw_status),
+	{ NULL, NULL },
+};
+
+static const luaL_Reg porchlua_pstatus_meta[] = {
+	{ "__index", NULL },	/* Set during registration */
+	{ NULL, NULL },
+};
+
+static void
+porchlua_register_pstatus_metatable(lua_State *L)
+{
+	luaL_newmetatable(L, ORCHLUA_PSTATUSHANDLE);
+	luaL_setfuncs(L, porchlua_pstatus_meta, 0);
+
+	luaL_newlibtable(L, porchlua_pstatus);
+	luaL_setfuncs(L, porchlua_pstatus, 0);
+	lua_setfield(L, -2, "__index");
+	lua_pop(L, 1);
+}
