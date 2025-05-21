@@ -21,7 +21,7 @@ local function porchloader(modname)
 		return
 	end
 
-	local function loadlua(modname, chunk)
+	local function loadlua(_, chunk)
 		return chunk()
 	end
 
@@ -54,12 +54,12 @@ local function porchloader(modname)
 		local function clib_path(name, ext)
 			return libpath .. "/" .. name .. "/" .. name .. ext
 		end
-		local function try_clib(name, ext)
+		local function try_clib(ext)
 			return package.loadlib(clib_path(modname, ext), "luaopen_porch_" ..
 			    modname)
 		end
 
-		local openfunc = try_clib(modname, ".so") or try_clib(modname, ".dylib")
+		local openfunc = try_clib(".so") or try_clib(".dylib")
 		if not openfunc then
 			-- luapath is optional, so if we fail here then that could
 			-- mean we're looking at a .lua file that should just fall
@@ -67,8 +67,8 @@ local function porchloader(modname)
 			return
 		end
 
-		local function loadc(modname, openfunc)
-			return openfunc()
+		local function loadc(_, opener)
+			return opener()
 		end
 
 		return loadc, openfunc

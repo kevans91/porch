@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-2-Clause
 --
 
-local ltest = require('./libtest')
+require('./libtest')
 local porch = require('porch')
 local rval
 
