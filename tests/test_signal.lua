@@ -34,7 +34,8 @@ assert(echo:match("Interrupt"), "Third signal did not send")
 
 assert(echo:write("Test Line\r"))
 
-local exit_status = assert(echo:eof(), "Process failed to exit")
+local _, exit_status = echo:eof()
+assert(exit_status, "Process failed to exit")
 local exit_code = assert(exit_status:status())
 
 assert(exit_status:is_exited(), "Expected process exit reflected in wait status")
@@ -49,7 +50,8 @@ assert(echo:write("Test Line\r"))
 assert(echo:match("Test Line"), "Script does not appear functional")
 assert(echo:signal(signals.SIGKILL))
 
-exit_status = assert(echo:eof(), "Process failed to exit")
+_, exit_status = echo:eof()
+assert(exit_status, "Process failed to exit")
 local signo = assert(exit_status:status())
 
 assert(exit_status:is_signaled(), "Expected process signal reflected in wait status")

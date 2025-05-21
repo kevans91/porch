@@ -134,8 +134,12 @@ actions.defined = {
 			end
 
 			if action.callback then
-				local status = assert(current_process:eof())
-				action.callback(status)
+				local is_eof, status = current_process:eof(action.timeout)
+				assert(is_eof)
+
+				if status then
+					action.callback(status)
+				end
 			end
 
 			return true

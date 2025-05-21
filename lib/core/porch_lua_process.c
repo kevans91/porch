@@ -211,27 +211,67 @@ static int
 porchlua_process_eof(lua_State *L)
 {
 	struct porch_process *self;
-	int *status;
+	int *status, timeout;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+
+	/*
+	 * We take a timeout in case we need to wait(2) on the process.  Just
+	 * beccause we've observed EOF, that doesn't strictly mean that the
+	 * process will be exiting; perhaps it closed stdout/stderr for some
+	 * other reason.
+	 */
+	timeout = -1;
+	if (lua_gettop(L) >= 2 && !lua_isnil(L, 2))
+		timeout = luaL_checkinteger(L, 2);
+
 	if (!self->eof) {
 		lua_pushboolean(L, 0);
 		return (1);
 	}
 
+	lua_pushboolean(L, 1);
+
 	/*
 	 * If we hit EOF, we'll generate a pstatus object that the caller can
 	 * either discard or pass around for examination.
 	 */
-	if (self->pid != 0)
-		(void)porchlua_process_killed(self, NULL, true);
+	if (self->pid != 0) {
+		bool hang, killed;
+
+		hang = true;
+		if (timeout > 0) {
+			struct sigaction sigalrm = {
+				.sa_handler = porchlua_process_close_alarm,
+			};
+
+			sigaction(SIGALRM, &sigalrm, NULL);
+			alarm(timeout);
+		} else if (timeout == 0) {
+			hang = false;
+		}
+
+		killed = porchlua_process_killed(self, NULL, hang);
+
+		if (timeout > 0) {
+			alarm(0);
+			signal(SIGALRM, SIG_DFL);
+		}
+
+		/*
+		 * It's possible that we hit EOF without having exited yet, in
+		 * which case we'll just return true rather than a wait status.
+		 */
+		if (!killed)
+			return (1);
+	}
 
 	assert(self->pid == 0);
 	status = lua_newuserdata(L, sizeof(*status));
 	*status = self->status;
 	luaL_setmetatable(L, ORCHLUA_PSTATUSHANDLE);
 
-	return (1);
+	return (2);
 }
 
 static int
