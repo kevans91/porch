@@ -68,10 +68,28 @@ function DirectProcess:match(pattern, matcher)
 
 	return self._process:match(action)
 end
+function DirectProcess:eof(timeout)
+	local buffer = self._process.buffer
+
+	if not buffer.eof then
+		local function discard()
+		end
+
+		buffer:refill(discard, timeout)
+		if not buffer.eof then
+			return false
+		end
+	end
+	return self._process:eof(timeout)
+end
 function DirectProcess:proxy(...)
 	return self._process:proxy(...)
 end
 for name, def in pairs(actions.defined) do
+	if DirectProcess[name] then
+		goto skip
+	end
+
 	-- Each of these gets a function that generates the action and then
 	-- subsequently executes it.
 	DirectProcess[name] = function(pwrap, ...)
@@ -97,6 +115,8 @@ for name, def in pairs(actions.defined) do
 
 		return res
 	end
+
+	::skip::
 end
 
 function direct.spawn(...)
