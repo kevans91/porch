@@ -40,6 +40,13 @@ end
 function MatchBuffer:contents()
 	return self.buffer
 end
+function MatchBuffer:flush(timeout)
+	if not self.eof then
+		self:refill(nil, timeout)
+	end
+
+	return self.eof
+end
 function MatchBuffer:empty()
 	return #self.buffer == 0
 end

@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd May 18, 2025
+.Dd May 21, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -151,6 +151,15 @@ The
 function is not available as a direct child of a
 .Fn one
 block.
+.It Fn flush "timeout"
+Flushes all output received within
+.Fa timeout
+seconds.
+If
+.Fa timeout
+is 0 or unspecified, waits indefinitely for EOF from the process.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn getenv "key"
 Get the value of
 .Fa key

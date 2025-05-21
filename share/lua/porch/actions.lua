@@ -124,18 +124,12 @@ actions.defined = {
 		end,
 		execute = function(action)
 			local ctx = action.ctx
-			local current_process = action.ctx.process
+			local current_process = ctx.process
 			local buffer = current_process.buffer
 
-			if not buffer.eof then
-				local function discard()
-				end
-
-				buffer:refill(discard, action.timeout)
-				if not buffer.eof then
-					if not ctx:fail(action, buffer:contents()) then
-						return false
-					end
+			if not buffer:flush(action.timeout) then
+				if not ctx:fail(action, buffer:contents()) then
+					return false
 				end
 			end
 
@@ -144,6 +138,18 @@ actions.defined = {
 				action.callback(status)
 			end
 
+			return true
+		end,
+	},
+	flush = {
+		init = function(action, args)
+			action.timeout = args[1] or action.ctx.timeout
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			local buffer = current_process.buffer
+
+			buffer:flush(action.timeout)
 			return true
 		end,
 	},
