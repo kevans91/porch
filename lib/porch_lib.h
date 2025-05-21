@@ -56,6 +56,7 @@ struct porch_process {
 	porch_ipc_t		 ipc;
 	int			 cmdsock;
 	pid_t			 pid;
+	int			 last_signal;
 	int			 status;
 	int			 termctl;
 	bool			 raw;

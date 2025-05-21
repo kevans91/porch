@@ -347,6 +347,7 @@ porchlua_spawn(lua_State *L)
 	 */
 	proc = lua_newuserdata(L, sizeof(*proc));
 	proc->L = L;
+	proc->last_signal = -1;
 	proc->term = NULL;
 	proc->status = 0;
 	proc->pid = 0;

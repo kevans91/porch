@@ -145,6 +145,11 @@ porchlua_process_close(lua_State *L)
 
 		sig = SIGINT;
 again:
+		/*
+		 * We would still want an error if we terminate as a result of this
+		 * signal.
+		 */
+		self->last_signal = -1;
 		if (kill(self->pid, sig) == -1)
 			warn("kill %d", sig);
 
@@ -518,7 +523,7 @@ porchlua_process_read(lua_State *L)
 
 				if (!self->draining &&
 				    porchlua_process_killed(self, &signo, false) &&
-				    signo != 0) {
+				    signo != 0 && signo != self->last_signal) {
 					luaL_pushfail(L);
 					lua_pushfstring(L,
 						"spawned process killed with signal '%d'", signo);
@@ -689,6 +694,7 @@ porchlua_process_signal(lua_State *L)
 	}
 
 	assert(self->pid > 0);
+	self->last_signal = signal;
 	if (kill(self->pid, signal) != 0) {
 		int serrno = errno;
 
