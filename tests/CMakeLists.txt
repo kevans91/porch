@@ -35,3 +35,13 @@ add_custom_target(check-install
 	DEPENDS check-setup)
 
 add_custom_target(check DEPENDS check-cli check-lib check-man)
+
+file(GLOB lua_test_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/*.lua")
+
+add_custom_target(lint-tests
+	COMMAND echo LINTING FOR LUA 5.3
+	COMMAND luacheck --std=lua53 ${lua_test_SOURCES}
+	COMMAND echo LINTING FOR LUA 5.4
+	COMMAND luacheck --std=lua54 ${lua_test_SOURCES}
+)
