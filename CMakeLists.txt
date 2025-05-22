@@ -46,3 +46,6 @@ if(BUILD_DRIVER)
 	add_subdirectory(src)
 endif()
 add_subdirectory(tests)
+
+add_custom_target(lint)
+add_dependencies(lint lint-share lint-tests)

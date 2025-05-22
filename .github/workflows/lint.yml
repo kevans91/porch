@@ -26,4 +26,4 @@ jobs:
           mkdir build
           cd build && cmake ..
       - name: run linter
-        run: make -C build lint-share lint-tests
+        run: make -C build lint
