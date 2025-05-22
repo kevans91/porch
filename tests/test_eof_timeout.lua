@@ -22,7 +22,7 @@ local function check_signal(exit_status, signo)
 	    ", got " .. exit_signal)
 end
 
-local echo = assert(porch.spawn("./echo_prompt.sh"))
+local echo = assert(porch.spawn("./echo_prompt"))
 
 sanity_check(echo)
 assert(echo:signal(signals.SIGUSR1));
@@ -36,7 +36,7 @@ check_signal(exit_status, signals.SIGUSR1)
 
 assert(echo:close())
 
-echo = assert(porch.spawn("./echo_prompt.sh"))
+echo = assert(porch.spawn("./echo_prompt"))
 
 sanity_check(echo)
 assert(echo:signal(signals.SIGUSR1));
@@ -59,7 +59,7 @@ check_signal(exit_status, signals.SIGUSR1)
 
 assert(echo:close())
 
-echo = assert(porch.spawn("./echo_prompt.sh"))
+echo = assert(porch.spawn("./echo_prompt"))
 
 sanity_check(echo)
 assert(echo:signal(signals.SIGUSR1));
@@ -73,7 +73,7 @@ check_signal(exit_status, signals.SIGUSR1)
 
 assert(echo:close())
 
-echo = assert(porch.spawn("./echo_prompt.sh"))
+echo = assert(porch.spawn("./echo_prompt"))
 
 sanity_check(echo)
 assert(echo:signal(signals.SIGUSR2));

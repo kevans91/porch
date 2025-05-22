@@ -4,7 +4,7 @@
 -- SPDX-License-Identifier: BSD-2-Clause
 --
 
-spawn("echo_prompt.sh")
+spawn("echo_prompt")
 
 match ">>"
 write "Test Line\r"
@@ -54,7 +54,7 @@ enqueue(function()
 	    " time(s)")
 end)
 
-spawn("echo_prompt.sh")
+spawn("echo_prompt")
 
 match ">>"
 write "Test Line\r"

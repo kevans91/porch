@@ -8,7 +8,7 @@ require('./libtest')
 local porch = require('porch')
 local signals = porch.signals
 
-local echo = assert(porch.spawn("./echo_prompt.sh"))
+local echo = assert(porch.spawn("./echo_prompt"))
 
 assert(echo:match(">>"), "Failed to get a prompt")
 assert(echo:write("Test Line\r"))
@@ -43,7 +43,7 @@ assert(exit_code == 37, "Expected exit status of 37, got " .. exit_code)
 
 assert(echo:close())
 
-echo = assert(porch.spawn("./echo_prompt.sh"))
+echo = assert(porch.spawn("./echo_prompt"))
 
 assert(echo:match(">>"), "Failed to get a prompt")
 assert(echo:write("Test Line\r"))

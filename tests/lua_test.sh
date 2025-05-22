@@ -69,14 +69,7 @@ skip_test()
 
 	case "$osname" in
 	Darwin)
-		# SKIP: test_eof_timeout -- closing all of the pts fds in the
-		# trap handler in bash doesn't seem to trigger the parent's
-		# select(2) to read EOF.  I've verified that all of the fds in
-		# the child are closed, but for some reason we just don't get
-		# the wakeup until the bash process exits.  I've tried writing
-		# a minimal reproducer to no avail; there's something kind of
-		# hairy going on here.
-		filterexpr="test_eof_timeout"
+		filterexpr=""
 		;;
 	esac
 
