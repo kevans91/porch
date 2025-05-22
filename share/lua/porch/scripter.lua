@@ -739,6 +739,7 @@ scripter.env.assert = assert
 scripter.env.signals = core.signals
 scripter.env.string = string
 scripter.env.table = table
+scripter.env.tostring = tostring
 scripter.env.tty = tty
 scripter.env.type = type
 
