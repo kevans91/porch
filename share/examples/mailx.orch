@@ -1,0 +1,53 @@
+#!/usr/bin/env -S porch -f
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- This somewhat mirrors some tests that were added to FreeBSD to exercise some
+-- changes that were made in the name of POSIX conformance.  It simply
+-- demonstrates an alternative way of writing these.
+
+matcher("plain")
+local function run_test(signo)
+	exec("rm -f dead.letter")
+	setenv("HOME", ".")
+	spawn("mailx", "-s", "test", "test@example.com")
+	release()
+
+	write "hello\r"
+	sleep(2)
+	signal(signo)
+
+	if signo == signals.SIGINT then
+		match "Interrupt -- one more"
+		signal(signo)
+	end
+
+	eof(nil, function(wstatus)
+		if signo == signals.SIGINT then
+			assert(wstatus:is_exited(),
+			    "SIGINT of an interactive session should exit gracefully")
+			assert(wstatus:status() == 1,
+			    "Expected an exit 1 from mailx")
+		else
+			assert(wstatus:is_signaled(),
+			    "SIGHUP of an interactive session should terminate by signal")
+			assert(wstatus:status() == signo,
+			    "Expected signal " .. signo .. " termination")
+		end
+	end)
+
+	exec("test -f dead.letter", nil, function(wstatus)
+		assert(wstatus:is_exited(), "Expected clean exit from test(1)")
+		assert(wstatus:status() == 0,
+		    "SIGINT should have generated wanted_status = 0")
+	end)
+
+	spawn("cat", "dead.letter")
+	match "hello"
+end
+
+run_test(signals.SIGINT)
+run_test(signals.SIGHUP)
