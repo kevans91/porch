@@ -28,7 +28,7 @@ local porch = require('porch')
 .It Dv porch.tty.cc
 .It Dv process = porch.spawn(argv0 Ns [, Ns argv...])
 .It Dv process.match(pattern[, matcher Ns ])
-.It Dv process.eof()
+.It Dv process.eof(timeout)
 .It Dv process.cfg(cfg)
 .It Dv process.chdir(dir)
 .It Dv process.close()
@@ -166,7 +166,26 @@ table, which has the following keys:
 .Dv posix
 (EREs)
 .El
-.It Dv process.eof()
+.It Dv process.eof(timeout)
+The
+.Dv eof
+function behaves the same as it does in
+.Xr orch 5 ,
+except it does not take a callback as the second argument.
+Instead, it returns up to two values: a boolean to indicate whether the process
+has closed its end of the terminal device, and a wait status object if the
+process has terminated.
+The returned wait status object matches the object passed to the callback
+described for
+.Dv eof
+in
+.Xr orch 5 .
+.Nm
+has no default timeout, so an omitted or nil
+.Fa timeout
+will result in the
+.Dv eof
+function waiting indefinitely for both EOF and the process to exit.
 .It Dv process.cfg(cfg)
 .It Dv process.chdir(dir)
 .It Dv process.close()

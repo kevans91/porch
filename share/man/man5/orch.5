@@ -113,14 +113,41 @@ If
 is used in a context that does not execute the queue, such as from another
 enqueued callback or from a failure context, then it will immediately call the
 function instead of enqueueing it.
-.It Fn eof "timeout"
-Check for eof from the process.
+.It Fn eof "timeout" "termfn"
+Check for EOF from the process.
 If the process has closed its side because it was killed by signal, then
 .Nm
-will crash with an assertion.
+will crash with an assertion unless it was terminated by a signal that was sent
+by the user with the
+.Fn signal
+function.
 If
 .Fa timeout
 is not specified, the default timeout will be used.
+The
+.Fa timeout
+is applied both to waiting for an actual EOF, and an additional wait for the
+process to have terminated.
+.Pp
+The
+.Fa termfn
+callback will be invoked if the process was terminated, with a wait status
+object as the only argument to the callback.
+This wait status object has the following methods:
+.Bl -tag -width indent
+.It Fn is_exited
+Returns a boolean indicating whether the process exited or not.
+.It Fn is_signaled
+Returns a boolean indicating whether the process was signaled or not.
+.It Fn is_stopped
+Returns a boolean indicating whether the process was stopped or not.
+.It Fn status
+Returns the exit code or signal that resulted in termination or stopping.
+.It Fn raw_status
+Returns the raw
+.Xr wait 2
+status code.
+.El
 .Pp
 This directive is enqueued, not processed immediately.
 .It Fn exit "status"
