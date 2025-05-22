@@ -126,14 +126,17 @@ actions.defined = {
 			local ctx = action.ctx
 			local current_process = ctx.process
 			local buffer = current_process.buffer
+			local failed = false
 
 			if not buffer:flush(action.timeout) then
 				if not ctx:fail(action, buffer:contents()) then
 					return false
 				end
+
+				failed = true
 			end
 
-			if action.callback then
+			if not failed and action.callback then
 				local is_eof, status = current_process:eof(action.timeout)
 				assert(is_eof)
 
