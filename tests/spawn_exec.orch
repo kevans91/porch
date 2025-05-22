@@ -1,0 +1,28 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+local exited = 0
+
+-- Without a collector, we just read everything up to EOF.
+exec("exit 9", nil, function(wstatus)
+	assert(wstatus:is_exited(), "Exit status is wrong")
+	assert(wstatus:status() == 9, "Expected exit code 9")
+
+	exited = exited + 1
+end)
+
+-- With a collector, it's a slightly different path through the exec action,
+-- so let's make sure our termfn still gets called.
+exec("exit 9", function(line) end, function(wstatus)
+	assert(wstatus:is_exited(), "Exit status is wrong")
+	assert(wstatus:status() == 9, "Expected exit code 9")
+
+	exited = exited + 1
+end)
+
+enqueue(function()
+	assert(exited == 2, "Expected two exits")
+end)

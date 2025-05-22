@@ -416,6 +416,50 @@ local extra_actions = {
 			return true
 		end,
 	},
+	exec = {
+		init = function(action, args)
+			action.command = args[1]
+			action.collector = args[2]
+			action.termfn = args[3]
+		end,
+		execute = function(action)
+			-- Note that we don't actually care if the user doesn't
+			-- spawn a process off beforehand; the output is theirs
+			-- to deal with.
+			local inpipe = io.popen(action.command)
+			if not inpipe then
+				error("Failed to popen command '" .. action.command .. "'")
+			end
+
+			-- If there's not a collector, we can just read until
+			-- EOF then close the process out.  Otherwise, we offer
+			-- the caller line-by-line output.
+			if not action.collector then
+				inpipe:read("a")
+				goto eof
+			end
+
+			while true do
+				local line = inpipe:read("L")
+				if not line then
+					break
+				end
+
+				action.collector(line)
+			end
+
+			::eof::
+			local _, termstatus, code = inpipe:close()
+			if action.termfn then
+				local wobj = assert(core.wrap_status(termstatus,
+				    code))
+
+				action.termfn(wobj)
+			end
+
+			return true
+		end,
+	},
 	exit = {
 		allow_direct = true,
 		init = function(action, args)

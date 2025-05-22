@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd May 21, 2025
+.Dd May 22, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -150,6 +150,31 @@ status code.
 .El
 .Pp
 This directive is enqueued, not processed immediately.
+.It Fn exec "commandstr" "collectfn" "termfn"
+Execute
+.Fa commandstr
+without piping its output to a spawned command.
+Note that, unlike other actions that take commands, the
+.Fn exec
+action will only take the command as a string or a table that can be coerced
+into a command string.
+The result will be passed directly to
+.Fn io.popen .
+.Pp
+The output can be collected by specifying a
+.Fa collectfn
+that takes a line and will be called for every line until we reach EOF.
+If a
+.Fa collectfn
+is not specified, then the output will be discarded.
+The
+.Fa termfn
+will be called whether the output is collected or not, and it will be passed a
+wait status object as described above by the
+.Fn eof
+function.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn exit "status"
 Exit with the designed
 .Fa status
@@ -247,7 +272,7 @@ matcher.
 Execute the command in
 .Fa commandstr
 and pipe any output from it into the spawned process.
-Note that, unlike other actions that commands, the
+Note that, unlike other actions that take commands, the
 .Fn pipe
 action will only take the command as a string or a table that can be coerced
 into a command string.
