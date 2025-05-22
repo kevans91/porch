@@ -978,6 +978,39 @@ porchlua_pstatus_raw_status(lua_State *L)
 	return (1);
 }
 
+int
+porchlua_process_wrap_status(lua_State *L)
+{
+	struct process_status *pstatus;
+	const char *exit_type;
+	int exit_code;
+
+	exit_type = luaL_checkstring(L, 1);
+	exit_code = luaL_checkinteger(L, 2);
+
+	pstatus = lua_newuserdata(L, sizeof(*pstatus));
+	memset(pstatus, 0, sizeof(*pstatus));
+	pstatus->raw_status = -1;
+	pstatus->status = exit_code;
+
+	if (strcmp(exit_type, "exit") == 0) {
+		pstatus->is_exited = true;
+	} else if (strcmp(exit_type, "signal") == 0) {
+		pstatus->is_signaled = true;
+	} else {
+		lua_pop(L, 1);
+
+		luaL_pushfail(L);
+		lua_pushfstring(L,
+		    "unexpected exit type from file:close: %s", exit_type);
+		return (2);
+	}
+
+	luaL_setmetatable(L, ORCHLUA_PSTATUSHANDLE);
+	return (1);
+}
+
+
 #define	PSTATUS_SIMPLE(n)	{ #n, porchlua_pstatus_ ## n }
 static const luaL_Reg porchlua_pstatus[] = {
 	PSTATUS_SIMPLE(is_exited),

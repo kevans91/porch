@@ -12,3 +12,4 @@
 #define	ORCHLUA_PROCESSHANDLE	"porchlua_process"
 
 void porchlua_register_process_metatable(lua_State *L);
+int porchlua_process_wrap_status(lua_State *L);

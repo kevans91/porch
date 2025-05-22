@@ -379,6 +379,7 @@ static const struct luaL_Reg porchlib[] = {
 	REG_SIMPLE(sleep),
 	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),
+	{ "wrap_status", porchlua_process_wrap_status },
 	{ NULL, NULL },
 };
 
