@@ -81,14 +81,14 @@ skip_test()
 	esac
 
 	if [ -z "$filterexpr" ]; then
-		return 0
-	fi
-
-	if ! echo "$tc" | grep -Eq "$filterexpr"; then
 		return 1
 	fi
 
-	return 0
+	if echo "$tc" | grep -Eq "$filterexpr"; then
+		return 0
+	fi
+
+	return 1
 }
 
 for f in "$@"; do
