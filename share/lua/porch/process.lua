@@ -12,10 +12,11 @@ local MatchBuffer = {}
 function MatchBuffer:new(process, ctx)
 	local obj = setmetatable({}, self)
 	self.__index = self
-	self.buffer = ""
-	self.ctx = ctx
-	self.process = process
-	self.eof = false
+
+	obj.buffer = ""
+	obj.ctx = ctx
+	obj.process = process
+	obj.eof = false
 	return obj
 end
 function MatchBuffer:_matches(action)

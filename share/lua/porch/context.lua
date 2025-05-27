@@ -11,13 +11,13 @@ function Context:new(def)
 	local ctx = setmetatable(def or {}, self)
 	self.__index = self
 
-	-- The contetx gets an environment that inherits only from the caller's
+	-- The context gets an environment that inherits only from the caller's
 	-- environment.  We could just change the caller's environment, but
 	-- that doesn't work well in the direct-drive mode and we'd still have
 	-- to track changes if one wants to change the global environment after
 	-- spawn().  We want users to be able to set the environment all the way
 	-- up to release() time to be most friendly.
-	self.env = env:new()
+	ctx.env = env:new()
 
 	return ctx
 end
