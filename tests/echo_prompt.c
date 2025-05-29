@@ -1,3 +1,9 @@
+/*-
+ * Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
