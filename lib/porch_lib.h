@@ -11,6 +11,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <termios.h>
 
@@ -54,6 +55,7 @@ struct porch_process {
 	lua_State		*L;
 	struct porch_term	*term;
 	porch_ipc_t		 ipc;
+	sigset_t		 sigmask;
 	int			 cmdsock;
 	pid_t			 pid;
 	int			 last_signal;

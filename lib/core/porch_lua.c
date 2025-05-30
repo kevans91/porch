@@ -354,6 +354,21 @@ porchlua_spawn(lua_State *L)
 	proc->buffered = proc->eof = proc->released = proc->draining = false;
 	proc->error = false;
 
+	/*
+	 * Grab a copy of our current signal mask in case we need it; we likely
+	 * won't be doing any signal operations, but this isn't usually too
+	 * expensive to record.
+	 */
+	if (sigprocmask(SIG_SETMASK, NULL, &proc->sigmask) != 0) {
+		int serrno = errno;
+
+		free(argv);
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(errno));
+		return (2);
+	}
+
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 
 	if (porch_spawn(argc, argv, proc, &porchlua_child_error) != 0) {
