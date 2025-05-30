@@ -13,8 +13,9 @@ file(GLOB test_files
 add_custom_target(check-setup
 	COMMAND cp ${test_files} ${CMAKE_CURRENT_BINARY_DIR})
 
-add_executable(openv openv.c)
 add_executable(echo_prompt echo_prompt.c)
+add_executable(openv openv.c)
+add_executable(sigcheck sigcheck.c)
 
 # check-cli and check-lib are intended to run our tests exclusively against the
 # build products.

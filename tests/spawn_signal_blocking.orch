@@ -1,0 +1,57 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+spawn("sigcheck", "-c")
+
+sigclear()
+release()
+
+match("^0 signals blocked")
+eof()
+
+-- First, just make sure that we only blocked one signal
+spawn("sigcheck", "-c")
+sigclear()
+sigblock(signals.SIGINT)
+match("^1 signal blocked")
+eof()
+
+-- Then we test that that one signal is SIGINT
+spawn("sigcheck")
+sigclear()
+sigblock(signals.SIGINT)
+match("Signal " .. signals.SIGINT .. " is blocked")
+eof()
+
+-- We support passing any number of signals to sigblock, and we also support
+-- passing tables of signals.
+spawn("sigcheck", "-c")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+match("^2 signals blocked")
+
+spawn("sigcheck")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+match("Signal " .. signals.SIGHUP .. " is blocked")
+eof()
+spawn("sigcheck")
+sigclear()
+sigblock(signals.SIGINT, {signals.SIGHUP})
+match("Signal " .. signals.SIGHUP .. " is blocked")
+eof()
+
+-- Also make sure that unblocking works
+spawn("sigcheck", "-c")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+sigunblock(signals.SIGINT)
+match("^1 signal blocked")
+spawn("sigcheck", "-c")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+sigunblock(signals.SIGINT, signals.SIGHUP)
+match("^0 signals blocked")

@@ -240,6 +240,31 @@ actions.defined = {
 			return true
 		end,
 	},
+	sigblock = {
+		init = function(action, args)
+			action.sigtbl = args
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process:released() then
+				error("sigblock() called after process release")
+			end
+
+			assert(current_process:sigblock(action.sigtbl))
+			return true
+		end,
+	},
+	sigclear = {
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process:released() then
+				error("sigclear() called after process release")
+			end
+
+			assert(current_process:sigmask(0))
+			return true
+		end,
+	},
 	signal = {
 		init = function(action, args)
 			action.signo = args[1]
@@ -255,6 +280,20 @@ actions.defined = {
 			end
 
 			current_process:signal(signo)
+			return true
+		end,
+	},
+	sigunblock = {
+		init = function(action, args)
+			action.sigtbl = args
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process:released() then
+				error("sigunblock() called after process release")
+			end
+
+			assert(current_process:sigunblock(action.sigtbl))
 			return true
 		end,
 	},

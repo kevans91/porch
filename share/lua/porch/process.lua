@@ -172,6 +172,46 @@ function Process:raw(is_raw)
 	self.is_raw = is_raw
 	return prev_raw
 end
+function Process:sigapply(applyfunc, ...)
+	local mask = self:sigmask()
+	local signals = {...}
+
+	local function apply_signals(sigtbl)
+		for _, signo in ipairs(sigtbl) do
+			if type(signo) == "table" then
+				apply_signals(signo)
+			elseif signo > 0 then
+				mask = applyfunc(mask, signo)
+			end
+		end
+	end
+
+	local current_mask = mask
+
+	apply_signals(signals)
+	if mask ~= current_mask then
+		return assert(self:sigmask(mask))
+	end
+
+	return true
+end
+function Process:sigblock(...)
+	local function blocksig(mask, signo)
+		return mask | (1 << (signo - 1))
+	end
+
+	return self:sigapply(blocksig, ...)
+end
+function Process:sigunblock(...)
+	local function unblocksig(mask, signo)
+		return mask & ~(1 << (signo - 1))
+	end
+
+	return self:sigapply(unblocksig, ...)
+end
+function Process:sigmask(...)
+	return assert(self._process:sigmask(...))
+end
 function Process:signal(signo)
 	return self._process:signal(signo)
 end
