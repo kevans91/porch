@@ -41,6 +41,8 @@ enum porch_ipc_tag {
 	IPC_ENV_ACK,		/* Child -> Parent */
 	IPC_CHDIR,		/* Parent -> Child */
 	IPC_CHDIR_ACK,		/* Child -> Parent */
+	IPC_SETMASK,		/* Parent -> Child */
+	IPC_SETMASK_ACK,	/* Child -> Parent */
 	IPC_LAST,
 };
 
@@ -110,6 +112,8 @@ int porch_ipc_wait(porch_ipc_t, bool *);
 
 /* porch_signal.c */
 const char * const *porch_signames(size_t *);
+int porch_sigset2mask(const sigset_t *);
+int porch_mask2sigset(int, sigset_t *);
 
 /* porch_spawn.c */
 int porch_release(porch_ipc_t);
