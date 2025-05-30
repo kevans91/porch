@@ -43,6 +43,8 @@ enum porch_ipc_tag {
 	IPC_CHDIR_ACK,		/* Child -> Parent */
 	IPC_SETMASK,		/* Parent -> Child */
 	IPC_SETMASK_ACK,	/* Child -> Parent */
+	IPC_SIGCATCH,		/* Parent -> Child */
+	IPC_SIGCATCH_ACK,	/* Child -> Parent */
 	IPC_LAST,
 };
 
@@ -70,6 +72,11 @@ struct porch_process {
 	bool			 buffered;
 	bool			 error;
 	bool			 draining;
+};
+
+struct porch_sigcatch {
+	sigset_t		 mask;
+	bool			 catch;
 };
 
 struct porch_term {
@@ -116,6 +123,7 @@ const char * const *porch_signames(size_t *);
 int porch_sigset2mask(const sigset_t *);
 int porch_mask2sigset(int, sigset_t *);
 int porch_fetch_sigcaught(sigset_t *);
+void porch_mask_apply(bool, sigset_t *, int mask);
 
 /* porch_spawn.c */
 int porch_release(porch_ipc_t);

@@ -374,6 +374,46 @@ porch_child_setmask(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 	return (error);
 }
 
+static int
+porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+{
+	const struct porch_sigcatch *catchmsg;
+	size_t catchmsgsz;
+	int error, *errorp;
+	void (*new_action)(int);
+
+	catchmsg = porch_ipc_msg_payload(msg, &catchmsgsz);
+	if (catchmsg == NULL || catchmsgsz != sizeof(*catchmsg)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	if (catchmsg->catch)
+		new_action = SIG_DFL;
+	else
+		new_action = SIG_IGN;
+	for (int signo = 1; signo < INT_MAX; signo++) {
+		error = sigismember(&catchmsg->mask, signo);
+		if (error == -1) {
+			error = 0;
+			break;
+		}
+
+		if (!error)
+			continue;	/* Not a member */
+
+		(void)signal(signo, new_action);
+	}
+
+	msg = porch_ipc_msg_alloc(IPC_SIGCATCH_ACK, sizeof(error),
+	    (void **)&errorp);
+
+	*errorp = error;
+	error = porch_ipc_send(ipc, msg);
+	porch_ipc_msg_free(msg);
+
+	return (error);
+}
 
 static void
 porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
@@ -394,6 +434,7 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 	porch_ipc_register(ipc, IPC_ENV_SETUP, porch_child_env_setup, NULL);
 	porch_ipc_register(ipc, IPC_CHDIR, porch_child_chdir, NULL);
 	porch_ipc_register(ipc, IPC_SETMASK, porch_child_setmask, NULL);
+	porch_ipc_register(ipc, IPC_SIGCATCH, porch_child_sigcatch, NULL);
 
 	/* Let the script commence. */
 	if (porch_release(ipc) != 0)

@@ -727,6 +727,63 @@ porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
 }
 
 static int
+porchlua_process_sigcatch(lua_State *L)
+{
+	struct porch_process *self;
+	struct porch_ipc_msg *msg;
+	struct porch_sigcatch *catchmsg;
+	sigset_t newmask;
+	int error, sigmask;
+	bool catch;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
+		/* Fetch the signal caught mask. */
+		lua_pushinteger(L, porch_sigset2mask(&self->sigcaughtmask));
+		return (1);
+	}
+
+	catch = lua_toboolean(L, 2);
+	sigmask = luaL_checkinteger(L, 3);
+
+	sigemptyset(&newmask);
+	if ((error = porch_mask2sigset(sigmask, &newmask)) != 0) {
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(error));
+		return (2);
+	}
+
+	/* Mask was valid, now to apply it if we're not too late. */
+	if (!porch_ipc_okay(self->ipc)) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "process already released");
+		return (2);
+	}
+
+	msg = porch_ipc_msg_alloc(IPC_SIGCATCH, sizeof(*catchmsg),
+	    (void **)&catchmsg);
+	if (msg == NULL)
+		goto err;
+
+	memcpy(&catchmsg->mask, &newmask, sizeof(catchmsg->mask));
+	catchmsg->catch = catch;
+	error = porch_lua_ipc_send_acked_errno(L, self, msg, IPC_SIGCATCH_ACK);
+	if (error < 0)
+		goto err;
+	else if (error > 0)
+		return (error);
+
+	porch_mask_apply(!catch, &self->sigcaughtmask, sigmask);
+
+	lua_pushboolean(L, 1);
+	return (1);
+err:
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(errno));
+	return (2);
+}
+
+static int
 porchlua_process_sigmask(lua_State *L)
 {
 	struct porch_process *self;
@@ -942,6 +999,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(sigcatch),
 	PROCESS_SIMPLE(sigmask),
 	PROCESS_SIMPLE(signal),
 	PROCESS_SIMPLE(term),

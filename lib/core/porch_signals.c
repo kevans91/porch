@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <assert.h>
 #ifdef __APPLE__
 #include <ctype.h>
 #include <err.h>
@@ -161,4 +162,25 @@ porch_fetch_sigcaught(sigset_t *sigset)
 	}
 
 	return (0);
+}
+
+/*
+ * Apply the given mask to our sigset.  If complement is set, then we're
+ * unsetting those bits that are set in the mask.
+ */
+void
+porch_mask_apply(bool complement, sigset_t *sigset, int mask)
+{
+	int error, signo;
+
+	while (mask != 0) {
+		signo = ffs(mask);
+		if (complement)
+			error = sigdelset(sigset, signo);
+		else
+			error = sigaddset(sigset, signo);
+
+		assert(error == 0);
+		mask &= ~(1 << (signo - 1));
+	}
 }
