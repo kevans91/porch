@@ -369,6 +369,17 @@ porchlua_spawn(lua_State *L)
 		return (2);
 	}
 
+	/* Also grab list of signals we catch. */
+	if (porch_fetch_sigcaught(&proc->sigcaughtmask) != 0) {
+		int serrno = errno;
+
+		free(argv);
+
+		luaL_pushfail(L);
+		lua_pushstring(L, strerror(errno));
+		return (2);
+	}
+
 	luaL_setmetatable(L, ORCHLUA_PROCESSHANDLE);
 
 	if (porch_spawn(argc, argv, proc, &porchlua_child_error) != 0) {

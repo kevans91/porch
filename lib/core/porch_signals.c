@@ -14,6 +14,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
 static const char *porch_platform_signames[NSIG];
 
 #if !STATIC_SIGLIST
@@ -111,6 +112,52 @@ porch_mask2sigset(int mask, sigset_t *sigset)
 			return (errno);
 
 		mask &= ~(1 << (signo - 1));
+	}
+
+	return (0);
+}
+
+static bool
+porch_sig_uncatchable(int signo)
+{
+
+	switch (signo) {
+	case SIGKILL:
+	case SIGSTOP:
+		return (true);
+	default:
+		return (false);
+	}
+}
+
+int
+porch_fetch_sigcaught(sigset_t *sigset)
+{
+	struct sigaction act;
+
+	sigemptyset(sigset);
+	for (int signo = 1; signo < INT_MAX; signo++) {
+		if (porch_sig_uncatchable(signo))
+			continue;
+
+		if (sigismember(sigset, signo) == -1)
+			break;	/* Hit the end of valid signals. */
+		if (sigaction(signo, NULL, &act) != 0) {
+			/*
+			 * For signals that we can't examine, we just pretend
+			 * that they're caught for convenience.  Any attempt to
+			 * change that might fail, the user kind of needs to
+			 * know the platform they're running on.  porch itself
+			 * won't try to do anything with them.
+			 */
+		} else if ((act.sa_flags & SA_SIGINFO) != 0) {
+			if (act.sa_sigaction == SA_SIG_IGN)
+				continue;
+		} else if (act.sa_handler == SIG_IGN) {
+			continue;
+		}
+
+		sigaddset(sigset, signo);
 	}
 
 	return (0);

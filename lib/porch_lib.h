@@ -57,6 +57,7 @@ struct porch_process {
 	lua_State		*L;
 	struct porch_term	*term;
 	porch_ipc_t		 ipc;
+	sigset_t		 sigcaughtmask;
 	sigset_t		 sigmask;
 	int			 cmdsock;
 	pid_t			 pid;
@@ -114,6 +115,7 @@ int porch_ipc_wait(porch_ipc_t, bool *);
 const char * const *porch_signames(size_t *);
 int porch_sigset2mask(const sigset_t *);
 int porch_mask2sigset(int, sigset_t *);
+int porch_fetch_sigcaught(sigset_t *);
 
 /* porch_spawn.c */
 int porch_release(porch_ipc_t);
