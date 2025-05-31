@@ -738,9 +738,10 @@ porchlua_process_sigcatch(lua_State *L)
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
-		/* Fetch the signal caught mask. */
+		/* Fetch the signal caught mask and return NSIG as well. */
 		lua_pushinteger(L, porch_sigset2mask(&self->sigcaughtmask));
-		return (1);
+		lua_pushinteger(L, porch_sigmax());
+		return (2);
 	}
 
 	catch = lua_toboolean(L, 2);
@@ -793,9 +794,10 @@ porchlua_process_sigmask(lua_State *L)
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
-		/* Fetch the signal mask. */
+		/* Fetch the signal mask and return NSIG as well. */
 		lua_pushinteger(L, porch_sigset2mask(&self->sigmask));
-		return (1);
+		lua_pushinteger(L, porch_sigmax());
+		return (2);
 	}
 
 	sigmask = luaL_checkinteger(L, 2);

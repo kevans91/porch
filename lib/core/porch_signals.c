@@ -184,3 +184,28 @@ porch_mask_apply(bool complement, sigset_t *sigset, int mask)
 		mask &= ~(1 << (signo - 1));
 	}
 }
+
+/*
+ * NSIG is usually the highest usable signal, but some platforms (e.g., FreeBSD)
+ * will have signals above that that are technically usable.
+ */
+int
+porch_sigmax(void)
+{
+	static int nsig = -1;
+
+	if (nsig < 0) {
+		sigset_t set;
+
+		for (int signo = NSIG; signo < INT_MAX; signo++) {
+			if (sigismember(&set, signo) == -1) {
+				nsig = signo;
+				break;
+			}
+		}
+
+		assert(nsig >= 0);
+	}
+
+	return (nsig);
+}

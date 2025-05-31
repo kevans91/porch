@@ -124,6 +124,7 @@ int porch_sigset2mask(const sigset_t *);
 int porch_mask2sigset(int, sigset_t *);
 int porch_fetch_sigcaught(sigset_t *);
 void porch_mask_apply(bool, sigset_t *, int mask);
+int porch_sigmax(void);
 
 /* porch_spawn.c */
 int porch_release(porch_ipc_t);
