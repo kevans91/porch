@@ -395,17 +395,15 @@ porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 	sigmax = porch_sigmax();
 	for (int signo = 1; signo < sigmax; signo++) {
 		error = sigismember(&catchmsg->mask, signo);
-		if (error == -1) {
-			error = 0;
-			break;
-		}
-
+		if (error == -1)
+			continue;	/* Failed (internal signal?) */
 		if (!error)
 			continue;	/* Not a member */
 
 		(void)signal(signo, new_action);
 	}
 
+	error = 0;
 	msg = porch_ipc_msg_alloc(IPC_SIGCATCH_ACK, sizeof(error),
 	    (void **)&errorp);
 
