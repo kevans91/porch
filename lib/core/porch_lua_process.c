@@ -735,8 +735,8 @@ porch_sigset2table(lua_State *L, const sigset_t *sigset)
 	lua_newtable(L);
 	for (int signo = 1; signo < sigmax; signo++) {
 		ret = sigismember(sigset, signo);
-		assert(ret != -1);
-
+		if (ret == -1)
+			ret = 0;
 		lua_pushboolean(L, ret);
 		lua_rawseti(L, -2, signo);
 	}
@@ -744,7 +744,7 @@ porch_sigset2table(lua_State *L, const sigset_t *sigset)
 	return (1);
 }
 
-int
+static void
 porch_table2sigset(lua_State *L, int idx, sigset_t *sigset)
 {
 	int ret, sigmax;
@@ -760,11 +760,13 @@ porch_table2sigset(lua_State *L, int idx, sigset_t *sigset)
 
 		if (!present)
 			continue;
-		if (sigaddset(sigset, signo) != 0)
-			return (errno);
-	}
 
-	return (0);
+		/*
+		 * This may fail if we had an internal signal,
+		 * but we'll just ignore that here.
+		 */
+		(void)sigaddset(sigset, signo);
+	}
 }
 
 static int
@@ -787,11 +789,7 @@ porchlua_process_sigcatch(lua_State *L)
 	luaL_checktype(L, 3, LUA_TTABLE);
 
 	sigemptyset(&newmask);
-	if ((error = porch_table2sigset(L, 3, &newmask)) != 0) {
-		luaL_pushfail(L);
-		lua_pushstring(L, strerror(error));
-		return (2);
-	}
+	porch_table2sigset(L, 3, &newmask);
 
 	/* Mask was valid, now to apply it if we're not too late. */
 	if (!porch_ipc_okay(self->ipc)) {
@@ -849,11 +847,7 @@ porchlua_process_sigmask(lua_State *L)
 		}
 	} else {
 		luaL_checktype(L, 2, LUA_TTABLE);
-		if ((error = porch_table2sigset(L, 2, &newmask)) != 0) {
-			luaL_pushfail(L);
-			lua_pushstring(L, strerror(error));
-			return (2);
-		}
+		porch_table2sigset(L, 2, &newmask);
 	}
 
 	/* Mask was valid, now to apply it if we're not too late. */
