@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "porch_lib.h"
+
 #define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
 static const char *porch_platform_signames[NSIG];
 
@@ -169,19 +171,23 @@ porch_fetch_sigcaught(sigset_t *sigset)
  * unsetting those bits that are set in the mask.
  */
 void
-porch_mask_apply(bool complement, sigset_t *sigset, int mask)
+porch_mask_apply(bool complement, sigset_t *sigset, const sigset_t *applymask)
 {
-	int error, signo;
+	int error, sigmax;
 
-	while (mask != 0) {
-		signo = ffs(mask);
+	sigmax = porch_sigmax();
+	for (int signo = 1; signo < sigmax; signo++) {
+		error = sigismember(sigset, signo);
+		assert(error != -1);
+		if (!error)
+			continue;
+
 		if (complement)
 			error = sigdelset(sigset, signo);
 		else
 			error = sigaddset(sigset, signo);
 
 		assert(error == 0);
-		mask &= ~(1 << (signo - 1));
 	}
 }
 

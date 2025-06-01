@@ -727,28 +727,67 @@ porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
 }
 
 static int
+porch_sigset2table(lua_State *L, const sigset_t *sigset)
+{
+	int ret, sigmax;
+
+	sigmax = porch_sigmax();
+	lua_newtable(L);
+	for (int signo = 1; signo < sigmax; signo++) {
+		ret = sigismember(sigset, signo);
+		assert(ret != -1);
+
+		lua_pushboolean(L, ret);
+		lua_rawseti(L, -2, signo);
+	}
+
+	return (1);
+}
+
+int
+porch_table2sigset(lua_State *L, int idx, sigset_t *sigset)
+{
+	int ret, sigmax;
+
+	assert(idx > 0);
+	sigmax = porch_sigmax();
+	for (int signo = 1; signo < sigmax; signo++) {
+		bool present;
+
+		lua_geti(L, idx, signo);
+		present = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+
+		if (!present)
+			continue;
+		if (sigaddset(sigset, signo) != 0)
+			return (errno);
+	}
+
+	return (0);
+}
+
+static int
 porchlua_process_sigcatch(lua_State *L)
 {
 	struct porch_process *self;
 	struct porch_ipc_msg *msg;
 	struct porch_sigcatch *catchmsg;
 	sigset_t newmask;
-	int error, sigmask;
+	int error;
 	bool catch;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
-		/* Fetch the signal caught mask and return NSIG as well. */
-		lua_pushinteger(L, porch_sigset2mask(&self->sigcaughtmask));
-		lua_pushinteger(L, porch_sigmax());
-		return (2);
+		/* Fetch the signal caught mask in table form. */
+		return (porch_sigset2table(L, &self->sigcaughtmask));
 	}
 
 	catch = lua_toboolean(L, 2);
-	sigmask = luaL_checkinteger(L, 3);
+	luaL_checktype(L, 3, LUA_TTABLE);
 
 	sigemptyset(&newmask);
-	if ((error = porch_mask2sigset(sigmask, &newmask)) != 0) {
+	if ((error = porch_table2sigset(L, 3, &newmask)) != 0) {
 		luaL_pushfail(L);
 		lua_pushstring(L, strerror(error));
 		return (2);
@@ -774,7 +813,7 @@ porchlua_process_sigcatch(lua_State *L)
 	else if (error > 0)
 		return (error);
 
-	porch_mask_apply(!catch, &self->sigcaughtmask, sigmask);
+	porch_mask_apply(!catch, &self->sigcaughtmask, &newmask);
 
 	lua_pushboolean(L, 1);
 	return (1);
@@ -790,23 +829,31 @@ porchlua_process_sigmask(lua_State *L)
 	struct porch_process *self;
 	struct porch_ipc_msg *msg;
 	sigset_t newmask, *sendmask;
-	int error, sigmask;
+	int error;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
 	if (lua_gettop(L) < 2 || lua_isnil(L, 2)) {
-		/* Fetch the signal mask and return NSIG as well. */
-		lua_pushinteger(L, porch_sigset2mask(&self->sigmask));
-		lua_pushinteger(L, porch_sigmax());
-		return (2);
+		/* Fetch the current mask in table form. */
+		return (porch_sigset2table(L, &self->sigmask));
 	}
 
-	sigmask = luaL_checkinteger(L, 2);
-
 	sigemptyset(&newmask);
-	if ((error = porch_mask2sigset(sigmask, &newmask)) != 0) {
-		luaL_pushfail(L);
-		lua_pushstring(L, strerror(error));
-		return (2);
+	if (lua_isinteger(L, 2)) {
+		lua_Number n;
+
+		n = luaL_checkinteger(L, 2);
+		if (n != 0) {
+			luaL_pushfail(L);
+			lua_pushfstring(L, "Expected table or 0, got %d", n);
+			return (2);
+		}
+	} else {
+		luaL_checktype(L, 2, LUA_TTABLE);
+		if ((error = porch_table2sigset(L, 2, &newmask)) != 0) {
+			luaL_pushfail(L);
+			lua_pushstring(L, strerror(error));
+			return (2);
+		}
 	}
 
 	/* Mask was valid, now to apply it if we're not too late. */
