@@ -103,9 +103,11 @@ int
 porch_fetch_sigcaught(sigset_t *sigset)
 {
 	struct sigaction act;
+	int sigmax;
 
 	sigemptyset(sigset);
-	for (int signo = 1; signo < INT_MAX; signo++) {
+	sigmax = porch_sigmax();
+	for (int signo = 1; signo < sigmax; signo++) {
 		if (porch_sig_uncatchable(signo))
 			continue;
 
