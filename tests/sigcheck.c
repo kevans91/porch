@@ -25,13 +25,13 @@
  */
 
 static void
-usage(int error)
+usage(const char *progname, int error)
 {
 	FILE *fp = stderr;
 
 	if (error == 0)
 		fp = stdout;
-	fprintf(fp, "usage: %s [-b | -c]\n", getprogname());
+	fprintf(fp, "usage: %s [-b | -c]\n", progname);
 	exit(error);
 }
 
@@ -60,10 +60,10 @@ main(int argc, char *argv[])
 			curmode = MODE_IGNOREDOUT;
 			break;
 		case 'h':
-			usage(0);
+			usage(argv[0], 0);
 			break;
 		default:
-			usage(1);
+			usage(argv[0], 1);
 		}
 	}
 
