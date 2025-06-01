@@ -379,7 +379,7 @@ porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 {
 	const struct porch_sigcatch *catchmsg;
 	size_t catchmsgsz;
-	int error, *errorp;
+	int error, *errorp, sigmax;
 	void (*new_action)(int);
 
 	catchmsg = porch_ipc_msg_payload(msg, &catchmsgsz);
@@ -392,7 +392,8 @@ porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 		new_action = SIG_DFL;
 	else
 		new_action = SIG_IGN;
-	for (int signo = 1; signo < INT_MAX; signo++) {
+	sigmax = porch_sigmax();
+	for (int signo = 1; signo < sigmax; signo++) {
 		error = sigismember(&catchmsg->mask, signo);
 		if (error == -1) {
 			error = 0;
