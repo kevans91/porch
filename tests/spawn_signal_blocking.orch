@@ -44,6 +44,20 @@ sigblock(signals.SIGINT, {signals.SIGHUP})
 match("Signal " .. signals.SIGHUP .. " is blocked")
 eof()
 
+-- Just double-check sigreset()'s ability to preserve (or not) the signal mask
+spawn("sigcheck")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+sigreset(true)
+match("Signal " .. signals.SIGHUP .. " is blocked")
+eof()
+spawn("sigcheck")
+sigclear()
+sigblock(signals.SIGINT, signals.SIGHUP)
+sigreset(false)
+match("Signal " .. signals.SIGHUP .. " is not blocked")
+eof()
+
 -- Also make sure that unblocking works
 spawn("sigcheck", "-c")
 sigclear()
