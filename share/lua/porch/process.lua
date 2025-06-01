@@ -198,6 +198,92 @@ function Process:sigblock(...)
 
 	return true
 end
+function Process:sigcatch(...)
+	return assert(self._process:sigcatch(...))
+end
+function Process:sigignore(...)
+	local catchmask = self:sigcatch()
+	local newmask = {}
+
+	for signo, c in ipairs(catchmask) do
+		newmask[signo] = c
+	end
+
+	-- Ignoring is removing signals from the caught mask
+	local changed = sigapply(newmask, false, ...)
+	if changed then
+		-- Calculate the delta: bits unset in the new mask that were
+		-- set in the old mask are the ones that we're newly ignoring.
+		for signo, c in ipairs(catchmask) do
+			catchmask[signo] = c and (not newmask[signo])
+		end
+
+		return assert(self:sigcatch(false, catchmask))
+	end
+
+	return true
+end
+function Process:sigreset(preserve_sigmask)
+	local mask
+
+	-- This is the only way to reset all of our caught signals, so we have
+	-- a flag to skip resetting the signal mask.
+	if not preserve_sigmask then
+		local need_reset = false
+
+		mask = self:sigmask()
+		for _, blocked in ipairs(mask) do
+			if blocked then
+				need_reset = true
+				break
+			end
+		end
+
+		if need_reset then
+			assert(self:sigmask(0))
+		end
+	end
+
+	local need_sigcatch = false
+
+	mask = self:sigcatch()
+	for signo, c in ipairs(mask) do
+		if not c then
+			mask[signo] = true
+			need_sigcatch = true
+		else
+			-- No change required here, unset it.
+			mask[signo] = false
+		end
+	end
+
+	if need_sigcatch then
+		assert(self:sigcatch(true, mask))
+	end
+
+	return true
+end
+function Process:sigunignore(...)
+	local catchmask = self:sigcatch()
+	local newmask = {}
+
+	for signo, c in ipairs(catchmask) do
+		newmask[signo] = c
+	end
+
+	local changed = sigapply(newmask, true, ...)
+	if changed then
+		-- Calculate the delta: bits set in the new mask that were
+		-- not set in the old mask.
+		for signo, c in ipairs(catchmask) do
+			catchmask[signo] = (not c) and newmask[signo]
+		end
+
+		return assert(self:sigcatch(true, catchmask))
+	end
+
+	return true
+end
 function Process:sigunblock(...)
 	local changed, newmask = sigapply(self:sigmask(), false, ...)
 	if changed then

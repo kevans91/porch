@@ -1,0 +1,77 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+spawn("sigcheck", "-c")
+
+-- We'll also test sigreset() in this test.
+sigreset()
+release()
+
+match("0 signals blocked")
+match("0 signals ignored")
+eof()
+
+spawn("sigcheck", "-c")
+
+sigreset()
+sigignore(signals.SIGINT)
+release()
+
+match("0 signals blocked")
+match("1 signal ignored")
+eof()
+
+spawn("sigcheck", "-c")
+
+sigreset()
+sigignore(signals.SIGINT, signals.SIGHUP)
+release()
+
+match("0 signals blocked")
+match("2 signals ignored")
+eof()
+
+spawn("sigcheck")
+
+sigreset()
+sigignore(signals.SIGINT)
+release()
+
+match("Signal " .. signals.SIGINT .. " is ignored")
+eof()
+
+spawn("sigcheck")
+
+sigreset()
+sigignore(signals.SIGINT, signals.SIGHUP)
+release()
+
+match("Signal " .. signals.SIGHUP .. " is ignored")
+eof()
+
+spawn("sigcheck", "-c")
+
+sigreset()
+sigblock(signals.SIGHUP)
+sigignore(signals.SIGINT, signals.SIGHUP)
+sigreset()
+release()
+
+match("0 signals blocked")
+match("0 signals ignored")
+eof()
+
+-- Also make sure that unignoring works
+spawn("sigcheck", "-c")
+sigreset()
+sigignore(signals.SIGINT, signals.SIGHUP)
+sigunignore(signals.SIGINT)
+match("1 signal ignored")
+spawn("sigcheck", "-c")
+sigreset()
+sigignore(signals.SIGINT, signals.SIGHUP)
+sigunignore(signals.SIGINT, signals.SIGHUP)
+match("0 signals ignored")

@@ -265,6 +265,20 @@ actions.defined = {
 			return true
 		end,
 	},
+	sigignore = {
+		init = function(action, args)
+			action.sigtbl = args
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process:released() then
+				error("sigignore() called after process release")
+			end
+
+			assert(current_process:sigignore(action.sigtbl))
+			return true
+		end,
+	},
 	signal = {
 		init = function(action, args)
 			action.signo = args[1]
@@ -283,6 +297,22 @@ actions.defined = {
 			return true
 		end,
 	},
+	sigreset = {
+		init = function(action, args)
+			action.preserve_sigmask = args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			local preserve_sigmask = action.preserve_sigmask
+
+			if current_process:released() then
+				error("sigreset() called after process release")
+			end
+
+			assert(current_process:sigreset(preserve_sigmask))
+			return true
+		end,
+	},
 	sigunblock = {
 		init = function(action, args)
 			action.sigtbl = args
@@ -294,6 +324,20 @@ actions.defined = {
 			end
 
 			assert(current_process:sigunblock(action.sigtbl))
+			return true
+		end,
+	},
+	sigunignore = {
+		init = function(action, args)
+			action.sigtbl = args
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+			if current_process:released() then
+				error("sigunignore() called after process release")
+			end
+
+			assert(current_process:sigunignore(action.sigtbl))
 			return true
 		end,
 	},
