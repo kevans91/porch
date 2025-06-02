@@ -91,6 +91,10 @@ is_xfail()
 		# test.
 		known_fails="shebang_simple"
 		;;
+	NetBSD)
+		# NetBSD's env(1) also does not have -S.
+		known_fails="shebang_simple"
+		;;
 	esac
 
 	if [ -z "$known_fails" ]; then
