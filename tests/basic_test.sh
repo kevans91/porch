@@ -54,17 +54,50 @@ echo "1..$#"
 
 ok()
 {
-	echo "ok $testid - $f"
+
+	if is_xfail; then
+		echo "ok $testid - $f (XFAIL!)"
+		fails=$((fails + 1))
+		1>&2 echo "$testid expected fail, please evaluate"
+	else
+		echo "ok $testid - $f"
+	fi
 	testid=$((testid + 1))
 }
 
 not_ok()
 {
-	msg="$1"
+	local msg="$1"
+
+	if is_xfail; then
+		# Don't lodge a complaint if it's an expected failure.
+		msg="xfail: $msg"
+	else
+		fails=$((fails + 1))
+	fi
 
 	echo "not ok $testid - $f: $msg"
 	testid=$((testid + 1))
-	fails=$((fails + 1))
+}
+
+is_xfail()
+{
+	local platform=$(uname -s)
+	local known_fails=""
+
+	case "$platform" in
+	OpenBSD)
+		# OpenBSD's env(1) does not have -S, which we require for this
+		# test.
+		known_fails="shebang_simple"
+		;;
+	esac
+
+	if [ -z "$known_fails" ]; then
+		return 1
+	fi
+
+	echo "$f" | grep -Eq "$known_fails"
 }
 
 for f in "$@" ;do
