@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <signal.h>
@@ -12,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "porch_lib_signals.h"
 
 #define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
 
@@ -40,7 +43,7 @@ main(int argc, char *argv[])
 {
 	sigset_t sigmask;
 	struct sigaction act;
-	int ch, error, nblocked = 0, nignored = 0, output = 0;
+	int ch, error, nblocked = 0, nignored = 0, output = 0, sigmax;
 	enum {
 		MODE_NORMAL = 0,
 		MODE_BLOCKEDOUT,
@@ -72,7 +75,8 @@ main(int argc, char *argv[])
 		return (1);
 	}
 
-	for (int signo = 1; signo < INT_MAX; signo++) {
+	sigmax = porch_sigmax();
+	for (int signo = 1; signo < sigmax; signo++) {
 		bool blocked, ignored;
 
 		error = sigismember(&sigmask, signo);

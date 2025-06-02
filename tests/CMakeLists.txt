@@ -15,7 +15,8 @@ add_custom_target(check-setup
 
 add_executable(echo_prompt echo_prompt.c)
 add_executable(openv openv.c)
-add_executable(sigcheck sigcheck.c)
+add_executable(sigcheck sigcheck.c ${CMAKE_SOURCE_DIR}/lib/core/porch_signals.c)
+target_include_directories(sigcheck PRIVATE ${CMAKE_SOURCE_DIR}/lib)
 
 # check-cli and check-lib are intended to run our tests exclusively against the
 # build products.

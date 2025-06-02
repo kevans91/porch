@@ -15,7 +15,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include "porch_lib.h"
+#include "porch_lib_signals.h"
 
 /*
  * PORCH_PROBE_NSIG is used on platforms where NSIG is known to be lower than
