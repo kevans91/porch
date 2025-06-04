@@ -145,7 +145,7 @@ porch_mask_apply(bool complement, sigset_t *sigset, const sigset_t *applymask)
 
 	sigmax = porch_sigmax();
 	for (int signo = 1; signo < sigmax; signo++) {
-		error = sigismember(sigset, signo);
+		error = sigismember(applymask, signo);
 		assert(error != -1);
 		if (!error)
 			continue;
