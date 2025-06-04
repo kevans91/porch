@@ -223,6 +223,52 @@ function Process:sigignore(...)
 
 	return true
 end
+function Process:sigisblocked(...)
+	local mask = self:sigmask()
+	local signals = {...}
+
+	assert(#signals > 0, "At least one signal to check is required")
+	for _, signo in ipairs(signals) do
+		if not mask[signo] then
+			return false
+		end
+	end
+	return true
+end
+function Process:sigiscaught(...)
+	local catchmask = self:sigcatch()
+	local signals = {...}
+
+	assert(#signals > 0, "At least one signal to check is required")
+	for _, signo in ipairs(signals) do
+		if not catchmask[signo] then
+			return false
+		end
+	end
+	return true
+end
+function Process:sigisignored(...)
+	local signals = {...}
+
+	assert(#signals > 0, "At least one signal to check is required")
+	for _, signo in ipairs(signals) do
+		if self:sigiscaught(signo) then
+			return false
+		end
+	end
+	return true
+end
+function Process:sigisunblocked(...)
+	local signals = {...}
+
+	assert(#signals > 0, "At least one signal to check is required")
+	for _, signo in ipairs(signals) do
+		if self:sigisblocked(signo) then
+			return false
+		end
+	end
+	return true
+end
 function Process:sigreset(preserve_sigmask)
 	local mask
 

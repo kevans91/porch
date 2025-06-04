@@ -32,6 +32,10 @@ end
 -- process with no change.
 local proc_inherited = {
 	"proxy",
+	"sigisblocked",
+	"sigiscaught",
+	"sigisignored",
+	"sigisunblocked",
 }
 
 local DirectProcess = {}
