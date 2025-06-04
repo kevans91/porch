@@ -26,7 +26,14 @@ function direct_ctx:fail(_, contents)
 	return false
 end
 
--- Wraps a process, provide everything we offer in actions.defined as a wrapper
+-- Wraps a process, provide everything we offer in actions.defined as a wrapper.
+
+-- proc_inherited functions are just routed directly through to the underlying
+-- process with no change.
+local proc_inherited = {
+	"proxy",
+}
+
 local DirectProcess = {}
 function DirectProcess:new(cmd, ctx)
 	local pwrap = setmetatable({}, self)
@@ -82,8 +89,10 @@ function DirectProcess:eof(timeout)
 	end
 	return self._process:eof(timeout)
 end
-function DirectProcess:proxy(...)
-	return self._process:proxy(...)
+for _, func in ipairs(proc_inherited) do
+	DirectProcess[func] = function(self, ...)
+		return self._process[func](self._process, ...)
+	end
 end
 for name, def in pairs(actions.defined) do
 	if DirectProcess[name] then
