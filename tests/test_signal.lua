@@ -141,9 +141,14 @@ checkblock(echo, true, {signals.SIGINT, signals.SIGHUP},
 
 -- We try to kill with SIGINT in close(), so let's be nice.
 echo:sigunblock(signals.SIGINT)
-echo:sigunignore(signals.SIGINT)
+echo:sigcatch(signals.SIGINT)
 checkignore(echo, true, {signals.SIGHUP},
     "SIGHUP should not have become unignored")
 checkblock(echo, true, {signals.SIGHUP},
     "SIGHUP should not have become unblocked")
+
+-- Test sigcatch()'s other name, to be sure.
+echo:sigunignore(signals.SIGHUP)
+checkignore(echo, false, {signals.SIGHUP},
+    "SIGHUP should be caught now")
 echo:close()

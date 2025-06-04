@@ -327,14 +327,14 @@ actions.defined = {
 			return true
 		end,
 	},
-	sigunignore = {
+	sigcatch = {
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 			if current_process:released() then
-				error("sigunignore() called after process release")
+				error(action.type .. "() called after process release")
 			end
 
 			assert(current_process:sigunignore(action.sigtbl))
@@ -477,5 +477,8 @@ actions.defined = {
 		end,
 	},
 }
+
+-- Aliases
+actions.defined['sigunignore'] = actions.defined['sigcatch']
 
 return actions
