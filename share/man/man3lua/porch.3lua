@@ -27,33 +27,33 @@ local porch = require('porch')
 .It Dv porch.tty.lflag
 .It Dv porch.tty.cc
 .It Dv process = porch.spawn(argv0 Ns [, Ns argv...])
-.It Dv process.match(pattern[, matcher Ns ])
-.It Dv process.eof(timeout)
-.It Dv process.cfg(cfg)
-.It Dv process.chdir(dir)
-.It Dv process.close()
-.It Dv process.flush(timeout)
-.It Dv process.log(logfile)
-.It Dv process.pipe(commandstr , linefilter )
-.It Dv process.raw(bool)
-.It Dv process.release()
-.It Dv process.sigblock(signo, ... )
-.It Dv process.sigcatch(signo, ... )
-.It Dv process.sigclear()
-.It Dv process.sigignore(signo, ... )
-.It Dv process.sigisblocked(signo, ... )
-.It Dv process.sigiscaught(signo, ... )
-.It Dv process.sigisignored(signo, ... )
-.It Dv process.sigisunblocked(signo, ... )
-.It Dv process.signal(signo)
-.It Dv process.sigreset(preserve_sigmask)
-.It Dv process.sigunblock(signo, ... )
-.It Dv process.stty(field[, set[, unset Ns ]])
-.It Dv process.term()
-.It Dv process.write(text[, cfg Ns ])
-.It Dv process.clearenv([local])
-.It Dv process.getenv(key)
-.It Dv process.setenv(key, value[, local Ns ])
+.It Dv process:match(pattern[, matcher Ns ])
+.It Dv process:eof(timeout)
+.It Dv process:cfg(cfg)
+.It Dv process:chdir(dir)
+.It Dv process:close()
+.It Dv process:flush(timeout)
+.It Dv process:log(logfile)
+.It Dv process:pipe(commandstr , linefilter )
+.It Dv process:raw(bool)
+.It Dv process:release()
+.It Dv process:sigblock(signo, ... )
+.It Dv process:sigcatch(signo, ... )
+.It Dv process:sigclear()
+.It Dv process:sigignore(signo, ... )
+.It Dv process:sigisblocked(signo, ... )
+.It Dv process:sigiscaught(signo, ... )
+.It Dv process:sigisignored(signo, ... )
+.It Dv process:sigisunblocked(signo, ... )
+.It Dv process:signal(signo)
+.It Dv process:sigreset(preserve_sigmask)
+.It Dv process:sigunblock(signo, ... )
+.It Dv process:stty(field[, set[, unset Ns ]])
+.It Dv process:term()
+.It Dv process:write(text[, cfg Ns ])
+.It Dv process:clearenv([local])
+.It Dv process:getenv(key)
+.It Dv process:setenv(key, value[, local Ns ])
 .El
 .Sh DESCRIPTION
 The
@@ -146,7 +146,7 @@ table exposes various tty options for the current system:
 .Pp
 All of these are tables that map names to values that may be provided to the
 .Dv stty()
-function of a process.
+function of a process:
 See your platform's termios documentation for more information on what the
 values represent.
 Only the
@@ -158,7 +158,7 @@ tables are populated at the moment.
 The following process operations are available on the object returned by
 .Dv porch.spawn :
 .Bl -tag -width XXXX
-.It Dv process.match(pattern[, matcher Ns ])
+.It Dv process:match(pattern[, matcher Ns ])
 Attempts to match
 .Dv pattern
 with the given
@@ -177,7 +177,7 @@ table, which has the following keys:
 .Dv posix
 (EREs)
 .El
-.It Dv process.eof(timeout)
+.It Dv process:eof(timeout)
 The
 .Dv eof
 function behaves the same as it does in
@@ -197,45 +197,45 @@ has no default timeout, so an omitted or nil
 will result in the
 .Dv eof
 function waiting indefinitely for both EOF and the process to exit.
-.It Dv process.cfg(cfg)
-.It Dv process.chdir(dir)
-.It Dv process.close()
-.It Dv process.flush(timeout)
-.It Dv process.log(logfile)
-.It Dv process.pipe(commandstr , linefilter )
-.It Dv process.raw(bool)
-.It Dv process.release()
-.It Dv process.sigblock(...)
-.It Dv process.sigcatch(...)
-.It Dv process.sigclear()
-.It Dv process.sigignore(...)
-.It Dv process.sigisblocked(signo, ... )
+.It Dv process:cfg(cfg)
+.It Dv process:chdir(dir)
+.It Dv process:close()
+.It Dv process:flush(timeout)
+.It Dv process:log(logfile)
+.It Dv process:pipe(commandstr , linefilter )
+.It Dv process:raw(bool)
+.It Dv process:release()
+.It Dv process:sigblock(...)
+.It Dv process:sigcatch(...)
+.It Dv process:sigclear()
+.It Dv process:sigignore(...)
+.It Dv process:sigisblocked(signo, ... )
 Returns true if every
 .Dv signo
 specified is currently blocked.
-.It Dv process.sigiscaught(signo, ... )
+.It Dv process:sigiscaught(signo, ... )
 Returns true if every
 .Dv signo
 specified is currently caught.
-.It Dv process.sigisignored(signo, ... )
+.It Dv process:sigisignored(signo, ... )
 Returns true if every
 .Dv signo
 specified is currently ignored.
-.It Dv process.sigisunblocked(signo, ... )
+.It Dv process:sigisunblocked(signo, ... )
 Returns true if every
 .Dv signo
 specified is currently unblocked.
-.It Dv process.signal(signo)
-.It Dv process.sigreset(preserve_sigmask)
-.It Dv process.sigunblock(signo, ... )
-.It Dv process.stty(field[, set[, unset Ns ]])
+.It Dv process:signal(signo)
+.It Dv process:sigreset(preserve_sigmask)
+.It Dv process:sigunblock(signo, ... )
+.It Dv process:stty(field[, set[, unset Ns ]])
 The
-.Dv process.stty
+.Dv process:stty
 function is provided for convenience, but there is some overlap with
 fuctionality provided by the process'
-.Dv process.term
+.Dv process:term
 as described below.
-.It Dv process.term()
+.It Dv process:term()
 This returns an object that represents the process terminal.
 The terminal object has the following method and properties:
 .Bl -tag -width indent
@@ -267,7 +267,7 @@ may be fetched above in
 .Dv term:fetch() .
 The values are the new value to assign the associated field.
 The
-.Dv process.stty()
+.Dv process:stty()
 function described above may be more convenient to use when needing to simply
 enable or disable a single flag, as the fetch/update are done for you.
 .It Dv term:size([width, height Ns ])
@@ -281,10 +281,10 @@ Otherwise, the specified elements are of the size are updated unless specified
 as
 .Dv nil .
 .El
-.It Dv process.write(text[, cfg Ns ])
-.It Dv process.clearenv([local])
-.It Dv process.getenv(key)
-.It Dv process.setenv(key, value[, local Ns ])
+.It Dv process:write(text[, cfg Ns ])
+.It Dv process:clearenv([local])
+.It Dv process:getenv(key)
+.It Dv process:setenv(key, value[, local Ns ])
 .El
 .Pp
 All of these functions operate as described in
