@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd May 22, 2025
+.Dd June 4, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -308,6 +308,52 @@ is truthy, then the value is only set for the most recent
 The
 .Fa table
 variant may be used to set multiple environment variables at once.
+.It Fn sigblock "signo" "..."
+Block all signal
+.Fa signo
+specified.
+Each
+.Fa signo
+may either be a signal number or a table with signal numbers as values.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn sigcatch "signo" "..."
+Catch all signal
+.Fa signo
+specified.
+Each
+.Fa signo
+may either be a signal number or a table with signal numbers as values.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn sigclear
+Clear the signal mask.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn sigignore "signo" "..."
+Ignore all signal
+.Fa signo
+specified.
+Each
+.Fa signo
+may either be a signal number or a table with signal numbers as values.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn sigreset "preserve_sigmask"
+Resets all signals to be caught and clears the signal mask, unless
+.Fa preserve_sigmask
+is truthy.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn sigunblock "signo" "..."
+Unblock all signal
+.Fa signo
+specified.
+Each
+.Fa signo
+may either be a signal number or a table with signal numbers as values.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn size "width" "height"
 Set or get the size of the terminal associated with the process.
 If at least one of

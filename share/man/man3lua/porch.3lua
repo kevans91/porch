@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd May 21, 2025
+.Dd June 4, 2025
 .Dt PORCH 3lua
 .Os
 .Sh NAME
@@ -37,7 +37,17 @@ local porch = require('porch')
 .It Dv process.pipe(commandstr , linefilter )
 .It Dv process.raw(bool)
 .It Dv process.release()
+.It Dv process.sigblock(signo, ... )
+.It Dv process.sigcatch(signo, ... )
+.It Dv process.sigclear()
+.It Dv process.sigignore(signo, ... )
+.It Dv process.sigisblocked(signo, ... )
+.It Dv process.sigiscaught(signo, ... )
+.It Dv process.sigisignored(signo, ... )
+.It Dv process.sigisunblocked(signo, ... )
 .It Dv process.signal(signo)
+.It Dv process.sigreset(preserve_sigmask)
+.It Dv process.sigunblock(signo, ... )
 .It Dv process.stty(field[, set[, unset Ns ]])
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
@@ -194,7 +204,29 @@ function waiting indefinitely for both EOF and the process to exit.
 .It Dv process.pipe(commandstr , linefilter )
 .It Dv process.raw(bool)
 .It Dv process.release()
+.It Dv process.sigblock(...)
+.It Dv process.sigcatch(...)
+.It Dv process.sigclear()
+.It Dv process.sigignore(...)
+.It Dv process.sigisblocked(signo, ... )
+Returns true if every
+.Dv signo
+specified is currently blocked.
+.It Dv process.sigiscaught(signo, ... )
+Returns true if every
+.Dv signo
+specified is currently caught.
+.It Dv process.sigisignored(signo, ... )
+Returns true if every
+.Dv signo
+specified is currently ignored.
+.It Dv process.sigisunblocked(signo, ... )
+Returns true if every
+.Dv signo
+specified is currently unblocked.
 .It Dv process.signal(signo)
+.It Dv process.sigreset(preserve_sigmask)
+.It Dv process.sigunblock(signo, ... )
 .It Dv process.stty(field[, set[, unset Ns ]])
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
