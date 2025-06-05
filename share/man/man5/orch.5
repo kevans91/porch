@@ -354,25 +354,6 @@ Each
 may either be a signal number or a table with signal numbers as values.
 .Pp
 This directive is enqueued, not processed immediately.
-.It Fn size "width" "height"
-Set or get the size of the terminal associated with the process.
-If at least one of
-.Fa width
-or
-.Fa height
-are not nil, then
-.Fn size
-will resize that dimension of the window.
-The new current size of the window is always returned.
-.Pp
-The window will start off on a fresh spawn with a width and height of 0.
-The size of the window is never persisted across processes.
-.Pp
-This directive is always processed immediately, and thus should always be used
-in either an
-.Fn enqueue
-or
-fail context.
 .It Fn signal "signal"
 Send the specified
 .Fa signal
@@ -394,6 +375,25 @@ Signals not described in this table are also accepted.
 relies on
 .Xr kill 2
 to validate the signal for maximum flexibility.
+.It Fn size "width" "height"
+Set or get the size of the terminal associated with the process.
+If at least one of
+.Fa width
+or
+.Fa height
+are not nil, then
+.Fn size
+will resize that dimension of the window.
+The new current size of the window is always returned.
+.Pp
+The window will start off on a fresh spawn with a width and height of 0.
+The size of the window is never persisted across processes.
+.Pp
+This directive is always processed immediately, and thus should always be used
+in either an
+.Fn enqueue
+or
+fail context.
 .It Fn sleep "duration"
 Sleeps for at least the specified
 .Fa duration ,
