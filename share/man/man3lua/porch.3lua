@@ -49,6 +49,7 @@ local porch = require('porch')
 .It Dv process.sigreset(preserve_sigmask)
 .It Dv process.sigunblock(signo, ... )
 .It Dv process.stty(field[, set[, unset Ns ]])
+.It Dv process.term()
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
 .It Dv process.getenv(key)
@@ -228,6 +229,58 @@ specified is currently unblocked.
 .It Dv process.sigreset(preserve_sigmask)
 .It Dv process.sigunblock(signo, ... )
 .It Dv process.stty(field[, set[, unset Ns ]])
+The
+.Dv process.stty
+function is provided for convenience, but there is some overlap with
+fuctionality provided by the process'
+.Dv process.term
+as described below.
+.It Dv process.term()
+This returns an object that represents the process terminal.
+The terminal object has the following method and properties:
+.Bl -tag -width indent
+.It Dv term:fetch(field, ... )
+Fetches the associated property from the terminal.
+The
+.Dq field
+requested may be one of:
+.Bl -bullet
+.It
+.Dq cc
+.It
+.Dq cflag
+.It
+.Dq iflag
+.It
+.Dq lflag
+.It
+.Dq oflag
+.El
+.Pp
+The requested values are returned in the same order that they are passed to
+.Dv term:fetch() .
+.It Dv term:update(fields)
+Updates the terminal with values specified in the table
+.Dq fields .
+The keys of the field table are expected to match the names of the fields that
+may be fetched above in
+.Dv term:fetch() .
+The values are the new value to assign the associated field.
+The
+.Dv process.stty()
+function described above may be more convenient to use when needing to simply
+enable or disable a single flag, as the fetch/update are done for you.
+.It Dv term:size([width, height Ns ])
+Get or set the size of the terminal.
+If both
+.Dq width
+and
+.Dq height
+are omitted or nil, the width and height are returned in that order.
+Otherwise, the specified elements are of the size are updated unless specified
+as
+.Dv nil .
+.El
 .It Dv process.write(text[, cfg Ns ])
 .It Dv process.clearenv([local])
 .It Dv process.getenv(key)
