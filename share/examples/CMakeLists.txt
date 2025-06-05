@@ -7,6 +7,7 @@
 set(EXAMPLES
 	cat.orch
 	cat-multi.orch
+	mailx.orch
 	nc.orch
 )
 
