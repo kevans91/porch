@@ -105,12 +105,20 @@ end
 local function input(str)
 	local clear_inbuf = false
 
+	local function isprint(val)
+		if val >= 0x20 then
+			return true
+		end
+
+		-- Control characters that we consider printable
+		return val == 0x09 or val == 0x0a or val == 0x0d
+	end
 	if str then
 		for i = 1, #str do
 			local chr = str:sub(i, i)
 			local val = chr:byte(1)
 
-			if val == 0x09 or val == 0x0a or val == 0x0d or val >= 0x20 then
+			if isprint(val) then
 				inbuf = inbuf .. chr
 			else
 				-- If we receive a control character, dump output
