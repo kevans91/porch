@@ -420,7 +420,7 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 {
 	int error;
 
-	signal(SIGINT, SIG_DFL);
+	signal(SIGTERM, SIG_DFL);
 
 	/*
 	 * Register a couple of events that the script may want to use:

@@ -151,7 +151,7 @@ porchlua_process_close(lua_State *L)
 
 		sigaction(SIGALRM, &sigalrm, NULL);
 
-		sig = SIGINT;
+		sig = SIGTERM;
 again:
 		/*
 		 * We would still want an error if we terminate as a result of this
@@ -167,7 +167,7 @@ again:
 		if (sig == SIGKILL) {
 			/*
 			 * Once we've sent SIGKILL, we're tired of it; just drop the pty and
-			 * anything that might've been added to the buffer after our SIGINT.
+			 * anything that might've been added to the buffer after our SIGTERM.
 			 */
 			if (self->termctl != -1) {
 				close(self->termctl);
@@ -207,7 +207,7 @@ again:
 
 	if (failed) {
 		luaL_pushfail(L);
-		lua_pushstring(L, "could not kill process with SIGINT");
+		lua_pushstring(L, "could not kill process with SIGTERM");
 		return (2);
 	}
 
