@@ -44,6 +44,41 @@ porchlua_process_close_alarm(int signo __unused)
 	/* XXX Ignored, just don't terminate us. */
 }
 
+static int
+porchlua_process_wait(struct porch_process *self, int wflags)
+{
+	int wpid;
+
+	assert((wflags & (WUNTRACED | WCONTINUED)) != (WUNTRACED | WCONTINUED));
+	for (;;) {
+		while ((wpid = waitpid(self->pid, &self->status, wflags)) == -1) {
+			if (errno == EINTR)
+				continue;
+			return (-1);
+		}
+
+		/*
+		 * If we're specifically waiting for either a stopped or continued
+		 * process, then we'll keep looping until we've observed the
+		 * correct status.  Odds are that won't happen, but the caller might
+		 * have specified WNOHANG for some reason.
+		 */
+		if ((wflags & WUNTRACED) != 0 && WIFSTOPPED(self->status))
+			break;
+		if ((wflags & WCONTINUED) != 0 && WIFCONTINUED(self->status))
+			break;
+
+		/*
+		 * Of course, if we just reaped the child, then we can't really
+		 * come back from that.
+		 */
+		if (WIFEXITED(self->status) || WIFSIGNALED(self->status))
+			break;
+	}
+
+	return (0);
+}
+
 static bool
 porchlua_process_killed(struct porch_process *self, int *signo, bool hang)
 {
@@ -213,6 +248,43 @@ again:
 
 	lua_pushboolean(L, 1);
 	return (1);
+}
+
+static int
+porchlua_process_continue(lua_State *L)
+{
+	struct porch_process *self;
+	int error;
+	bool sendsig = true;
+
+	/*
+	 * The caller can choose to avoid sending SIGCONT by passing a falsey
+	 * value in.  We assume they expect an external force to resume it.
+	 */
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (lua_gettop(L) >= 2)
+		sendsig = lua_toboolean(L, 2);
+
+	if (sendsig && kill(self->pid, SIGCONT) != 0)
+		goto failed;
+
+	error = porchlua_process_wait(self, WCONTINUED);
+	if (error == -1)
+		goto failed;
+	if (!WIFCONTINUED(self->status)) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "Process seems to have terminated");
+		return (2);
+	}
+
+	lua_pushboolean(L, 1);
+	return (1);
+failed:
+	error = errno;
+
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(error));
+	return (2);
 }
 
 static int
@@ -922,6 +994,39 @@ porchlua_process_signal(lua_State *L)
 }
 
 static int
+porchlua_process_stop(lua_State *L)
+{
+	struct porch_process *self;
+	int error;
+
+	/*
+	 * We'll send a SIGSTOP to the child process, then wait for it to report
+	 * having stopped.
+	 */
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (kill(self->pid, SIGSTOP) != 0)
+		goto failed;
+
+	error = porchlua_process_wait(self, WUNTRACED);
+	if (error == -1)
+		goto failed;
+	if (!WIFSTOPPED(self->status)) {
+		luaL_pushfail(L);
+		lua_pushstring(L, "Process seems to have terminated");
+		return (2);
+	}
+
+	lua_pushboolean(L, 1);
+	return (1);
+failed:
+	error = errno;
+
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(error));
+	return (2);
+}
+
+static int
 porchlua_process_term(lua_State *L)
 {
 	struct porch_term sterm;
@@ -1037,6 +1142,7 @@ porchlua_process_write(lua_State *L)
 static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(chdir),
 	PROCESS_SIMPLE(close),
+	PROCESS_SIMPLE(continue),
 	PROCESS_SIMPLE(eof),
 	PROCESS_SIMPLE(proxy),
 	PROCESS_SIMPLE(read),
@@ -1045,6 +1151,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(sigcatch),
 	PROCESS_SIMPLE(sigmask),
 	PROCESS_SIMPLE(signal),
+	PROCESS_SIMPLE(stop),
 	PROCESS_SIMPLE(term),
 	PROCESS_SIMPLE(write),
 	{ NULL, NULL },
