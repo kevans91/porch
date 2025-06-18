@@ -31,11 +31,13 @@ end
 -- proc_inherited functions are just routed directly through to the underlying
 -- process with no change.
 local proc_inherited = {
+	"continue",
 	"proxy",
 	"sigisblocked",
 	"sigiscaught",
 	"sigisignored",
 	"sigisunblocked",
+	"stop",
 }
 
 local DirectProcess = {}

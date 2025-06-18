@@ -113,6 +113,23 @@ actions.defined = {
 			return true
 		end,
 	},
+	continue = {
+		init = function(action, args)
+			action.sendsig = (#args == 0 and true) or args[1]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			-- XXX Check PORCH_DEBUG
+			-- XXX How to avoid if process is not stopped
+			if not current_process then
+				error("continue() called before process spawned.")
+			end
+
+			current_process:continue(action.sendsig)
+			return true
+		end,
+	},
 	eof = {
 		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
@@ -338,6 +355,20 @@ actions.defined = {
 			end
 
 			assert(current_process:sigunignore(action.sigtbl))
+			return true
+		end,
+	},
+	stop = {
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			-- XXX Check PORCH_DEBUG
+			-- XXX Check release
+			if not current_process then
+				error("stop() called before process spawned.")
+			end
+
+			current_process:stop()
 			return true
 		end,
 	},

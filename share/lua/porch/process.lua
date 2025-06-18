@@ -141,6 +141,9 @@ end
 function Process:chdir(dir)
 	return assert(self._process:chdir(dir))
 end
+function Process:continue(...)
+	return assert(self._process:continue(...))
+end
 function Process:eof(...)
 	return self._process:eof(...)
 end
@@ -343,6 +346,9 @@ function Process:sigmask(...)
 end
 function Process:signal(signo)
 	return self._process:signal(signo)
+end
+function Process:stop()
+	return assert(self._process:stop())
 end
 function Process:write(data, cfg)
 	if not self.is_raw then
