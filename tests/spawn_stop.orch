@@ -1,0 +1,16 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- The stopwatch will trigger if it's been suspended for at least four seconds,
+-- in this case.  For this test, we'll: start it, suspend, sleep four seconds,
+-- then continue it and wait for it to terminate.
+spawn("stopwatch", "2")
+
+match "Timer start"
+stop()
+sleep(2)
+continue()
+match "Timer finished"
