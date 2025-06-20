@@ -37,7 +37,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update --quiet || true
-          brew install ${{ matrix.pkgs }}
+          brew install --formula ${{ matrix.pkgs }}
       - name: configure
         run: |
           mkdir build
