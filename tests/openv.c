@@ -26,7 +26,7 @@ envsort(const void *lenvp, const void *renvp)
 }
 
 int
-main(int argc, char *argv[])
+main()
 {
 	size_t envc = 0;
 

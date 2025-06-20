@@ -286,7 +286,8 @@ porch_clearenv(void)
 }
 
 static int
-porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg,
+    void *cookie __unused)
 {
 	struct porch_env *penv;
 	size_t envsz;
@@ -302,7 +303,6 @@ porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 
 	if (penv->setsz != 0) {
 		const char *env, *last;
-		size_t idx = 0;
 
 		last = &penv->envstr[penv->setsz];
 		env = &penv->envstr[0];
@@ -321,7 +321,8 @@ porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 }
 
 static int
-porch_child_chdir(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+porch_child_chdir(porch_ipc_t ipc, struct porch_ipc_msg *msg,
+    void *cookie __unused)
 {
 	const char *dir;
 	size_t dirsz;
@@ -348,7 +349,8 @@ porch_child_chdir(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 }
 
 static int
-porch_child_setmask(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+porch_child_setmask(porch_ipc_t ipc, struct porch_ipc_msg *msg,
+    void *cookie __unused)
 {
 	const sigset_t *newmask;
 	size_t masksz;
@@ -375,7 +377,8 @@ porch_child_setmask(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
 }
 
 static int
-porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
+porch_child_sigcatch(porch_ipc_t ipc, struct porch_ipc_msg *msg,
+    void *cookie __unused)
 {
 	const struct porch_sigcatch *catchmsg;
 	size_t catchmsgsz;

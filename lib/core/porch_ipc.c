@@ -129,7 +129,6 @@ struct porch_ipc_msg *
 porch_ipc_msg_alloc(enum porch_ipc_tag tag, size_t payloadsz, void **payload)
 {
 	struct porch_ipc_msg *msg;
-	size_t msgsz;
 
 	assert(payloadsz >= 0);
 	assert(payloadsz == 0 || payload != NULL);

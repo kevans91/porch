@@ -27,7 +27,8 @@
 #define	PORCH_PROBE_NSIG
 #endif
 
-#define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
+#define	SA_SIG_IGN	\
+	((void (*)(int, siginfo_t *, void *))(void *)SIG_IGN)
 static const char *porch_platform_signames[NSIG];
 
 #if !STATIC_SIGLIST

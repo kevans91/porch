@@ -16,7 +16,8 @@
 
 #include "porch_lib_signals.h"
 
-#define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
+#define	SA_SIG_IGN	\
+    ((void (*)(int, siginfo_t *, void *))(void *)SIG_IGN)
 
 /*
  * Output various information about the current signal mask.
@@ -43,7 +44,7 @@ main(int argc, char *argv[])
 {
 	sigset_t sigmask;
 	struct sigaction act;
-	int ch, error, nblocked = 0, nignored = 0, output = 0, sigmax;
+	int ch, error, nblocked = 0, nignored = 0, sigmax;
 	enum {
 		MODE_NORMAL = 0,
 		MODE_BLOCKEDOUT,

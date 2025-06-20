@@ -197,8 +197,7 @@ porchlua_term_update(lua_State *L)
 	struct porch_ipc_msg *msg;
 	const char **fieldp, *field;
 	struct termios *msgterm, updated;
-	size_t msgsz;
-	int error, mask, type, valid;
+	int error, type, valid;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_TERMHANDLE);
 	if (!lua_istable(L, 2)) {

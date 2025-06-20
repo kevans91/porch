@@ -819,7 +819,7 @@ porch_sigset2table(lua_State *L, const sigset_t *sigset)
 static void
 porch_table2sigset(lua_State *L, int idx, sigset_t *sigset)
 {
-	int ret, sigmax;
+	int sigmax;
 
 	assert(idx > 0);
 	sigmax = porch_sigmax();

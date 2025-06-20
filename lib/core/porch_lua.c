@@ -365,7 +365,7 @@ porchlua_spawn(lua_State *L)
 		free(argv);
 
 		luaL_pushfail(L);
-		lua_pushstring(L, strerror(errno));
+		lua_pushstring(L, strerror(serrno));
 		return (2);
 	}
 
@@ -376,7 +376,7 @@ porchlua_spawn(lua_State *L)
 		free(argv);
 
 		luaL_pushfail(L);
-		lua_pushstring(L, strerror(errno));
+		lua_pushstring(L, strerror(serrno));
 		return (2);
 	}
 
