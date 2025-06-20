@@ -115,8 +115,10 @@ porch_fetch_sigcaught(sigset_t *sigset)
 		if (porch_sig_uncatchable(signo))
 			continue;
 
+#ifndef __APPLE__
 		if (sigismember(sigset, signo) == -1)
 			break;	/* Hit the end of valid signals. */
+#endif
 		if (sigaction(signo, NULL, &act) != 0) {
 			/*
 			 * For signals that we can't examine, we just pretend
