@@ -130,7 +130,6 @@ porch_ipc_msg_alloc(enum porch_ipc_tag tag, size_t payloadsz, void **payload)
 {
 	struct porch_ipc_msg *msg;
 
-	assert(payloadsz >= 0);
 	assert(payloadsz == 0 || payload != NULL);
 	assert(tag != IPC_NOXMIT);
 
@@ -154,8 +153,9 @@ porch_ipc_msg_payload(struct porch_ipc_msg *msg, size_t *odatasz)
 
 	/*
 	 * porch_ipc_drain() should have rejected negative payload indications.
+	 * The caller may only be calling us to get the size, so we can't really
+	 * assert on it not being zero
 	 */
-	assert(datasz >= 0);
 	if (odatasz != NULL)
 		*odatasz = datasz;
 	if (datasz == 0)

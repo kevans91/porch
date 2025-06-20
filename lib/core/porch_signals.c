@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define	_GNU_SOURCE
+#endif
 #include <assert.h>
 #ifdef __APPLE__
 #include <ctype.h>

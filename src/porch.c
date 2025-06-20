@@ -82,6 +82,7 @@ main(int argc, char *argv[])
 	switch (porch_mode) {
 	case PMODE_REMOTE:
 		shortopts = rporch_shortopts;
+		break;
 	case PMODE_GENERATE:
 		shortopts = porchgen_shortopts;
 		scriptf = NULL;	/* Must be specified. */
