@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define	_GNU_SOURCE
+#endif
 #include <assert.h>
 #ifdef __APPLE__
 #include <ctype.h>
@@ -27,7 +30,8 @@
 #define	PORCH_PROBE_NSIG
 #endif
 
-#define	SA_SIG_IGN	((void (*)(int, siginfo_t *, void *))SIG_IGN)
+#define	SA_SIG_IGN	\
+	((void (*)(int, siginfo_t *, void *))(void *)SIG_IGN)
 static const char *porch_platform_signames[NSIG];
 
 #if !STATIC_SIGLIST
@@ -111,8 +115,10 @@ porch_fetch_sigcaught(sigset_t *sigset)
 		if (porch_sig_uncatchable(signo))
 			continue;
 
+#ifndef __APPLE__
 		if (sigismember(sigset, signo) == -1)
 			break;	/* Hit the end of valid signals. */
+#endif
 		if (sigaction(signo, NULL, &act) != 0) {
 			/*
 			 * For signals that we can't examine, we just pretend
