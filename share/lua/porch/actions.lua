@@ -244,14 +244,12 @@ actions.defined = {
 	},
 	sigblock = {
 		need_process = true,
+		need_prerelease = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if current_process:released() then
-				error("sigblock() called after process release")
-			end
 
 			assert(current_process:sigblock(action.sigtbl))
 			return true
@@ -259,11 +257,9 @@ actions.defined = {
 	},
 	sigclear = {
 		need_process = true,
+		need_prerelease = true,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if current_process:released() then
-				error("sigclear() called after process release")
-			end
 
 			assert(current_process:sigmask(0))
 			return true
@@ -271,14 +267,12 @@ actions.defined = {
 	},
 	sigignore = {
 		need_process = true,
+		need_prerelease = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if current_process:released() then
-				error("sigignore() called after process release")
-			end
 
 			assert(current_process:sigignore(action.sigtbl))
 			return true
@@ -303,6 +297,7 @@ actions.defined = {
 	},
 	sigreset = {
 		need_process = true,
+		need_prerelease = true,
 		init = function(action, args)
 			action.preserve_sigmask = args[1]
 		end,
@@ -310,25 +305,18 @@ actions.defined = {
 			local current_process = action.ctx.process
 			local preserve_sigmask = action.preserve_sigmask
 
-			if current_process:released() then
-				error("sigreset() called after process release")
-			end
-
 			assert(current_process:sigreset(preserve_sigmask))
 			return true
 		end,
 	},
 	sigunblock = {
 		need_process = true,
+		need_prerelease = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-
-			if current_process:released() then
-				error("sigunblock() called after process release")
-			end
 
 			assert(current_process:sigunblock(action.sigtbl))
 			return true
@@ -336,15 +324,12 @@ actions.defined = {
 	},
 	sigcatch = {
 		need_process = true,
+		need_prerelease = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-
-			if current_process:released() then
-				error(action.type .. "() called after process release")
-			end
 
 			assert(current_process:sigunignore(action.sigtbl))
 			return true

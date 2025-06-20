@@ -31,8 +31,15 @@ local match_valid_cfg = {
 }
 
 local function check_prereqs(ctx, action)
-	if action.need_process and not ctx.process then
+	local current_process = ctx.process
+
+	if action.need_process and not current_process then
 		error(action.type .. " may not be called before a process is spawned")
+	end
+
+	if action.need_prerelease and current_process and
+	    current_process:released() then
+		error(action.type .. " must be called before the process is released")
 	end
 
 	return true
@@ -695,6 +702,7 @@ function scripter.run_script(scriptfile, config)
 			action.src, action.line = grab_caller(2)
 
 			action.need_process = def.need_process
+			action.need_prerelease = def.need_prerelease
 			action.print_diagnostics = def.print_diagnostics
 
 			if def.init then
