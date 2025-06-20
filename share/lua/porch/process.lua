@@ -8,6 +8,22 @@ local core = require("porch.core")
 local env = require("porch.env")
 local tty = core.tty
 
+local debug_categories = {
+	bootstrap = true,
+}
+local function process_debug_env(debug_env)
+	local debugtbl = {}
+
+	debug_env = debug_env:lower()
+	for cat in debug_env:gmatch("[^, ]+") do
+		assert(debug_categories[cat] ~= nil,
+		    "Unknown debug category: " .. cat)
+		debugtbl[cat] = true
+	end
+
+	return debugtbl
+end
+
 local MatchBuffer = {}
 function MatchBuffer:new(process, ctx)
 	local obj = setmetatable({}, self)
@@ -127,6 +143,10 @@ function Process:new(cmd, ctx)
 	pwrap.is_raw = false
 	pwrap.env = env:new(ctx.env)
 
+	-- We capture PORCH_DEBUG at the time of creation in case the caller
+	-- wants to debug different features at different processes.
+	pwrap.debug_env = os.getenv("PORCH_DEBUG") or ""
+
 	pwrap.term = assert(pwrap._process:term())
 	local mask = pwrap.term:fetch("lflag")
 
@@ -142,7 +162,16 @@ function Process:chdir(dir)
 	return assert(self._process:chdir(dir))
 end
 function Process:continue(...)
-	return assert(self._process:continue(...))
+	local ret = assert(self._process:continue(...))
+	self.is_stopped = false
+	return ret
+end
+function Process:debugging(cat)
+	if not self.debug then
+		self.debug = process_debug_env(self.debug_env)
+	end
+
+	return self.debug[cat:lower()] ~= nil
 end
 function Process:eof(...)
 	return self._process:eof(...)
@@ -348,7 +377,12 @@ function Process:signal(signo)
 	return self._process:signal(signo)
 end
 function Process:stop()
-	return assert(self._process:stop())
+	local ret = assert(self._process:stop())
+	self.is_stopped = true
+	return ret
+end
+function Process:stopped()
+	return self.is_stopped
 end
 function Process:write(data, cfg)
 	if not self.is_raw then

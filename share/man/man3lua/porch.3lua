@@ -50,6 +50,7 @@ local porch = require('porch')
 .It Dv process:sigreset(preserve_sigmask)
 .It Dv process:sigunblock(signo, ... )
 .It Dv process:stop()
+.It Dv process:stopped()
 .It Dv process:stty(field[, set[, unset Ns ]])
 .It Dv process:term()
 .It Dv process:write(text[, cfg Ns ])
@@ -232,6 +233,11 @@ specified is currently unblocked.
 .It Dv process:sigreset(preserve_sigmask)
 .It Dv process:sigunblock(signo, ... )
 .It Dv process:stop()
+.It Dv process:stopped()
+Returns true if
+.Dv process:stop()
+has been called on this process without a subsequent
+.Dv process:continue() .
 .It Dv process:stty(field[, set[, unset Ns ]])
 The
 .Dv process:stty

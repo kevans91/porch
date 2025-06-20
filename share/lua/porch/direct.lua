@@ -38,6 +38,7 @@ local proc_inherited = {
 	"sigisignored",
 	"sigisunblocked",
 	"stop",
+	"stopped",
 }
 
 local DirectProcess = {}

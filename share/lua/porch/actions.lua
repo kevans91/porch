@@ -120,10 +120,10 @@ actions.defined = {
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			-- XXX Check PORCH_DEBUG
-			-- XXX How to avoid if process is not stopped
 			if not current_process then
 				error("continue() called before process spawned.")
+			elseif not current_process:stopped() then
+				error("stop() called on a running process")
 			end
 
 			current_process:continue(action.sendsig)
@@ -362,10 +362,19 @@ actions.defined = {
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			-- XXX Check PORCH_DEBUG
-			-- XXX Check release
 			if not current_process then
 				error("stop() called before process spawned.")
+			end
+
+			-- We don't want to allow pre-release stop() unless it's
+			-- already known that they're trying to debug porch(1)
+			-- process bootstrap.  This is just a simple
+			-- anti-footgun.
+			if not current_process:released() and
+			    not current_process:debugging("bootstrap") then
+				error("stop() called before process release")
+			elseif current_process:stopped() then
+				error("stop() called on an already-stopped process")
 			end
 
 			current_process:stop()
