@@ -30,6 +30,14 @@ local match_valid_cfg = {
 	timeout = true,
 }
 
+local function check_prereqs(ctx, action)
+	if action.need_process and not ctx.process then
+		error(action.type .. " may not be called before a process is spawned")
+	end
+
+	return true
+end
+
 -- Sometimes a queue, sometimes a stack.  Oh well.
 local Queue = {}
 function Queue:push(item)
@@ -123,8 +131,11 @@ function MatchContext:process()
 			if current_ctx.match_ctx_stack:count() ~= ctx_cnt then
 				break
 			end
-		elseif not action:execute() then
-			return false
+		else
+			check_prereqs(current_ctx, action)
+			if not action:execute() then
+				return false
+			end
 		end
 
 		::skip::
@@ -683,6 +694,7 @@ function scripter.run_script(scriptfile, config)
 			action.ctx = current_ctx
 			action.src, action.line = grab_caller(2)
 
+			action.need_process = def.need_process
 			action.print_diagnostics = def.print_diagnostics
 
 			if def.init then
@@ -699,6 +711,7 @@ function scripter.run_script(scriptfile, config)
 					error(name .. " may not be called in a direct context")
 				end
 
+				check_prereqs(current_ctx, def)
 				return action:execute()
 			elseif def.only_direct then
 				error(name .. " may only be called in a direct context")

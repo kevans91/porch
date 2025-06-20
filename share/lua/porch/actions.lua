@@ -84,45 +84,38 @@ end
 actions.MatchAction = MatchAction
 actions.defined = {
 	cfg = {
+		need_process = true,
 		init = function(action, args)
 			action.cfg = args[1]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("cfg() called before process spawned.")
-			end
-
 			current_process:set(action.cfg)
 			return true
 		end,
 	},
 	chdir = {
+		need_process = true,
 		init = function(action, args)
 			action.dir = args[1]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("chdir() called before process spawned.")
-			end
-
 			current_process:chdir(action.dir)
 			return true
 		end,
 	},
 	continue = {
+		need_process = true,
 		init = function(action, args)
 			action.sendsig = (#args == 0 and true) or args[1]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("continue() called before process spawned.")
-			elseif not current_process:stopped() then
+			if not current_process:stopped() then
 				error("stop() called on a running process")
 			end
 
@@ -131,6 +124,7 @@ actions.defined = {
 		end,
 	},
 	eof = {
+		need_process = true,
 		print_diagnostics = function(action)
 			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
 			    action.src, action.line))
@@ -166,6 +160,7 @@ actions.defined = {
 		end,
 	},
 	flush = {
+		need_process = true,
 		init = function(action, args)
 			action.timeout = args[1] or action.ctx.timeout
 		end,
@@ -178,6 +173,7 @@ actions.defined = {
 		end,
 	},
 	log = {
+		need_process = true,
 		init = function(action, args)
 			local file = args[1]
 			if type(file) == "string" then
@@ -189,24 +185,18 @@ actions.defined = {
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("execute() called before process spawned.")
-			end
-
 			current_process:logfile(action.file)
 			return true
 		end,
 	},
 	pipe = {
+		need_process = true,
 		init = function(action, args)
 			action.command = args[1]
 			action.linefilter = args[2]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if not current_process then
-				error("Script did not spawn process prior to writing")
-			end
 
 			local inpipe = io.popen(action.command)
 			if not inpipe then
@@ -232,32 +222,28 @@ actions.defined = {
 		end,
 	},
 	raw = {
+		need_process = true,
 		init = function(action, args)
 			action.value = args[1]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("raw() called before process spawned.")
-			end
-
 			current_process:raw(action.value)
 			return true
 		end,
 	},
 	release = {
+		need_process = true,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if not current_process then
-				error("release() called before process spawned.")
-			end
 
 			assert(current_process:release())
 			return true
 		end,
 	},
 	sigblock = {
+		need_process = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
@@ -272,6 +258,7 @@ actions.defined = {
 		end,
 	},
 	sigclear = {
+		need_process = true,
 		execute = function(action)
 			local current_process = action.ctx.process
 			if current_process:released() then
@@ -283,6 +270,7 @@ actions.defined = {
 		end,
 	},
 	sigignore = {
+		need_process = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
@@ -297,6 +285,7 @@ actions.defined = {
 		end,
 	},
 	signal = {
+		need_process = true,
 		init = function(action, args)
 			action.signo = args[1]
 		end,
@@ -304,9 +293,7 @@ actions.defined = {
 			local signo = action.signo
 			local current_process = action.ctx.process
 
-			if not current_process then
-				error("signal() called before process spawned.")
-			elseif not current_process:released() then
+			if not current_process:released() then
 				error("signal() called before process release")
 			end
 
@@ -315,6 +302,7 @@ actions.defined = {
 		end,
 	},
 	sigreset = {
+		need_process = true,
 		init = function(action, args)
 			action.preserve_sigmask = args[1]
 		end,
@@ -331,11 +319,13 @@ actions.defined = {
 		end,
 	},
 	sigunblock = {
+		need_process = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
+
 			if current_process:released() then
 				error("sigunblock() called after process release")
 			end
@@ -345,11 +335,13 @@ actions.defined = {
 		end,
 	},
 	sigcatch = {
+		need_process = true,
 		init = function(action, args)
 			action.sigtbl = args
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
+
 			if current_process:released() then
 				error(action.type .. "() called after process release")
 			end
@@ -359,12 +351,9 @@ actions.defined = {
 		end,
 	},
 	stop = {
+		need_process = true,
 		execute = function(action)
 			local current_process = action.ctx.process
-
-			if not current_process then
-				error("stop() called before process spawned.")
-			end
 
 			-- We don't want to allow pre-release stop() unless it's
 			-- already known that they're trying to debug porch(1)
@@ -382,6 +371,7 @@ actions.defined = {
 		end,
 	},
 	stty = {
+		need_process = true,
 		init = function(action, args)
 			local field = args[1]
 			if not tty[field] then
@@ -421,15 +411,13 @@ actions.defined = {
 		end,
 	},
 	write = {
+		need_process = true,
 		init = function(action, args)
 			action.value = args[1]
 			action.cfg = args[2]
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
-			if not current_process then
-				error("Script did not spawn process prior to writing")
-			end
 
 			assert(current_process:write(action.value, action.cfg))
 			return true
