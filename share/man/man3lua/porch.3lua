@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd June 4, 2025
+.Dd June 19, 2025
 .Dt PORCH 3lua
 .Os
 .Sh NAME
@@ -32,6 +32,7 @@ local porch = require('porch')
 .It Dv process:cfg(cfg)
 .It Dv process:chdir(dir)
 .It Dv process:close()
+.It Dv process:continue([sendsig])
 .It Dv process:flush(timeout)
 .It Dv process:log(logfile)
 .It Dv process:pipe(commandstr , linefilter )
@@ -48,6 +49,7 @@ local porch = require('porch')
 .It Dv process:signal(signo)
 .It Dv process:sigreset(preserve_sigmask)
 .It Dv process:sigunblock(signo, ... )
+.It Dv process:stop()
 .It Dv process:stty(field[, set[, unset Ns ]])
 .It Dv process:term()
 .It Dv process:write(text[, cfg Ns ])
@@ -200,6 +202,7 @@ function waiting indefinitely for both EOF and the process to exit.
 .It Dv process:cfg(cfg)
 .It Dv process:chdir(dir)
 .It Dv process:close()
+.It Dv process:continue([sendsig])
 .It Dv process:flush(timeout)
 .It Dv process:log(logfile)
 .It Dv process:pipe(commandstr , linefilter )
@@ -228,6 +231,7 @@ specified is currently unblocked.
 .It Dv process:signal(signo)
 .It Dv process:sigreset(preserve_sigmask)
 .It Dv process:sigunblock(signo, ... )
+.It Dv process:stop()
 .It Dv process:stty(field[, set[, unset Ns ]])
 The
 .Dv process:stty

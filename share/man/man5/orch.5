@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd June 4, 2025
+.Dd June 19, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -87,6 +87,22 @@ and before the process is released.
 There is currently no way to persistly
 .Xr chdir 2
 for every spawned process.
+.It Fn continue "sendsig"
+Resumes a process that was previously stopped with the
+.Fn stop
+action.
+If the
+.Fa sendsig
+argument is omitted or true, then a
+.Dv SIGCONT
+signal will be sent to the process.
+If the
+.Fa sendsig
+argument is false, then the
+.Nm
+script execution will be halted until the process is continued.
+.Pp
+This directive is enqueued, not processed immediately.
 .It Fn clearenv "local"
 Clear the environment.
 If
@@ -430,6 +446,36 @@ will exit.
 Note that only one process at a time may be matched against.
 If a new process is spawned, then the previous process will be killed and
 subsequent matches will be against the new process.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn stop
+Stops the process by sending a
+.Dv SIGSTOP
+signal to it.
+Execution must subsequently be resumed with the
+.Fn continue
+action.
+.Pp
+One anticipated use for this is to stop the program before sending input to it,
+then attaching a debugger to step through the program's response.
+In this scenario, the
+.Nm
+script would use
+.Fn continue false
+to avoid sending a
+.Dv SIGCONT
+to the program, but still performs a
+.Xr waitpid 2
+until the program has been continued.
+Program behavior on detach of the debugger may vary by platform, sometimes
+requiring a
+.Dv SIGCONT
+to be sent to the debuggee to resume execution.
+.Pp
+No limitations are imposed on what actions may occur between a
+.Fn stop
+and
+.Fn continue .
 .Pp
 This directive is enqueued, not processed immediately.
 .It Fn stty "field" "set" "unset"
