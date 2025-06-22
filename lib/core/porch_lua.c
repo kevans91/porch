@@ -282,17 +282,6 @@ porchlua_sleep(lua_State *L)
 }
 
 static int
-porchlua_time(lua_State *L)
-{
-	struct timespec tv;
-
-	assert (clock_gettime(CLOCK_REALTIME_FAST, &tv) == 0);
-
-	lua_pushnumber(L, tv.tv_sec);
-	return (1);
-}
-
-static int
 porchlua_child_error(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
     void *cookie)
 {
@@ -397,14 +386,25 @@ porchlua_spawn(lua_State *L)
 	return (1);
 }
 
+static int
+porchlua_time(lua_State *L)
+{
+	struct timespec tv;
+
+	assert (clock_gettime(CLOCK_REALTIME_FAST, &tv) == 0);
+
+	lua_pushnumber(L, tv.tv_sec);
+	return (1);
+}
+
 #define	REG_SIMPLE(n)	{ #n, porchlua_ ## n }
 static const struct luaL_Reg porchlib[] = {
 	REG_SIMPLE(open),
 	REG_SIMPLE(regcomp),
 	REG_SIMPLE(reset),
 	REG_SIMPLE(sleep),
-	REG_SIMPLE(time),
 	REG_SIMPLE(spawn),
+	REG_SIMPLE(time),
 	{ "wrap_status", porchlua_process_wrap_status },
 	{ NULL, NULL },
 };
