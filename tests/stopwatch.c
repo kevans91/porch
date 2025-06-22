@@ -86,8 +86,6 @@ main(int argc, char *argv[])
 		}
 	}
 
-	printf("Timer starting\n");
-
 	/*
 	 * This is a simple implementation to try and measure gaps in execution
 	 * driven by SIGSTOP/SIGCONT.  We effectively measure the time a single
@@ -98,6 +96,14 @@ main(int argc, char *argv[])
 	 */
 	fill_timespec(&now);
 	last = now;
+
+	/*
+	 * The tests will key off of this message to send a SIGQUIT, so we need
+	 * to make sure we're prepared for an interrupt at any point in time
+	 * once we send it -- probably best to just leave it right here and
+	 * assume we won't see $time worth of latency from trying to print.
+	 */
+	printf("Timer starting\n");
 	for (;;) {
 		last_diff = delta(&now, &last);
 		if (last_diff >= time)
