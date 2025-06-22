@@ -14,7 +14,9 @@
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
+#include <grp.h>
 #include <poll.h>
+#include <pwd.h>
 #include <signal.h>
 #include <string.h>
 #include <termios.h>
@@ -786,6 +788,117 @@ porchlua_process_released(lua_State *L)
 	return (1);
 }
 
+static bool
+porch_resolve_gid(const char *idstr, gid_t *gid)
+{
+	struct group *grp;
+
+	errno = 0;
+	grp = getgrnam(idstr);
+	if (grp == NULL) {
+		if (errno == 0)
+			errno = ENOENT;
+		return (false);
+	}
+
+	*gid = grp->gr_gid;
+	return (true);
+}
+
+static bool
+porch_resolve_uid(const char *idstr, uid_t *uid)
+{
+	struct passwd *pwd;
+
+	errno = 0;
+	pwd = getpwnam(idstr);
+	if (pwd == NULL) {
+		if (errno == 0)
+			errno = ENOENT;
+		return (false);
+	}
+
+	*uid = pwd->pw_uid;
+	return (true);
+}
+
+static int
+porchlua_process_setid(lua_State *L)
+{
+	const char *idstr;
+	struct porch_ipc_msg *msg;
+	struct porch_process *self;
+	void *msid;
+	struct porch_setid sid;
+	int error, flags = 0, serrno;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if (!lua_isnoneornil(L, 2))
+		flags |= SID_SETUID;
+	if (!lua_isnoneornil(L, 3))
+		flags |= SID_SETGID;
+
+	if (flags == 0)
+		goto done;
+
+	if ((flags & SID_SETUID) != 0) {
+		if (!lua_isinteger(L, 2)) {
+			idstr = luaL_checkstring(L, 2);
+			if (!porch_resolve_uid(idstr, &sid.setid_uid))
+				goto err;
+		} else {
+			sid.setid_uid = luaL_checkinteger(L, 2);
+		}
+
+		if (sid.setid_uid == self->uid)
+			flags &= ~SID_SETUID;
+	}
+
+	if ((flags & SID_SETGID) != 0) {
+		if (!lua_isinteger(L, 3)) {
+			idstr = luaL_checkstring(L, 3);
+			if (!porch_resolve_gid(idstr, &sid.setid_gid))
+				goto err;
+		} else {
+			sid.setid_gid = luaL_checkinteger(L, 3);
+		}
+
+		if (sid.setid_gid == self->gid)
+			flags &= ~SID_SETGID;
+	}
+
+	if (flags == 0)
+		goto done;
+
+	sid.setid_flags = flags;
+	msg = porch_ipc_msg_alloc(IPC_SETID, sizeof(sid), &msid);
+	if (msg == NULL)
+		goto err;
+
+	memcpy(msid, &sid, sizeof(sid));
+	error = porch_lua_ipc_send_acked_errno(L, self, msg, IPC_SETID_ACK);
+	if (error < 0)
+		goto err;
+	else if (error > 0)
+		return (error);
+
+	if ((flags & SID_SETUID) != 0)
+		self->uid = sid.setid_uid;
+	if ((flags & SID_SETGID) != 0)
+		self->gid = sid.setid_gid;
+done:
+	lua_pushinteger(L, self->uid);
+	lua_pushinteger(L, self->gid);
+	return (2);
+
+err:
+	serrno = errno;
+
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(serrno));
+	return (2);
+}
+
 static int
 porchlua_process_term_set(porch_ipc_t ipc __unused, struct porch_ipc_msg *msg,
     void *cookie)
@@ -1169,6 +1282,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(setid),
 	PROCESS_SIMPLE(sigcatch),
 	PROCESS_SIMPLE(sigmask),
 	PROCESS_SIMPLE(signal),

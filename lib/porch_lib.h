@@ -47,6 +47,8 @@ enum porch_ipc_tag {
 	IPC_SETMASK_ACK,	/* Child -> Parent */
 	IPC_SIGCATCH,		/* Parent -> Child */
 	IPC_SIGCATCH_ACK,	/* Child -> Parent */
+	IPC_SETID,		/* Parent -> Child */
+	IPC_SETID_ACK,		/* Child -> Parent */
 	IPC_LAST,
 };
 
@@ -76,6 +78,14 @@ struct porch_process {
 	bool			 buffered;
 	bool			 error;
 	bool			 draining;
+};
+
+struct porch_setid {
+	int		setid_flags;
+#define	SID_SETUID	0x01
+#define	SID_SETGID	0x02
+	uid_t		setid_uid;
+	gid_t		setid_gid;
 };
 
 struct porch_sigcatch {

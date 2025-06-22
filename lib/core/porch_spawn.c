@@ -349,6 +349,44 @@ porch_child_chdir(porch_ipc_t ipc, struct porch_ipc_msg *msg,
 }
 
 static int
+porch_child_setid(porch_ipc_t ipc, struct porch_ipc_msg *msg,
+    void *cookie __unused)
+{
+	struct porch_setid *sid;
+	size_t sidsz;
+	int error, *errorp;
+
+	sid = porch_ipc_msg_payload(msg, &sidsz);
+	if (sid == NULL || sidsz != sizeof(*sid)) {
+		errno = EINVAL;
+		return (-1);
+	}
+
+	error = 0;
+	if ((sid->setid_flags & SID_SETGID) != 0 &&
+	    setgid(sid->setid_gid) != 0) {
+		error = errno;
+		goto done;
+	}
+
+	if ((sid->setid_flags & SID_SETUID) != 0 &&
+	    setuid(sid->setid_uid) != 0) {
+		error = errno;
+		goto done;
+	}
+
+done:
+	msg = porch_ipc_msg_alloc(IPC_SETID_ACK, sizeof(error),
+	    (void **)&errorp);
+
+	*errorp = error;
+	error = porch_ipc_send(ipc, msg);
+	porch_ipc_msg_free(msg);
+
+	return (error);
+}
+
+static int
 porch_child_setmask(porch_ipc_t ipc, struct porch_ipc_msg *msg,
     void *cookie __unused)
 {
@@ -435,6 +473,7 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 	porch_ipc_register(ipc, IPC_TERMIOS_SET, porch_child_termios_set, t);
 	porch_ipc_register(ipc, IPC_ENV_SETUP, porch_child_env_setup, NULL);
 	porch_ipc_register(ipc, IPC_CHDIR, porch_child_chdir, NULL);
+	porch_ipc_register(ipc, IPC_SETID, porch_child_setid, NULL);
 	porch_ipc_register(ipc, IPC_SETMASK, porch_child_setmask, NULL);
 	porch_ipc_register(ipc, IPC_SIGCATCH, porch_child_sigcatch, NULL);
 
