@@ -342,6 +342,8 @@ porchlua_spawn(lua_State *L)
 	proc->pid = 0;
 	proc->buffered = proc->eof = proc->released = proc->draining = false;
 	proc->error = false;
+	proc->uid = geteuid();
+	proc->gid = getegid();
 
 	/*
 	 * Grab a copy of our current signal mask in case we need it; we likely

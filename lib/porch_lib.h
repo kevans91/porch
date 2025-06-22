@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -67,6 +68,8 @@ struct porch_process {
 	int			 last_signal;
 	int			 status;
 	int			 termctl;
+	uid_t			 uid;
+	gid_t			 gid;
 	bool			 raw;
 	bool			 released;
 	bool			 eof;

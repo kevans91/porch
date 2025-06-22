@@ -369,6 +369,16 @@ porchlua_process_eof(lua_State *L)
 }
 
 static int
+porchlua_process_gid(lua_State *L)
+{
+	struct porch_process *self;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	lua_pushinteger(L, self->gid);
+	return (1);
+}
+
+static int
 porchlua_process_proxy_read(lua_State *L, int fd, int fn, bool *eof)
 {
 	char buf[4096];
@@ -1105,6 +1115,16 @@ out:
 }
 
 static int
+porchlua_process_uid(lua_State *L)
+{
+	struct porch_process *self;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	lua_pushinteger(L, self->uid);
+	return (1);
+}
+
+static int
 porchlua_process_write(lua_State *L)
 {
 	struct porch_process *self;
@@ -1144,6 +1164,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(close),
 	PROCESS_SIMPLE(continue),
 	PROCESS_SIMPLE(eof),
+	PROCESS_SIMPLE(gid),
 	PROCESS_SIMPLE(proxy),
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(release),
@@ -1153,6 +1174,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(signal),
 	PROCESS_SIMPLE(stop),
 	PROCESS_SIMPLE(term),
+	PROCESS_SIMPLE(uid),
 	PROCESS_SIMPLE(write),
 	{ NULL, NULL },
 };
