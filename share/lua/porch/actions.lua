@@ -242,6 +242,21 @@ actions.defined = {
 			return true
 		end,
 	},
+	setid = {
+		allow_direct = true,
+		need_process = true,
+		need_prerelease = true,
+		init = function(action, args)
+			action.setuid = args[1]
+			action.setgid = args[2]
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			current_process:setid(action.setuid, action.setgid)
+			return true
+		end,
+	},
 	sigblock = {
 		need_process = true,
 		need_prerelease = true,

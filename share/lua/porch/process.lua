@@ -176,6 +176,14 @@ end
 function Process:eof(...)
 	return self._process:eof(...)
 end
+function Process:gid(...)
+	local args = {...}
+	if #args == 0 or args[1] == nil then
+		return self._process:gid()
+	end
+
+	return self:setid(nil, args[1])
+end
 function Process:proxy(...)
 	if not self:released() then
 		self:release()
@@ -203,6 +211,9 @@ function Process:raw(is_raw)
 	local prev_raw = self.is_raw
 	self.is_raw = is_raw
 	return prev_raw
+end
+function Process:setid(uid, gid)
+	return assert(self._process:setid(uid, gid))
 end
 local function sigapply(mask, applyval, ...)
 	local signals = {...}
@@ -383,6 +394,14 @@ function Process:stop()
 end
 function Process:stopped()
 	return self.is_stopped
+end
+function Process:uid(...)
+	local args = {...}
+	if #args == 0 or args[1] == nil then
+		return self._process:uid()
+	end
+
+	return self:setid(args[1])
 end
 function Process:write(data, cfg)
 	if not self.is_raw then

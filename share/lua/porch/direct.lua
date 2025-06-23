@@ -32,13 +32,16 @@ end
 -- process with no change.
 local proc_inherited = {
 	"continue",
+	"gid",
 	"proxy",
+	"setid",
 	"sigisblocked",
 	"sigiscaught",
 	"sigisignored",
 	"sigisunblocked",
 	"stop",
 	"stopped",
+	"uid",
 }
 
 local DirectProcess = {}

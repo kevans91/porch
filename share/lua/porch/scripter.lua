@@ -408,6 +408,27 @@ function scripter.env.timeout(val)
 	current_ctx.timeout = val
 end
 
+-- gid()/uid() operate on the process if it's available, or they advertise the
+-- process' current credentials if not.
+function scripter.env.gid()
+	local current_process = current_ctx.process
+
+	if current_process then
+		return current_process:gid()
+	end
+
+	return core.gid()
+end
+function scripter.env.uid()
+	local current_process = current_ctx.process
+
+	if current_process then
+		return current_process:uid()
+	end
+
+	return core.uid()
+end
+
 local extra_actions = {
 	debug = {
 		allow_direct = true,
