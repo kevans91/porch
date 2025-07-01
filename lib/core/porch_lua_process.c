@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+ * Copyright (c) 2024, 2025 Kyle Evans <kevans@FreeBSD.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -18,6 +18,7 @@
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <time.h>
@@ -823,6 +824,66 @@ porch_resolve_uid(const char *idstr, uid_t *uid)
 }
 
 static int
+porchlua_process_setgroups(lua_State *L)
+{
+	struct porch_process *self;
+	struct porch_setgroups *sgrp = NULL;
+	struct porch_ipc_msg *msg;
+	void *msgrp;
+	size_t sgrpsz;
+	int error, nargs, serrno;
+
+	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
+	if ((nargs = lua_gettop(L) - 1) == 0)
+		goto done;
+
+	sgrpsz = PORCH_SETGROUPS_SIZE(nargs);
+	sgrp = malloc(sgrpsz);
+	if (sgrp == NULL)
+		goto err;
+
+	sgrp->setgroups_cnt = nargs;
+	for (int idx = 0; idx < nargs; idx++) {
+		const char *idstr;
+
+		if (lua_isstring(L, 2 + idx)) {
+			idstr = luaL_checkstring(L, 2 + idx);
+			if (!porch_resolve_gid(idstr, &sgrp->setgroups_gids[idx]))
+				goto err;
+		} else {
+			sgrp->setgroups_gids[idx] = luaL_checkinteger(L, 2 + idx);
+		}
+	}
+
+	msg = porch_ipc_msg_alloc(IPC_SETGROUPS, sgrpsz, &msgrp);
+	if (msg == NULL)
+		goto err;
+
+	memcpy(msgrp, sgrp, sgrpsz);
+	error = porch_lua_ipc_send_acked_errno(L, self, msg, IPC_SETGROUPS_ACK);
+	if (error < 0)
+		goto err;
+	else if (error > 0)
+		return (error);
+
+	/* First entry becomes the egid. */
+	self->gid = sgrp->setgroups_gids[0];
+	free(sgrp);
+
+done:
+	lua_pushboolean(L, 1);
+	return (1);
+
+err:
+	serrno = errno;
+
+	free(sgrp);
+	luaL_pushfail(L);
+	lua_pushstring(L, strerror(serrno));
+	return (2);
+}
+
+static int
 porchlua_process_setid(lua_State *L)
 {
 	const char *idstr;
@@ -1282,6 +1343,7 @@ static const luaL_Reg porchlua_process[] = {
 	PROCESS_SIMPLE(read),
 	PROCESS_SIMPLE(release),
 	PROCESS_SIMPLE(released),
+	PROCESS_SIMPLE(setgroups),
 	PROCESS_SIMPLE(setid),
 	PROCESS_SIMPLE(sigcatch),
 	PROCESS_SIMPLE(sigmask),

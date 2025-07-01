@@ -49,6 +49,8 @@ enum porch_ipc_tag {
 	IPC_SIGCATCH_ACK,	/* Child -> Parent */
 	IPC_SETID,		/* Parent -> Child */
 	IPC_SETID_ACK,		/* Child -> Parent */
+	IPC_SETGROUPS,		/* Parent -> Child */
+	IPC_SETGROUPS_ACK,	/* Child -> Parent */
 	IPC_LAST,
 };
 
@@ -79,6 +81,14 @@ struct porch_process {
 	bool			 error;
 	bool			 draining;
 };
+
+struct porch_setgroups {
+	int		setgroups_cnt;
+	gid_t		setgroups_gids[];
+};
+
+#define	PORCH_SETGROUPS_SIZE(cnt) \
+    (sizeof(struct porch_setgroups) + ((cnt) * sizeof(gid_t)))
 
 struct porch_setid {
 	int		setid_flags;
