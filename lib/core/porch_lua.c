@@ -125,6 +125,14 @@ porchlua_reset(lua_State *L)
 }
 
 static int
+porchlua_gid(lua_State *L)
+{
+
+	lua_pushinteger(L, getegid());
+	return (1);
+}
+
+static int
 porchlua_open(lua_State *L)
 {
 	luaL_Stream *op, *p;
@@ -399,14 +407,24 @@ porchlua_time(lua_State *L)
 	return (1);
 }
 
+static int
+porchlua_uid(lua_State *L)
+{
+
+	lua_pushinteger(L, geteuid());
+	return (1);
+}
+
 #define	REG_SIMPLE(n)	{ #n, porchlua_ ## n }
 static const struct luaL_Reg porchlib[] = {
+	REG_SIMPLE(gid),
 	REG_SIMPLE(open),
 	REG_SIMPLE(regcomp),
 	REG_SIMPLE(reset),
 	REG_SIMPLE(sleep),
 	REG_SIMPLE(spawn),
 	REG_SIMPLE(time),
+	REG_SIMPLE(uid),
 	{ "wrap_status", porchlua_process_wrap_status },
 	{ NULL, NULL },
 };
