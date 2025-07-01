@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd June 19, 2025
+.Dd June 30, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -237,6 +237,16 @@ This directive is always processed immediately and may not be used in a queued
 context.
 .Fn getenv
 is expected to mostly be used for debugging purposes.
+.It Fn gid
+Returns the gid of the calling process.
+This may be useful in determining if the user should drop privileges in spawned
+processes.
+.Pp
+This directive is always processed immediately.
+It may be used in a queued context.
+Note that
+.Fn setid
+will never affect the gid returned.
 .It Fn hexdump "string"
 Writes an
 .Xr hd 1
@@ -309,6 +319,47 @@ Releases a spawned process for execution.
 This is done implicitly when a
 .Fn match
 block is first encountered.
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn setgroups "group1" "..."
+This calls
+.Xr setgroups 2
+in the spawned process to set group access.
+As with the underlying call, the
+.Fa group1
+group will become the process effective gid.
+Any symbolic names will be resolved as described below in
+.Fn setid .
+.Pp
+As with
+.Fn setid
+below, an error will be raised if the operation fails.
+The user is advised to check the process uid prior to calling
+.Fn setgroups .
+.Pp
+This directive is enqueued, not processed immediately.
+.It Fn setid "user" "group"
+This calls
+.Xr setuid 2
+and
+.Xr setgid 2
+in the spawned process to drop privileges.
+The
+.Fa user
+and
+.Fa group
+are both optional, but at least one must be specified.
+These arguments may either be a symbolic name or a numeric identifier.
+Symbolic names will be resolved with
+.Xr getpwnam 3
+and
+.Xr getgrnam 3
+respectively.
+.Pp
+Note that these will raise an error if the procedure fails, so it is best to
+confirm that one may drop privileges by checking the process
+.Fn uid
+first.
 .Pp
 This directive is enqueued, not processed immediately.
 .It Fn setenv "key" "value" "local" , Fn setenv "table" "local"
@@ -539,6 +590,16 @@ blocks.
 The default timeout at script start is 10 seconds.
 .Pp
 This directive is processed immediately.
+.It Fn uid
+Returns the uid of the calling process.
+This may be useful in determining if the user should drop privileges in spawned
+processes.
+.Pp
+This directive is always processed immediately.
+It may be used in a queued context.
+Note that
+.Fn setid
+will never affect the uid returned.
 .It Fn write "str" "cfg"
 Write
 .Fa str

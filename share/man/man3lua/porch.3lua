@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd June 19, 2025
+.Dd June 30, 2025
 .Dt PORCH 3lua
 .Os
 .Sh NAME
@@ -34,10 +34,13 @@ local porch = require('porch')
 .It Dv process:close()
 .It Dv process:continue([sendsig])
 .It Dv process:flush(timeout)
+.It Dv process:gid([group])
 .It Dv process:log(logfile)
 .It Dv process:pipe(commandstr , linefilter )
 .It Dv process:raw(bool)
 .It Dv process:release()
+.It Dv process:setgroups(group1, ... )
+.It Dv process:setid(user, group )
 .It Dv process:sigblock(signo, ... )
 .It Dv process:sigcatch(signo, ... )
 .It Dv process:sigclear()
@@ -53,6 +56,7 @@ local porch = require('porch')
 .It Dv process:stopped()
 .It Dv process:stty(field[, set[, unset Ns ]])
 .It Dv process:term()
+.It Dv process:uid([user])
 .It Dv process:write(text[, cfg Ns ])
 .It Dv process:clearenv([local])
 .It Dv process:getenv(key)
@@ -205,10 +209,17 @@ function waiting indefinitely for both EOF and the process to exit.
 .It Dv process:close()
 .It Dv process:continue([sendsig])
 .It Dv process:flush(timeout)
+.It Dv process:gid([group])
+Operates the same as the
+.Fn gid
+action, except a group name or id may be specified to change just the gid of the
+spawned process.
 .It Dv process:log(logfile)
 .It Dv process:pipe(commandstr , linefilter )
 .It Dv process:raw(bool)
 .It Dv process:release()
+.It Dv process:setgroups(group1, ... )
+.It Dv process:setid(user, group )
 .It Dv process:sigblock(...)
 .It Dv process:sigcatch(...)
 .It Dv process:sigclear()
@@ -291,6 +302,11 @@ Otherwise, the specified elements are of the size are updated unless specified
 as
 .Dv nil .
 .El
+.It Dv process:uid([user])
+Operates the same as the
+.Fn uid
+action, except a user name or id may be specified to change just the uid of the
+spawned process.
 .It Dv process:write(text[, cfg Ns ])
 .It Dv process:clearenv([local])
 .It Dv process:getenv(key)
