@@ -846,7 +846,7 @@ porchlua_process_setgroups(lua_State *L)
 	for (int idx = 0; idx < nargs; idx++) {
 		const char *idstr;
 
-		if (lua_isstring(L, 2 + idx)) {
+		if (!lua_isinteger(L, 2 + idx)) {
 			idstr = luaL_checkstring(L, 2 + idx);
 			if (!porch_resolve_gid(idstr, &sgrp->setgroups_gids[idx]))
 				goto err;

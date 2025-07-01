@@ -34,6 +34,7 @@ local proc_inherited = {
 	"continue",
 	"gid",
 	"proxy",
+	"setgroups",
 	"setid",
 	"sigisblocked",
 	"sigiscaught",

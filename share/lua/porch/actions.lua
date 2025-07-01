@@ -242,6 +242,20 @@ actions.defined = {
 			return true
 		end,
 	},
+	setgroups = {
+		allow_direct = true,
+		need_process = true,
+		need_prerelease = true,
+		init = function(action, args)
+			action.setgroups = args
+		end,
+		execute = function(action)
+			local current_process = action.ctx.process
+
+			current_process:setgroups(table.unpack(action.setgroups))
+			return true
+		end,
+	},
 	setid = {
 		allow_direct = true,
 		need_process = true,

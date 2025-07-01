@@ -212,6 +212,9 @@ function Process:raw(is_raw)
 	self.is_raw = is_raw
 	return prev_raw
 end
+function Process:setgroups(...)
+	return assert(self._process:setgroups(...))
+end
 function Process:setid(uid, gid)
 	return assert(self._process:setid(uid, gid))
 end
