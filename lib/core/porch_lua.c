@@ -23,6 +23,12 @@
 
 #include "porch_lua.h"
 
+#ifdef NDEBUG
+#define __diagused __unused
+#else
+#define __diagused
+#endif
+
 #ifdef __linux__
 #define	CLOCK_REALTIME_FAST	CLOCK_REALTIME_COARSE
 #endif
@@ -400,8 +406,10 @@ static int
 porchlua_time(lua_State *L)
 {
 	struct timespec tv;
+	int error __diagused;
 
-	assert (clock_gettime(CLOCK_REALTIME_FAST, &tv) == 0);
+	error = clock_gettime(CLOCK_REALTIME_FAST, &tv);
+	assert(error == 0);
 
 	lua_pushnumber(L, tv.tv_sec);
 	return (1);
