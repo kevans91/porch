@@ -44,5 +44,7 @@ jobs:
           cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..
       - name: build porch(1)
         run: make -C build
+      - name: Allow unprivileged access to test data/programs
+        run: sudo chmod 0755 $HOME
       - name: Run self-tests
-        run: make -C build check
+        run: sudo make -C build check

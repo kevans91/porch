@@ -12,6 +12,7 @@ build_task:
     - mkdir build
     - cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..
   build_script:
-    make -C build
+    - make -C build
   test_script:
-    make -C build check
+    - sudo chmod 0755 $HOME
+    - sudo make -C build check
