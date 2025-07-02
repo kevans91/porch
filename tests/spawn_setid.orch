@@ -1,0 +1,111 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- We should have been skipped before blowing up here.
+assert(uid() == 0, "This test requires root to run")
+
+local idlimit = 3
+local groups = system_groups()
+local users = system_users()
+
+local groups_unused = system_unmapped_groups(idlimit)
+assert(#groups_unused == idlimit,
+    "Expected exactly " .. idlimit .. " groups")
+local users_unused = system_unmapped_users(idlimit)
+assert(#users_unused == idlimit,
+    "Expected exactly " .. idlimit .. " users")
+
+local function grab_entry(db)
+	-- Grab our first non-root/wheel entry.
+	for id, name in pairs(db) do
+		if id ~= 0 then
+			return id, name
+		end
+	end
+
+	return nil, "Usable entry not found"
+end
+
+local function grab_entries(db, count)
+	local names = {}
+	local ids = {}
+
+	for id, name in pairs(db) do
+		if id ~= 0 then
+			names[#names + 1] = name
+			ids[#ids + 1] = id
+
+			if #names == count then
+				return ids, names
+			end
+		end
+	end
+
+	return nil, "Not enough usable entries found"
+end
+
+local euid = 0
+local egid = gid()
+
+local try_uid, uname = assert(grab_entry(users))
+local try_gid, gname = assert(grab_entry(groups))
+
+-- Start by confirming that we're root/wheel
+spawn("printid", "-ug", "-c1")
+match("0")
+match("0")
+
+-- setid(uid) first, group remains unchanged
+spawn("printid", "-ug", "-c1")
+setid(try_uid)
+match(tostring(try_uid))
+match(tostring(egid))
+
+-- setid(nil, gid) second, user remains unchanged
+spawn("printid", "-ug", "-c1")
+setid(nil, try_gid)
+match(euid)
+match(tostring(try_gid))
+
+-- setid(uid, gid)
+spawn("printid", "-ug", "-c1")
+setid(try_uid, try_gid)
+match(tostring(try_uid))
+match(tostring(try_gid))
+
+-- Now try symbolic resolution
+spawn("printid", "-ug", "-c1")
+setid(uname, gname)
+match(tostring(try_uid))
+match(tostring(try_gid))
+
+-- None of this changed the parent process; this should be implied by the mix
+-- of earlier tests, but let's be explicit about it.
+spawn("printid", "-ug", "-c1")
+match("0")
+match("0")
+
+-- Test that we can set user/group not defined in the system passwd/group dbs.
+try_uid = users_unused[1]
+try_gid = groups_unused[1]
+spawn("printid", "-ug", "-c1")
+setid(try_uid, try_gid)
+match(tostring(try_uid))
+match(tostring(try_gid))
+
+-- Now let's do some setgroups tests
+spawn("printid", "-g")
+setgroups(table.unpack(groups_unused))
+match(table.concat(groups_unused, " "))
+
+-- With symbolic names now
+local try_gids, try_gnames = grab_entries(groups, 3)
+spawn("printid", "-g")
+setgroups(table.unpack(try_gnames))
+
+-- Just in case our list isn't sorted
+table.sort(try_gids)
+match(table.concat(try_gids, " "))

@@ -35,6 +35,7 @@ export PORCHTESTS=yes
 1>&2 echo "++"
 1>&2 echo "=========="
 
+skips=0
 fails=0
 testid=1
 
@@ -96,6 +97,15 @@ not_ok()
 	testid=$((testid + 1))
 }
 
+skip()
+{
+	local msg="$1"
+
+	echo "not ok $testid - $f # skip $msg"
+	skips=$((skips + 1))
+	testid=$((testid + 1))
+}
+
 is_xfail()
 {
 	local platform=$(uname -s)
@@ -135,6 +145,17 @@ for f in "$@" ;do
 			continue
 		fi
 		;;
+	spawn_setid)
+		case "$USER" in
+		root)
+			;;
+		*)
+			skip "test needs root"
+			continue
+			;;
+		esac
+		spawn=""
+		;;
 	spawn_*|resize_*)
 		spawn=""
 		;;
@@ -144,7 +165,7 @@ for f in "$@" ;do
 	if [ -x "$testf" ]; then
 		env PATH="$porchdir":"$PATH" "$testf"
 	else
-		"$porchbin" -f "$testf" -- $spawn
+		"$porchbin" -i "$scriptdir"/globals.lua -f "$testf" -- $spawn
 	fi
 	rc="$?"
 	end=$(date +"%s")

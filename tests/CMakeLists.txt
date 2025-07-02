@@ -26,7 +26,7 @@ add_custom_target(check-cli
 	COMMAND env PORCHBIN="${CMAKE_BINARY_DIR}/src/porch" PORCHLUA_PATH="${CMAKE_SOURCE_DIR}/share/lua" sh "${CMAKE_CURRENT_BINARY_DIR}/include_test.sh"
 	COMMAND env PORCHBIN="${CMAKE_BINARY_DIR}/src/porch" PORCHLUA_PATH="${CMAKE_SOURCE_DIR}/share/lua" sh "${CMAKE_CURRENT_BINARY_DIR}/basic_test.sh"
 	WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-	DEPENDS check-setup openv porch)
+	DEPENDS check-setup openv porch printid)
 add_custom_target(check-lib
 	COMMAND env PORCHLIB_PATH="${CMAKE_BINARY_DIR}/lib" PORCHLUA_PATH="${CMAKE_SOURCE_DIR}/share/lua" LUA_VERSION_MAJOR="${LUA_VERSION_MAJOR}" LUA_VERSION_MINOR="${LUA_VERSION_MINOR}" sh "${CMAKE_CURRENT_BINARY_DIR}/lua_test.sh"
 	WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
