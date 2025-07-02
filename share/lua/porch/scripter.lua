@@ -676,6 +676,7 @@ end
 --   * allow_exit: boolean, allow a script to exit the process (default: false)
 --   * alter_path: boolean, add script's directory to $PATH (default: false)
 --   * command: argv table to pass to spawn
+--   * includes: files to include and augment the script environment with
 --   * remote: table, { rsh: string (command), host: string }
 function scripter.run_script(scriptfile, config)
 	local done
@@ -742,6 +743,19 @@ function scripter.run_script(scriptfile, config)
 	end
 	for name, def in pairs(extra_actions) do
 		current_env[name] = generate_handler(name, def)
+	end
+
+	if config and config.includes and #config.includes > 0 then
+		for _, v in ipairs(config.includes) do
+			local ok, res = pcall(dofile, v)
+			if not ok then
+				return nil, res
+			end
+
+			for gkey, gvalue in pairs(res) do
+				current_env[gkey] = gvalue
+			end
+		end
 	end
 
 	-- Note that the porch(1) driver will setup alter_path == true; scripts

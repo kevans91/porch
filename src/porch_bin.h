@@ -15,4 +15,5 @@ extern enum porch_mode {
 extern const char *porch_rsh;
 
 /* porch_interp.c */
+void porch_interp_include(const char *);
 int porch_interp(const char *, const char *, int, const char * const []);

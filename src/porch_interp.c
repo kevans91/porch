@@ -19,6 +19,12 @@
 
 static const char porchlua_path[] = PORCHLUA_PATH;
 
+static struct porch_incl {
+	const char		*incl_path;
+	struct porch_incl	*incl_next;
+} *porch_incl_head, *porch_incl_last;
+static size_t porch_incl_count = 0;
+
 static const char *
 porch_interp_script(const char *porch_invoke_path)
 {
@@ -104,6 +110,51 @@ porch_setup_pkgpath(lua_State *L)
 	lua_pop(L, 2);
 }
 
+void
+porch_interp_include(const char *scriptf)
+{
+	struct porch_incl *next_incl;
+
+	next_incl = calloc(1, sizeof(*next_incl));
+	if (next_incl == NULL)
+		err(1, "malloc");
+
+	next_incl->incl_path = scriptf;
+	if (porch_incl_last == NULL) {
+		porch_incl_head = porch_incl_last = next_incl;
+	} else {
+		porch_incl_last->incl_next = next_incl;
+		porch_incl_last = next_incl;
+	}
+
+	porch_incl_count++;
+}
+
+static void
+porch_interp_include_table(lua_State *L)
+{
+	struct porch_incl *next, *walker;
+	size_t idx = 1;
+
+	lua_createtable(L, porch_incl_count, 0);
+	walker = porch_incl_head;
+	while (walker != NULL) {
+		next = walker->incl_next;
+
+		lua_pushstring(L, walker->incl_path);
+		lua_rawseti(L, -2, idx);
+
+		idx++;
+		porch_incl_count--;
+
+		free(walker);
+		walker = next;
+	}
+
+	porch_incl_head = porch_incl_last = NULL;
+	assert(porch_incl_count == 0);
+}
+
 int
 porch_interp(const char *scriptf, const char *porch_invoke_path,
     int argc, const char * const argv[])
@@ -153,6 +204,12 @@ porch_interp(const char *scriptf, const char *porch_invoke_path,
 		/* config.alter_path */
 		lua_pushboolean(L, 1);
 		lua_setfield(L, -2, "alter_path");
+
+		if (porch_incl_count > 0) {
+			/* config.includes */
+			porch_interp_include_table(L);
+			lua_setfield(L, -2, "includes");
+		}
 
 		switch (porch_mode) {
 		case PMODE_REMOTE:

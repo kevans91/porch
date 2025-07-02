@@ -1,9 +1,9 @@
 .\"
-.\" Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+.\" Copyright (c) 2024, 2025 Kyle Evans <kevans@FreeBSD.org>
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd December 5, 2024
+.Dd July 1, 2025
 .Dt PORCH 1
 .Os
 .Sh NAME
@@ -13,6 +13,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl f Ar scriptfile
+.Op Fl i Ar includefile
 .Op Ar command Op Ar argument ..
 .Nm
 .Op Fl h
@@ -20,6 +21,7 @@
 .Nm rporch
 .Op Fl e Ar rsh
 .Op Fl f Ar scriptfile
+.Op Fl i Ar includefile
 .Op Ar host
 .Sh DESCRIPTION
 The
@@ -62,6 +64,33 @@ Specifying
 directs
 .Nm
 to read the script from stdin, and is the default behavior.
+.It Fl i Ar includefile
+Specifies an
+.Ar includefile
+to be evaluated after the environment for the
+.Xr orch 5
+script has been setup, but before the
+.Ar scriptfile
+is evaluated for execution.
+The
+.Ar includefile
+is expected to return a table whose key/value pairs will be added to the
+script's limited global environment.
+This may be used to expose more functionality than
+.Nm
+typically prefers to expose.
+.Pp
+The
+.Fl i
+option may be used multiple times, and the specified files will all be included
+in the order specified.
+As such, later files may override values provided in earlier files.
+.Pp
+Note that the
+.Ar includefile
+currently does not have access to the environment that is being prepared, so it
+cannot, e.g., wrap or inspect other functions that are provided in the
+environment.
 .It Fl h
 Show a usage statement.
 .El

@@ -16,9 +16,9 @@
 #define	__dead2	__attribute__((noreturn))
 #endif
 
-static const char *porch_shortopts = "f:hV";
+static const char *porch_shortopts = "f:i:hV";
 static const char *porchgen_shortopts = "f:hV";
-static const char *rporch_shortopts = "e:f:hV";
+static const char *rporch_shortopts = "e:f:i:hV";
 
 enum porch_mode porch_mode = PMODE_LOCAL;
 const char *porch_rsh;
@@ -35,14 +35,14 @@ usage(const char *name, int error)
 
 	switch (porch_mode) {
 	case PMODE_REMOTE:
-		fprintf(f, "usage: %s [-e rsh] [-f file] [host]\n", name);
+		fprintf(f, "usage: %s [-e rsh] [-f file] [-i include] [host]\n", name);
 		break;
 	case PMODE_GENERATE:
 		fprintf(f, "usage: %s -f file command [argument ...]\n",
 		    name);
 		break;
 	case PMODE_LOCAL:
-		fprintf(f, "usage: %s [-f file] [command [argument ...]]\n",
+		fprintf(f, "usage: %s [-f file] [-i include] [command [argument ...]]\n",
 		    name);
 		break;
 	}
@@ -100,6 +100,9 @@ main(int argc, char *argv[])
 			break;
 		case 'f':
 			scriptf = optarg;
+			break;
+		case 'i':
+			porch_interp_include(optarg);
 			break;
 		case 'h':
 			usage(invoke_path, 0);
