@@ -1,0 +1,9 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+assert(expansion == 1, "expansion global was not provided")
+assert(another_variable, "another_variable seems to be unset")
+exit(0)

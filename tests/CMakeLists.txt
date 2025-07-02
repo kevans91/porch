@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+# Copyright (c) 2024, 2025 Kyle Evans <kevans@FreeBSD.org>
 #
 # SPDX-License-Identifier: BSD-2-Clause
 #
@@ -22,6 +22,7 @@ target_include_directories(sigcheck PRIVATE ${CMAKE_SOURCE_DIR}/lib)
 # check-cli and check-lib are intended to run our tests exclusively against the
 # build products.
 add_custom_target(check-cli
+	COMMAND env PORCHBIN="${CMAKE_BINARY_DIR}/src/porch" PORCHLUA_PATH="${CMAKE_SOURCE_DIR}/share/lua" sh "${CMAKE_CURRENT_BINARY_DIR}/include_test.sh"
 	COMMAND env PORCHBIN="${CMAKE_BINARY_DIR}/src/porch" PORCHLUA_PATH="${CMAKE_SOURCE_DIR}/share/lua" sh "${CMAKE_CURRENT_BINARY_DIR}/basic_test.sh"
 	WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 	DEPENDS check-setup openv porch)

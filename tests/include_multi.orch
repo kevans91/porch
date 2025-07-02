@@ -1,0 +1,11 @@
+--
+-- Copyright (c) 2025 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+assert(expansion == 42, "expansion global was not overriden")
+assert(another_variable, "another_variable seems to be unset")
+assert(life() == 42, "function life was not provided")
+
+exit(0)

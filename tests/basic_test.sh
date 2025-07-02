@@ -38,6 +38,22 @@ export PORCHTESTS=yes
 fails=0
 testid=1
 
+tfilter() {
+
+	for testf in "$@"; do
+		testname=$(basename "$testf" .orch)
+
+		case "$testname" in
+		include_*)
+			# Ignored
+			;;
+		*)
+			echo "$testf"
+			;;
+		esac
+	done
+}
+
 if [ $# -ge 1 ]; then
 	tests=""
 
@@ -45,9 +61,9 @@ if [ $# -ge 1 ]; then
 		tests="$tests $scriptdir/$test.orch"
 	done
 
-	set -- $tests
+	set -- $(tfilter $tests)
 else
-	set -- "$scriptdir"/*.orch
+	set -- $(tfilter "$scriptdir"/*.orch)
 fi
 
 echo "1..$#"
