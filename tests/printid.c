@@ -96,7 +96,7 @@ static int
 print_current(enum db_type which, long count)
 {
 	int error, ngroups;
-	gid_t egid, *grps;
+	gid_t egid, *grps = NULL;
 
 	if (which == DB_USERS || which == DB_BOTH) {
 		/* Simplest: print euid and exit. */
@@ -112,21 +112,27 @@ print_current(enum db_type which, long count)
 	assert(which == DB_GROUPS || which == DB_BOTH);
 
 	ngroups = getgroups(0, NULL);
-	assert(ngroups >= 1);
 
-	grps = calloc(ngroups, sizeof(*grps));
-	if (grps == NULL) {
-		fprintf(stderr, "calloc: %s\n", strerror(errno));
-		return (1);
+	/*
+	 * FreeBSD will never return 0 for getgroups(), but other platforms may
+	 * do so if we had emptied out the group list.  Just avoid allocating
+	 * anything there and the rest will work itself out. 
+	 */
+	if (ngroups != 0) {
+		grps = calloc(ngroups, sizeof(*grps));
+		if (grps == NULL) {
+			fprintf(stderr, "calloc: %s\n", strerror(errno));
+			return (1);
+		}
+
+		error = getgroups(ngroups, grps);
+		assert(error == ngroups);
+		(void)error;
+
+		qsort(grps, ngroups, sizeof(*grps), sort_asc);
 	}
 
-	error = getgroups(ngroups, grps);
-	assert(error == ngroups);
-	(void)error;
-
 	egid = getegid();
-
-	qsort(grps, ngroups, sizeof(*grps), sort_asc);
 
 	printf("%d", egid);
 	if (count > 0)
