@@ -834,8 +834,7 @@ porchlua_process_setgroups(lua_State *L)
 	int error, nargs, serrno;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_PROCESSHANDLE);
-	if ((nargs = lua_gettop(L) - 1) == 0)
-		goto done;
+	nargs = lua_gettop(L) - 1;
 
 	sgrpsz = PORCH_SETGROUPS_SIZE(nargs);
 	sgrp = malloc(sgrpsz);
@@ -866,11 +865,17 @@ porchlua_process_setgroups(lua_State *L)
 	else if (error > 0)
 		return (error);
 
-	/* First entry becomes the egid. */
-	self->gid = sgrp->setgroups_gids[0];
+#ifdef __FreeBSD__
+	/*
+	 * FreeBSD seems to be the only OS in 2025 that will change the egid
+	 * based on a setgroups(2) call; the rest that have been examined will
+	 * exclusively touch secondary groups.
+	 */
+	if (nargs > 0)
+		self->gid = sgrp->setgroups_gids[0];
+#endif
 	free(sgrp);
 
-done:
 	lua_pushboolean(L, 1);
 	return (1);
 

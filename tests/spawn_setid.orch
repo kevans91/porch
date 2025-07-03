@@ -109,3 +109,17 @@ setgroups(table.unpack(try_gnames))
 -- Just in case our list isn't sorted
 table.sort(try_gids)
 match(table.concat(try_gids, " "))
+
+-- Also try clearing out the group list.  The outcome of getgroups() would vary
+-- by system after that, and printid() papers over that in a way that makes it
+-- hard to test this.  We'll have to settle for setting > 1 groups, then doing
+-- another setgroups with none.  Our `printid -g` after that should reflect just
+-- the egid.
+
+spawn("printid", "-g")
+
+setgroups(table.unpack(try_gnames))
+setid(nil, egid)
+setgroups()
+
+match("^" .. tostring(egid) .. "%s+$")

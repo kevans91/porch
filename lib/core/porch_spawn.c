@@ -355,6 +355,7 @@ porch_child_setgroups(porch_ipc_t ipc, struct porch_ipc_msg *msg,
 {
 	struct porch_setgroups *sgrp;
 	size_t sgrpsz;
+	const gid_t *gids;
 	int error, *errorp;
 
 	sgrp = porch_ipc_msg_payload(msg, &sgrpsz);
@@ -366,8 +367,13 @@ porch_child_setgroups(porch_ipc_t ipc, struct porch_ipc_msg *msg,
 		return (-1);
 	}
 
+	if (sgrp->setgroups_cnt > 0)
+		gids = &sgrp->setgroups_gids[0];
+	else
+		gids = NULL;
+
 	error = 0;
-	if (setgroups(sgrp->setgroups_cnt, &sgrp->setgroups_gids[0]) != 0)
+	if (setgroups(sgrp->setgroups_cnt, gids) != 0)
 		error = errno;
 
 	msg = porch_ipc_msg_alloc(IPC_SETGROUPS_ACK, sizeof(error),
