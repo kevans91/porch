@@ -262,17 +262,19 @@ function script_ctx:execute(func, match_ctx)
 end
 
 function script_ctx:fail(action, buffer)
+	local diaginfo
+	if action.diagnostics then
+		diaginfo = action:diagnostics()
+	end
 	if self.fail_callback then
 		local restore_ctx = self:state(CTX_FAIL)
-		self.fail_callback(buffer)
+		self.fail_callback(buffer, diaginfo)
 		self:state(restore_ctx)
 
 		return true
-	else
+	elseif diaginfo then
 		-- Print diagnostics if we can
-		if action.print_diagnostics then
-			action:print_diagnostics()
-		end
+		io.stderr:write(diaginfo)
 	end
 
 	return false
@@ -518,7 +520,7 @@ local extra_actions = {
 		end,
 	},
 	match = {
-		print_diagnostics = function(action)
+		diagnostics = function(action)
 			local ppat = ""
 			local first = true
 
@@ -530,8 +532,8 @@ local extra_actions = {
 				ppat = ppat .. pattern
 			end
 
-			io.stderr:write(string.format("[%s]:%d: match (pattern '%s') failed\n",
-			    action.src, action.line, ppat))
+			return string.format("[%s]:%d: match (pattern '%s') failed\n",
+			    action.src, action.line, ppat)
 		end,
 		init = function(action, args)
 			local pattern = args[1]
@@ -725,7 +727,7 @@ function scripter.run_script(scriptfile, config)
 
 			action.need_process = def.need_process
 			action.need_prerelease = def.need_prerelease
-			action.print_diagnostics = def.print_diagnostics
+			action.diagnostics = def.diagnostics
 
 			if def.init then
 				-- We preserve the return value of init() in case

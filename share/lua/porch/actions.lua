@@ -125,9 +125,9 @@ actions.defined = {
 	},
 	eof = {
 		need_process = true,
-		print_diagnostics = function(action)
-			io.stderr:write(string.format("[%s]:%d: eof not observed\n",
-			    action.src, action.line))
+		diagnostics = function(action)
+			return string.format("[%s]:%d: eof not observed\n",
+			    action.src, action.line)
 		end,
 		init = function(action, args)
 			action.timeout = args[1] or action.ctx.timeout

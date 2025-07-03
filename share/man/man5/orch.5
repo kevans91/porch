@@ -205,7 +205,8 @@ Pass
 to reset the failure handler.
 The
 .Fa function
-will receive one argument, the contents of the buffer, to aide in debugging.
+will receive two arguments, the contents of the buffer and a diagnostic string
+if the action specifies one, to aide in debugging.
 By default,
 .Nm
 will exit with a status of 1 when a match block fails.
