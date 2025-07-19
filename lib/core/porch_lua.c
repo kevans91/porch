@@ -329,6 +329,13 @@ porchlua_spawn(lua_State *L)
 	 */
 	argc = lua_gettop(L);
 	argv = calloc(argc + 1, sizeof(*argv));
+	if (argv == NULL) {
+		int serrno = 0;
+
+		luaL_pushfail(L);
+		lua_pushfstring(L, "calloc: %s", strerror(serrno));
+		return (2);
+	}
 
 	for (int i = 0; i < argc; i++) {
 		argv[i] = lua_tostring(L, i + 1);
