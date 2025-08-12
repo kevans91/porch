@@ -460,6 +460,17 @@ The masks for each field may be found in the
 table in the script's global environment.
 For instance, ICANON's mask may be referenced as
 .Dq tty.lflag.ICANON .
+Example usage:
+.Bd -literal -offset indent
+-- Set ICANON
+stty("lflag", tty.lflag.ICANON)
+
+-- Unset ICANON
+stty("lflag", nil, tty.lflag.ICANON)
+
+-- Set ECHONL but disable ECHO
+stty("lflag", tty.lflag.ECHONL, tty.lflag.ECHO)
+.Ed
 .Pp
 For
 .Dq cc ,
