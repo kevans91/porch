@@ -13,11 +13,14 @@ file(GLOB test_files
 add_custom_target(check-setup
 	COMMAND cp ${test_files} ${CMAKE_CURRENT_BINARY_DIR})
 
+add_compile_options(-fno-sanitize=all)
+add_link_options(-fno-sanitize=all)
 add_executable(echo_prompt echo_prompt.c)
 add_executable(openv openv.c)
 add_executable(printid printid.c)
 add_executable(sigcheck sigcheck.c ${CMAKE_SOURCE_DIR}/lib/core/porch_signals.c)
 add_executable(stopwatch stopwatch.c)
+
 target_include_directories(sigcheck PRIVATE ${CMAKE_SOURCE_DIR}/lib)
 
 # check-cli and check-lib are intended to run our tests exclusively against the
