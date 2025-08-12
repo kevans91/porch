@@ -36,7 +36,7 @@ enum porch_ipc_tag {
 	IPC_RELEASE,		/* Bidrectional */
 	IPC_ERROR,		/* Child -> Parent */
 	IPC_TERMIOS_INQUIRY,	/* Parent -> Child */
-	IPC_TERMIOS_SET,	/* Bidirectional */
+	IPC_TERMIOS_SET,	/* Child -> Parent */
 	IPC_TERMIOS_ACK,	/* Child -> Parent */
 	IPC_ENV_SETUP,		/* Parent -> Child */
 	IPC_ENV_ACK,		/* Child -> Parent */

@@ -194,9 +194,8 @@ porchlua_term_update(lua_State *L)
 {
 	const char *fields[] = { "iflag", "oflag", "lflag", "cc", NULL };
 	struct porch_term *self;
-	struct porch_ipc_msg *msg;
 	const char **fieldp, *field;
-	struct termios *msgterm, updated;
+	struct termios updated;
 	int error, type, valid;
 
 	self = luaL_checkudata(L, 1, ORCHLUA_TERMHANDLE);
@@ -261,19 +260,13 @@ porchlua_term_update(lua_State *L)
 	}
 
 	self->term = updated;
+	if (tcsetattr(self->proc->termctl, TCSANOW, &self->term) == -1) {
+		int serrno = errno;
 
-	msg = porch_ipc_msg_alloc(IPC_TERMIOS_SET, sizeof(self->term),
-	    (void **)&msgterm);
-	if (msg == NULL) {
 		luaL_pushfail(L);
-		lua_pushstring(L, strerror(ENOMEM));
+		lua_pushstring(L, strerror(serrno));
 		return (2);
 	}
-
-	memcpy(msgterm, &self->term, sizeof(self->term));
-	error = porch_lua_ipc_send_acked(L, self->proc, msg, IPC_TERMIOS_ACK);
-	if (error != 0)
-		return (error);
 
 	lua_pushboolean(L, 1);
 	return (1);

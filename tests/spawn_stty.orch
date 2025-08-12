@@ -23,3 +23,19 @@ stty("cc", {
 write "Hello the^F"
 
 match "^Hello the$"
+
+-- Finally test for stty() use after the process has been released.
+spawn("cat")
+
+write "Hello\r"
+match "^Hello"
+
+-- Disable canonicalization and confirm that it took effect.  Note that if
+-- cat(1) has re-entered read(2), which it almost certainly has, then we will
+-- need to force another line through before raw mode will do anything useful.
+stty("lflag", 0, tty.lflag.ICANON)
+write "Dogs\r"
+match "Dogs"
+
+write "Partial"
+match "Partial"
