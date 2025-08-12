@@ -643,6 +643,23 @@ The
 argument is a table of configuration items for the current send.
 The following elements are supported:
 .Bl -tag -width indent
+.It Va log
+Special logging behavior for this
+.Fn write ,
+if a
+.Fn logfile
+was issued.
+May be set to true or false to indicate that this write should be logged or not
+logged, independent of whether
+.Fa log_writes
+was used when the logfile was configured.
+.Pp
+.Va log
+may also be set to a string that will be logged instead of the actual data to be
+written.
+Specifying a string will also enable logging of this write, even if
+.Fa log_writes
+was set to false.
 .It Va rate
 The rate at which to send
 .Fa str .

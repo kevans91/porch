@@ -438,8 +438,16 @@ function Process:write(data, cfg)
 			end
 		end
 	end
-	if self.log and self.log_writes then
-		self.log:write(data)
+	if self.log then
+		local log_write = self.log_writes or (cfg and cfg.log)
+
+		if log_write then
+			if cfg and type(cfg.log) == "string" then
+				self.log:write(cfg.log)
+			else
+				self.log:write(data)
+			end
+		end
 	end
 
 	local bytes, delay
