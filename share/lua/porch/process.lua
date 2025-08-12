@@ -438,7 +438,7 @@ function Process:write(data, cfg)
 			end
 		end
 	end
-	if self.log then
+	if self.log and self.log_writes then
 		self.log:write(data)
 	end
 
@@ -507,13 +507,18 @@ function Process:close()
 	return true
 end
 -- Our own special salt
-function Process:logfile(file)
+function Process:logfile(file, log_writes)
 	if self.log then
 		self.log:flush()
 		self.log:close()
 	end
 
 	self.log = file
+	if log_writes ~= nil then
+		self.log_writes = log_writes
+	else
+		self.log_writes = true
+	end
 end
 function Process:match(action)
 	local buffer = self.buffer

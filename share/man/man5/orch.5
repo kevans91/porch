@@ -3,7 +3,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd June 30, 2025
+.Dd August 11, 2025
 .Dt ORCH 5
 .Os
 .Sh NAME
@@ -256,7 +256,7 @@ style hexdump output to stderr of the input
 .Pp
 This directive is always processed immediately, and is intended to be used
 within a failure context to aide in analysis of why a match failed.
-.It Fn log "logfile"
+.It Fn log "logfile" "log_writes"
 Sets a logfile for subsequent input and output to the process.
 The
 .Fa logfile
@@ -264,6 +264,11 @@ may be a string specifying a filename or an open file (for lib users).
 If a filename is specified, then
 .Nm
 will open it in write-append mode and preserve existing contents.
+Writes to the process will be logged automatically if
+.Fa log_writes
+is omitted or nil, but will be suppressed if
+.Fa log_writes
+is false.
 .It Fn matcher "type"
 Changes the default matcher for subsequent match blocks to the type described
 by

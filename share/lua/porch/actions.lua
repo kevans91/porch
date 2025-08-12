@@ -181,11 +181,16 @@ actions.defined = {
 			end
 
 			action.file = file
+			if args[2] ~= nil then
+				action.log_writes = args[2]
+			else
+				action.log_writes = true
+			end
 		end,
 		execute = function(action)
 			local current_process = action.ctx.process
 
-			current_process:logfile(action.file)
+			current_process:logfile(action.file, action.log_writes)
 			return true
 		end,
 	},
