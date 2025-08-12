@@ -235,31 +235,6 @@ porch_child_termios_inquiry(porch_ipc_t ipc, struct porch_ipc_msg *inmsg __unuse
 }
 
 static int
-porch_child_termios_set(porch_ipc_t ipc, struct porch_ipc_msg *msg, void *cookie)
-{
-	struct termios *updated_termios;
-	struct termios *current_termios = cookie;
-	size_t datasz;
-
-	updated_termios = porch_ipc_msg_payload(msg, &datasz);
-	if (updated_termios == NULL || datasz != sizeof(*updated_termios)) {
-		errno = EINVAL;
-		return (-1);
-	}
-
-	/*
-	 * We don't need to keep track of the updated state, but we do so
-	 * anyways.
-	 */
-	memcpy(current_termios, updated_termios, sizeof(*updated_termios));
-
-	if (tcsetattr(STDIN_FILENO, TCSANOW, current_termios) == -1)
-		porch_child_error(ipc, "tcsetattr");
-
-	return (porch_ipc_send_nodata(ipc, IPC_TERMIOS_ACK));
-}
-
-static int
 porch_clearenv(void)
 {
 #if (defined(__FreeBSD__) && __FreeBSD_version >= 1400041) || defined(__linux__)
@@ -504,11 +479,15 @@ porch_exec(porch_ipc_t ipc, int argc __unused, const char *argv[],
 	/*
 	 * Register a couple of events that the script may want to use:
 	 * - IPC_TERMIOS_INQUIRY: sent our terminal attributes back over.
-	 * - IPC_TERMIOS_SET: update our terminal attributes
+	 * - IPC_ENV_SETUP: setup environment variables.
+	 * - IPC_CHDIR: change cwd.
+	 * - IPC_SETGROUPS: setgroups(2)
+	 * - IPC_SETID: setuid(2) or setgid(2)
+	 * - IPC_SETMASK: set signal mask
+	 * - IPC_SIGCATCH: configure caught/uncaught signals
 	 */
 	porch_ipc_register(ipc, IPC_TERMIOS_INQUIRY, porch_child_termios_inquiry,
 	    t);
-	porch_ipc_register(ipc, IPC_TERMIOS_SET, porch_child_termios_set, t);
 	porch_ipc_register(ipc, IPC_ENV_SETUP, porch_child_env_setup, NULL);
 	porch_ipc_register(ipc, IPC_CHDIR, porch_child_chdir, NULL);
 	porch_ipc_register(ipc, IPC_SETGROUPS, porch_child_setgroups, NULL);
