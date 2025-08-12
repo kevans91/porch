@@ -116,7 +116,7 @@ print_current(enum db_type which, long count)
 	/*
 	 * FreeBSD will never return 0 for getgroups(), but other platforms may
 	 * do so if we had emptied out the group list.  Just avoid allocating
-	 * anything there and the rest will work itself out. 
+	 * anything there and the rest will work itself out.
 	 */
 	if (ngroups != 0) {
 		grps = calloc(ngroups, sizeof(*grps));
