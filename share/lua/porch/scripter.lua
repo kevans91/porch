@@ -838,6 +838,9 @@ end
 
 -- Inherited from our environment
 scripter.env.assert = assert
+scripter.env.pairs = pairs
+scripter.env.ipairs = ipairs
+scripter.env.next = next
 scripter.env.signals = core.signals
 scripter.env.string = string
 scripter.env.table = table
