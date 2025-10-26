@@ -17,6 +17,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "porch_lib_signals.h"
 
@@ -24,9 +25,9 @@
  * PORCH_PROBE_NSIG is used on platforms where NSIG is known to be lower than
  * the number of actual signals supported; we'll start from there and head
  * towards INT_MAX until sigismember() flags an error for using a value that
- * doesn't fit in the set.
+ * doesn't fit in the set.  We can drop this when 13.5 and 14.3 go EOL.
  */
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) && !defined(NSIG_MAX)
 #define	PORCH_PROBE_NSIG
 #endif
 
@@ -184,11 +185,14 @@ porch_sigmax(void)
 				break;
 			}
 		}
+#elif defined(NSIG_MAX)
+		nsig = NSIG_MAX;
+#elif defined(_SC_NSIG)
+		nsig = sysconf(_SC_NSIG);
 #else
 		nsig = NSIG;
 #endif
-
-		assert(nsig >= 0);
+		assert(nsig >= NSIG);
 	}
 
 	return (nsig);
