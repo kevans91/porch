@@ -388,6 +388,9 @@ function Process:sigmask(...)
 	return assert(self._process:sigmask(...))
 end
 function Process:signal(signo)
+	-- Remembered so that we don't consider the process being killed by
+	-- a signal that we sent it a failure.
+	self.last_signal = signo
 	return self._process:signal(signo)
 end
 function Process:stop()

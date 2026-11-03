@@ -1,0 +1,12 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- eof() must notice that the process was killed, even though we observe EOF
+-- well before it can be reaped.
+timeout(3)
+spawn("./crash_after_eof.sh")
+write "go\r"
+eof()
