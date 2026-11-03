@@ -717,7 +717,8 @@ porchlua_do_env(lua_State *L, struct porch_process *self, int index)
 	unsetstr = lua_tolstring(L, -1, &unsetsz);
 	setstr = lua_tolstring(L, -2, &setsz);
 
-	if (setsz > 0 && setstr[setsz - 1] != '\0') {
+	if ((setsz > 0 && setstr[setsz - 1] != '\0') ||
+	    (unsetsz > 0 && unsetstr[unsetsz - 1] != '\0')) {
 		luaL_pushfail(L);
 		lua_pushstring(L, "Malformed env string");
 		return (2);

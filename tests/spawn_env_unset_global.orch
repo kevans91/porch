@@ -1,0 +1,28 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+timeout(3)
+
+-- Check that unsetting a variable globally removes it from the inherited
+-- environment, and that a later local setenv() still takes precedence over the
+-- global unset.
+setenv("PORCHTESTS", false)
+
+spawn("openv")
+setenv("PORCHTESTS", "local", true)
+match "PORCHTESTS=local"
+
+-- openv(1) sorts its output, so AAAA= will be the first line we see.
+spawn("openv")
+setenv("AAAA", "start", true)
+match "AAAA=start"
+
+fail(function()
+	exit(0)
+end)
+
+match "PORCHTESTS="
+exit(1)

@@ -375,6 +375,13 @@ to
 .Va value
 in the environment.
 If
+.Va value
+is
+.Dv false ,
+then
+.Fa key
+is instead removed from the environment.
+If
 .Fa local
 is truthy, then the value is only set for the most recent
 .Fn spawn .

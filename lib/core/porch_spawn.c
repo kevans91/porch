@@ -269,13 +269,29 @@ porch_child_env_setup(porch_ipc_t ipc, struct porch_ipc_msg *msg,
 	size_t envsz;
 
 	penv = porch_ipc_msg_payload(msg, &envsz);
-	if (penv == NULL || envsz < sizeof(*penv)) {
+	if (penv == NULL || envsz < sizeof(*penv) ||
+	    envsz - sizeof(*penv) < penv->setsz + penv->unsetsz) {
 		errno = EINVAL;
 		return (-1);
 	}
 
 	if (penv->clear && porch_clearenv() != 0)
 		return (-1);
+
+	/*
+	 * Unset before we set; the script may have unset something in a parent
+	 * environment, then set it again more locally.
+	 */
+	if (penv->unsetsz != 0) {
+		const char *env, *last;
+
+		last = &penv->envstr[penv->setsz + penv->unsetsz];
+		env = &penv->envstr[penv->setsz];
+		while (env < last) {
+			unsetenv(env);
+			env = strchr(env, '\0') + 1;
+		}
+	}
 
 	if (penv->setsz != 0) {
 		const char *env, *last;
