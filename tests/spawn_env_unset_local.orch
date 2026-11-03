@@ -1,0 +1,22 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+timeout(3)
+
+-- Check that unsetting a variable inherited from our environment at only the
+-- program level works.  openv(1) sorts its output, so AAAA= will be the first
+-- line we see.
+spawn("openv")
+setenv("AAAA", "start", true)
+setenv("PORCHTESTS", false, true)
+match "AAAA=start"
+
+fail(function()
+	exit(0)
+end)
+
+match "PORCHTESTS="
+exit(1)
