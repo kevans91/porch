@@ -1,0 +1,13 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- A signal that the script sent the process itself is expected, so eof() should
+-- not consider it a failure.
+timeout(3)
+spawn("sleep", "30")
+release()
+signal(signals.SIGUSR1)
+eof()

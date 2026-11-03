@@ -1,0 +1,14 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- Like test_eof_signal_crash.script, but a callback shouldn't change the fact
+-- that the process being killed is an error.
+timeout(3)
+spawn("./crash_after_eof.sh")
+write "go\r"
+eof(nil, function(status)
+	exit(0)
+end)

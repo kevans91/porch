@@ -136,11 +136,21 @@ actions.defined = {
 				failed = true
 			end
 
-			if not failed and action.callback then
+			-- Reap the process even if we don't have a callback; we
+			-- usually observe EOF before the process can be reaped, and
+			-- we don't want a process killed by a signal to go unnoticed.
+			if not failed then
 				local is_eof, status = current_process:eof(action.timeout)
 				assert(is_eof)
 
-				if status then
+				if status and status:is_signaled() and
+				    status:status() ~= current_process.last_signal then
+					error(string.format(
+					    "spawned process killed with signal '%d'",
+					    status:status()))
+				end
+
+				if status and action.callback then
 					action.callback(status)
 				end
 			end

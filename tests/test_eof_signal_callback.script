@@ -1,0 +1,18 @@
+--
+-- Copyright (c) 2026 Kyle Evans <kevans@FreeBSD.org>
+--
+-- SPDX-License-Identifier: BSD-2-Clause
+--
+
+-- The callback should be handed the wait status of a process killed by a signal
+-- that we sent it.
+timeout(3)
+spawn("sleep", "30")
+release()
+signal(signals.SIGUSR1)
+eof(nil, function(status)
+	if status:is_signaled() and status:status() == signals.SIGUSR1 then
+		exit(7)
+	end
+	exit(1)
+end)
